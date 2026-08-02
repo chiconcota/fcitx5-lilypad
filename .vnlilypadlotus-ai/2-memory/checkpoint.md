@@ -4,8 +4,8 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `feature/phase3-heavy-app-optimization` (đã checkout từ tag `v2.0.0-lotus-stable`)
-- **Tình trạng:** **ĐÃ NIÊM PHONG SỔ BỘ NHỚ VÀ KHÔI PHÚC HỆ THỐNG NGUYÊN BẢN HÒAN HOÀN**
+- **Nhánh Git làm việc:** `main` (Git repository mới tinh, Initial Commit 100% clean)
+- **Tình trạng:** **ĐÃ KHỞI TẠO GIT MỚI VÀ COMMIT HOÀN TẤT**
 
 ---
 
