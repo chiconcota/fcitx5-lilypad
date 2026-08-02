@@ -4,8 +4,8 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `main` (Git repository mới tinh, Initial Commit 100% clean)
-- **Tình trạng:** **ĐÃ KHỞI TẠO GIT MỚI VÀ COMMIT HOÀN TẤT**
+- **Nhánh Git làm việc:** `main` (Remote `origin`: `https://github.com/chiconcota/fcitx5-lilypad.git`)
+- **Tình trạng:** **ĐÃ KẾT NỐI REMOTE ORIGIN VÀ KHỞI TẠO REPO HOÀN TẤT**
 
 ---
 
