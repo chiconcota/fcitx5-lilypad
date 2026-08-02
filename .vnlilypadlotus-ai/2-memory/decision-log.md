@@ -5,6 +5,26 @@
 
 ---
 
+### [2026-08-02] Quyết định 007: Đổi tên Thương hiệu Độc lập (Lilypad) & Phục hồi Lotus Tham chiếu Backup
+- **Bối cảnh:** Nhu cầu cài đặt bộ gõ `Lilypad` làm bộ gõ Tiếng Việt độc lập trên hệ thống Linux/Fcitx5, đồng thời duy trì mã nguồn `Lotus` gốc làm bản tham chiếu/backup sạch không chỉnh sửa.
+- **Quyết định:**
+  1. Đổi tên toàn bộ C++ namespace (`fcitx::Lilypad`), addon library target (`liblilypad.so`), desktop entry metadata, và binary (`fcitx5-lilypad-server`, `fcitx5-lilypad-settings`) trong thư mục `fcitx5-lilypad/`.
+  2. Phục hồi 100% thư mục `fcitx5-lotus-main/` làm tài liệu tham chiếu gốc từ zip archive.
+  3. Đã đăng ký cả 2 bộ gõ `lotus` và `lilypad` trong Fcitx5 profile và DBus group.
+- **Phù hợp System Map:** Tương thích 100% với *No-Trash Repository Standard* & *Lilypad Core*.
+
+---
+
+### [2026-08-02] Quyết định 008: Thêm Chế độ Gõ "Sequence" trên Giao diện Cấu hình (Lilypad Mode Enum #9)
+- **Bối cảnh:** Chuẩn bị hạ tầng UI/Config cho chế độ gõ mới **`Sequence`** trên `fcitx5-lilypad`.
+- **Quyết định:**
+  1. Thêm `Sequence` vào `LilypadMode` enum (giá trị int `9`) và macro i18n annotation trong `lilypad-config.h`.
+  2. Thêm `MODE_SEQUENCE = 9` và cập nhật danh sách `global_modes` & `grid_modes` trong GUI Python Settings (`mode_manager.py` & `dynamic_settings.py`).
+  3. Thêm cấu hình `ShowModeSequence` và `ShortcutSequence` trong `lilypadConfig`.
+- **Phù hợp System Map:** Tương thích 100% với *Lilypad Settings GUI* & *Lilypad C++ Addon Core*.
+
+---
+
 ### [2026-07-25] Quyết định 001 (Gốc 021): Adaptive App-Paced State Tracking & ACK Barrier Engine
 - **Bối cảnh:** Các giải pháp bộ gõ cũ dùng thời gian trễ cứng (`sleep 5ms`) bị vỡ nhịp khi ứng dụng (Chrome, VS Code, Electron, Terminal) bị giật lag, sinh ra lỗi lặp từ và trôi chữ.
 - **Quyết định:** 

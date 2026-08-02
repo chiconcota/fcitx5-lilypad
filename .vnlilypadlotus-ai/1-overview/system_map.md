@@ -37,12 +37,11 @@
 
 | Tên Module | Thư mục | Trách nhiệm chính | Trạng thái |
 | :--- | :--- | :--- | :--- |
-| **Fcitx5 C++ Framework** | `fcitx5-master/` | Gánh 100% Wayland/X11 IPC, Socket, Focus, Window Manager, System Tray, GUI Config. | 🟢 Ready |
-| **Lotus C++ Addon Core** | `fcitx5-lotus-main/src/` | Quản lý state context, uinput client, và điều phối sự kiện gõ. Biên dịch ra `liblotus.so`. | 🟢 Ready |
-| **Sequencer Token Swallow** | `fcitx5-lotus-main/src/lotus-sequencer.h/.cpp` | Serial ID Tagging, bộ đếm token `expected_backspaces_`, Sequencer Queue Polling & Event Loop Deferred Commit. | 🟢 Ready |
-| **Lotus Server Daemon** | `fcitx5-lotus-main/server/lotus-server.cpp` | Phát phím xóa uinput với inter-backspace delay 1.5ms qua `/dev/uinput`. | 🟢 Ready |
-| **Lotus Telex Engine** | `fcitx5-lotus-main/bamboo/` | Máy trạng thái Telex/VNI nguyên bản của lotus (Go/Bamboo C-FFI). | 🟢 Ready |
-| **Sequencer Rust Reference** | `src/sequencer/` | Engine tham chiếu thuật toán Sequencer Layer (`cargo test` pass 100%). | 🟢 Ready |
+| **Lilypad C++ Addon Core** | `fcitx5-lilypad/src/` | Quản lý state context, uinput client, mode switching (Preedit, Smooth, Sequence...), và điều phối sự kiện gõ. Biên dịch ra `liblilypad.so`. | 🟢 Ready |
+| **Lilypad Settings GUI** | `fcitx5-lilypad/settings-gui/` | Giao diện cấu hình PyQt (Mode Manager, App Rules, Keymap Editor). | 🟢 Ready |
+| **Lotus C++ Addon Backup** | `fcitx5-lotus-main/` | Mã nguồn Lotus gốc được bảo tồn 100% làm tài liệu tham chiếu/backup. | 🟢 Reference |
+| **Sequencer Token Swallow** | `src/sequencer/` | Sequencer Layer C++ (`lotus-sequencer.h/.cpp`) & Rust (`mod.rs`) hỗ trợ Serial Tagging và Wayland ACK spec. | 🟢 Ready |
+| **Log Reader & Monitor** | `scripts/read_logs.sh` | Trình đọc log thời gian thực cho Fcitx5 và Lilypad. | 🟢 Ready |
 
 ---
 
@@ -51,7 +50,7 @@
 1. **Hybrid Fcitx5 Integration Rule:** Tận dụng 100% hạ tầng Fcitx5 C++ cho Wayland/X11 IPC, Focus và UI. Tuyệt đối không viết daemon IPC độc lập gây tranh chấp tài nguyên Niri Compositor.
 2. **0% EVIOCGRAB Constraint:** Không cướp phím vật lý cấp Kernel bằng `EVIOCGRAB`. Toàn bộ phím phần cứng và phím tắt (`Ctrl+C`, `Ctrl+V`, `Alt+Tab`, `Super`, `F1-F12`) chảy tự nhiên 100%.
 3. **Pure Uinput Backspace Emission:** `/dev/uinput` chỉ phục vụ duy nhất mục đích bắn $N$ phím xóa `KEY_BACKSPACE` khi thực hiện thay thế ký tự thô cũ (`performReplacement`).
-4. **Inter-Backspace Delay (Rule #4):** Chèn `usleep(1500)` ($1.5\,\text{ms}$) giữa các phím xóa uinput trong `lotus-server.cpp` để Linux Kernel evdev phát từng sự kiện `SYN_REPORT` riêng biệt, tránh gộp phím.
+4. **Inter-Backspace Delay (Rule #4):** Chèn `usleep(1500)` ($1.5\,\text{ms}$) giữa các phím xóa uinput trong server daemon để Linux Kernel evdev phát từng sự kiện `SYN_REPORT` riêng biệt, tránh gộp phím.
 5. **Zero deleteSurroundingText & Zero Preedit:** NGHIÊM CẤM dùng `ic_->deleteSurroundingText()` và `Preedit` trong mọi luồng gõ. 100% thao tác thay thế từ đi qua `performReplacement()` sử dụng Kernel Uinput Sequencer Layer.
 6. **No-Trash Repository Standard:** Giữ repo gọn gàng, tài liệu tuân thủ nghiêm ngặt 4 ngăn kéo trong `.vnlilypadlotus-ai/`.
 
@@ -61,7 +60,10 @@
 
 | Ngày | Thay đổi | File |
 | :--- | :--- | :--- |
-| 2026-08-02 | **GỠ BỎ toàn bộ AT-SPI2** — xóa `lotus-atspi.*`, gỡ khỏi CMake, sequencer quay về `WaitingForAck` (build pass 100%) | `src/` (ngoài git) |
+| 2026-08-02 | Khởi tạo Git repo mới tinh, kết nối remote `git@github.com:chiconcota/fcitx5-lilypad.git` và push 100% code lên branch `main` | Git / GitHub |
+| 2026-08-02 | Thêm chế độ gõ **`Sequence`** (UI dropdown & C++ enum mapping) vào `fcitx5-lilypad` | `fcitx5-lilypad/` |
+| 2026-08-02 | Đổi tên thương hiệu độc lập **Lotus -> Lilypad** (`liblilypad.so`, `fcitx5-lilypad`), khôi phục `fcitx5-lotus-main` làm reference backup | `fcitx5-lilypad/`, `fcitx5-lotus-main/` |
+| 2026-08-02 | Trích xuất và bảo tồn 3 thành phần cốt lõi (Sequencer Layer, Wayland Motion ACK spec, Log Reader) | `src/`, `scripts/` |
 | 2026-08-01 | Đóng gói niêm phong v2.0.0-lotus-stable trên `main`, khởi tạo nhánh `feature/phase3-heavy-app-optimization` | Git / Docs |
 | 2026-08-01 | Tích hợp Sequencer Queue Polling (`poll_next_step`) vào `handleUInputKeyPress` | `src/lotus-state.cpp` |
 | 2026-08-01 | Áp dụng Sequencer Deferred Event-Loop Commit (`addTimeEvent` 2ms) triệt hạ lỗi `chaá` | `src/lotus-state.cpp`, `src/lotus-state.h` |

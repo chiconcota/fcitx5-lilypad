@@ -22,16 +22,17 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
 
 ---
 
-### 🟡 Kế Hoạch Phiên Tới (Phase 3 — Heavy & Slow Apps Optimization):
+### 🟡 Kế Hoạch Đã & Đang Thực Hiện (Phase 3 — Rebrand, Dual Mode & Sequence Layer UI):
 
-**ĐÃ LÀM (2026-08-02):**
-- [x] Đã thử nghiệm AT-SPI2 DOM ACK Engine → **GỠ BỎ HOÀN TOÀN** theo yêu cầu khôi phục main (build pass 100%). Lý do: code ngoài git không revert được, phải gỡ tay.
-- [x] Xác lập quy tắc: mọi thay đổi `fcitx5-lotus-main/` phải ghi chi tiết vào checkpoint để có thể tái dựng.
+**ĐÃ HOÀN THÀNH (2026-08-02):**
+- [x] Đổi tên thương hiệu độc lập **Lotus -> Lilypad** (`liblilypad.so`, `fcitx5-lilypad`, `fcitx5-lilypad-server`).
+- [x] Phục hồi 100% mã nguồn `fcitx5-lotus-main/` từ zip archive làm bản tham chiếu gốc, giữ nguyên không sửa.
+- [x] Đăng ký song song cả **Lotus** và **Lilypad** trên hệ thống và Fcitx5 active profile/DBus.
+- [x] Thêm chế độ gõ **`Sequence`** (UI dropdown, C++ enum `#9`, Python Settings GUI) cho `fcitx5-lilypad`.
+- [x] Khởi tạo Git repository mới tinh trên `main`, kết nối remote `git@github.com:chiconcota/fcitx5-lilypad.git` và push 100% code lên GitHub.
 
-**CHƯA LÀM (kế hoạch gốc Phase 3, chưa triển khai lại):**
-- [ ] Tối ưu hóa bộ gõ cho các ứng dụng nhả chữ chậm / lag nặng: **AFFiNE (BlockSuite Editor)**, **Facebook Web / Messenger Web**.
-- [ ] Adaptive Dynamic Barrier Delay cho Sequencer C++ khi nhả chữ trên app lag.
-- [ ] Unit Tests bổ sung cho Sequencer C++ (`lotus-sequencer.cpp`).
-- [ ] Release `v2.1.0-lotus` với Sequencer Token Swallow V2.
+**TIẾP THEO (Kế hoạch mở rộng):**
+- [ ] Phát triển mã nguồn thực thi thuật toán cho chế độ **`Sequence`** trên `fcitx5-lilypad`.
+- [ ] Tối ưu hóa nhịp gõ cho các ứng dụng web/electron nặng (**AFFiNE**, **Facebook Web**).
 
 > **Ghi chú:** Nếu tái khởi động AT-SPI2 sau này, tham khảo commit `aea7094` (docs QD 012) + phiên memory 2026-08-02 đợt 1.
