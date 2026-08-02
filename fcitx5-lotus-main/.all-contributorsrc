@@ -1,0 +1,117 @@
+{
+  "projectName": "fcitx5-lotus",
+  "projectOwner": "LotusInputMethod",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md",
+    "README.en.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitConvention": "gitmoji",
+  "contributors": [
+    {
+      "login": "nhktmdzhg",
+      "name": "Nguyen Hoang Ky",
+      "avatar_url": "https://avatars.githubusercontent.com/u/57983253?v=4",
+      "profile": "https://github.com/nhktmdzhg",
+      "contributions": [
+        "blog",
+        "code",
+        "doc",
+        "projectManagement",
+        "review"
+      ]
+    },
+    {
+      "login": "hthienloc",
+      "name": "Huỳnh Thiện Lộc",
+      "avatar_url": "https://avatars.githubusercontent.com/u/148019203?v=4",
+      "profile": "https://github.com/hthienloc",
+      "contributions": [
+        "bug",
+        "doc",
+        "design",
+        "translation",
+        "code"
+      ]
+    },
+    {
+      "login": "justanoobcoder",
+      "name": "Nguyễn Hồng Hiệp",
+      "avatar_url": "https://avatars.githubusercontent.com/u/57614330?v=4",
+      "profile": "https://github.com/justanoobcoder",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "Miho1254",
+      "name": "Đặng Quang Hiển",
+      "avatar_url": "https://avatars.githubusercontent.com/u/83270073?v=4",
+      "profile": "https://github.com/Miho1254",
+      "contributions": [
+        "doc",
+        "code"
+      ]
+    },
+    {
+      "login": "Zebra2711",
+      "name": "Zebra2711",
+      "avatar_url": "https://avatars.githubusercontent.com/u/89755535?v=4",
+      "profile": "https://github.com/Zebra2711",
+      "contributions": [
+        "bug",
+        "code"
+      ]
+    },
+    {
+      "login": "ductrantrong",
+      "name": "ductrantrong",
+      "avatar_url": "https://avatars.githubusercontent.com/u/96020037?v=4",
+      "profile": "https://github.com/ductrantrong",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "hien-ngo29",
+      "name": "Ngo Phu Hien",
+      "avatar_url": "https://avatars.githubusercontent.com/u/98635550?v=4",
+      "profile": "https://github.com/hien-ngo29",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "minhtrancccp",
+      "name": "Minh Tran",
+      "avatar_url": "https://avatars.githubusercontent.com/u/33189614?v=4",
+      "profile": "https://github.com/minhtrancccp",
+      "contributions": [
+        "platform"
+      ]
+    },
+    {
+      "login": "hieutran21198",
+      "name": "Trần Minh Hiếu (Cirius)",
+      "avatar_url": "https://avatars.githubusercontent.com/u/87953912?v=4",
+      "profile": "https://github.com/hieutran21198",
+      "contributions": [
+        "platform"
+      ]
+    },
+    {
+      "login": "namtao",
+      "name": "namtao",
+      "avatar_url": "https://avatars.githubusercontent.com/u/48555338?v=4",
+      "profile": "https://github.com/namtao",
+      "contributions": [
+        "code"
+      ]
+    }
+  ],
+  "contributorsPerLine": 4,
+  "linkToUsage": true
+}

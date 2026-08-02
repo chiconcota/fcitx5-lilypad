@@ -1,0 +1,10 @@
+# CMake build files
+CMakeFiles/
+Makefile
+cmake_install.cmake
+# Compiled library
+*.so
+# Generated config files
+lilypad-addon.conf
+lilypad-addon.conf.in
+lilypad.conf

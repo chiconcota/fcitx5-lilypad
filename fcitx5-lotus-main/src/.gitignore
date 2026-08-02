@@ -1,0 +1,10 @@
+# CMake build files
+CMakeFiles/
+Makefile
+cmake_install.cmake
+# Compiled library
+*.so
+# Generated config files
+lotus-addon.conf
+lotus-addon.conf.in
+lotus.conf

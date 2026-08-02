@@ -1,0 +1,471 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-deb:
+    name: DEB [${{ matrix.codename }}]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: debian:12
+            codename: bookworm
+          - distro: debian:13
+            codename: trixie
+          - distro: debian:testing
+            codename: forky
+          - distro: debian:unstable
+            codename: sid
+          - distro: ubuntu:22.04
+            codename: jammy
+          - distro: ubuntu:24.04
+            codename: noble
+          - distro: ubuntu:25.04
+            codename: plucky
+          - distro: ubuntu:25.10
+            codename: questing
+          - distro: ubuntu:26.04
+            codename: resolute
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Prepare debian directory
+        run: cp -r packaging/debian debian
+
+      - name: Build DEB
+        uses: jtdor/build-deb-action@v1
+        with:
+          docker-image: ${{ matrix.distro }}
+          buildpackage-opts: --build=binary --no-sign
+
+      - name: Rename DEB artifacts
+        run: |
+          for f in debian/artifacts/*.deb; do
+            base=$(basename "$f" .deb)
+            sudo mv "$f" "debian/artifacts/${base}_${{ matrix.codename }}.deb"
+          done
+
+      - name: Create APT Repo
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y reprepro gnupg2
+
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
+          echo "pinentry-mode loopback"  > ~/.gnupg/gpg.conf
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+
+          FINGERPRINT=$(gpg --list-secret-keys --with-colons | grep '^fpr' | head -1 | cut -d: -f10)
+          echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
+          gpg-connect-agent reloadagent /bye || true
+
+          codename="${{ matrix.codename }}"
+          case "$codename" in
+            sid)      suite="unstable" ;;
+            testing)  suite="testing"  ;;
+            *)        suite="stable"   ;;
+          esac
+
+          mkdir -p "repo/apt/${codename}/conf"
+          cat > "repo/apt/${codename}/conf/distributions" << EOF
+          Codename: ${codename}
+          Suite: ${suite}
+          Components: main
+          Architectures: amd64
+          SignWith: ${FINGERPRINT}
+          EOF
+
+          for deb in debian/artifacts/*.deb; do
+            [ -f "$deb" ] || continue
+            reprepro --gnupghome ~/.gnupg -b "repo/apt/${codename}" includedeb "$codename" "$deb"
+          done
+
+          gpg --batch --yes --delete-secret-and-public-key "${FINGERPRINT}" || true
+
+      - name: Upload DEB artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: deb-${{ matrix.codename }}
+          path: debian/artifacts/*.deb
+          retention-days: 1
+
+      - name: Upload APT Repo artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: repo-apt-${{ matrix.codename }}
+          path: repo/
+          retention-days: 1
+
+  build-rpm-fedora:
+    name: RPM [fedora-${{ matrix.releasever }}]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: fedora:42
+            releasever: 42
+          - distro: fedora:43
+            releasever: 43
+          - distro: fedora:44
+            releasever: 44
+          - distro: fedora:rawhide
+            releasever: rawhide
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Build Fedora RPM
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.distro }}
+          options: -v ${{ github.workspace }}:/work
+          run: |
+            set -euo pipefail
+            dnf install -y rpm-build rpmdevtools dnf-plugins-core
+            rpmdev-setuptree
+            cp /work/packaging/rpm/fedora/fcitx5-lotus.spec ~/rpmbuild/SPECS/
+            dnf builddep -y ~/rpmbuild/SPECS/fcitx5-lotus.spec
+            mkdir -p ~/rpmbuild/SOURCES
+            cd /work
+            VERSION=$(grep '^Version:' packaging/rpm/fedora/fcitx5-lotus.spec | awk '{print $2}')
+            tar --exclude='.git' \
+                --exclude='packaging' \
+                --transform "s|^\.|fcitx5-lotus-${VERSION}|" \
+                -czf ~/rpmbuild/SOURCES/fcitx5-lotus-${VERSION}.tar.gz .
+            rpmbuild -bb ~/rpmbuild/SPECS/fcitx5-lotus.spec
+            mkdir -p /work/output
+            for rpm in ~/rpmbuild/RPMS/**/*.rpm; do
+              base=$(basename "$rpm" .rpm)
+              mv "$rpm" "/work/output/${base}.${{ matrix.releasever }}.rpm"
+            done
+
+      - name: Sign RPM packages and Create Repo
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y createrepo-c gnupg2
+
+          sudo chmod -R 777 output/
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
+          echo "pinentry-mode loopback"  > ~/.gnupg/gpg.conf
+          gpg-connect-agent reloadagent /bye || true
+
+          KEYID=$(gpg --list-secret-keys --with-colons | grep '^sec' | head -1 | cut -d: -f5)
+
+          cat > ~/.rpmmacros << EOF
+          %_gpg_name ${KEYID}
+          %__gpg_sign_cmd %{__gpg} gpg \
+            --no-verbose --no-armor --batch \
+            --pinentry-mode loopback \
+            -u "%{_gpg_name}" \
+            -sbo %{__signature_filename} \
+            %{__plaintext_filename}
+          EOF
+
+          for rpm in output/*.rpm; do
+            rpmsign --addsign "$rpm"
+          done
+
+          releasever="${{ matrix.releasever }}"
+          dir="repo/rpm/fedora/${releasever}/x86_64"
+          mkdir -p "$dir"
+
+          for rpm in output/*.rpm; do
+            [ -f "$rpm" ] || continue
+            [[ "$rpm" == *debug* ]] && continue
+            cp "$rpm" "$dir/"
+          done
+
+          if [ "$(ls -A $dir)" ]; then
+            createrepo_c "$dir"
+            gpg --batch --yes --detach-sign --armor "$dir/repodata/repomd.xml"
+          fi
+
+          mkdir -p repo/rpm/fedora
+          cat > "repo/rpm/fedora/fcitx5-lotus-${releasever}.repo" << EOF
+          [fcitx5-lotus]
+          name=fcitx5-lotus — Fedora ${releasever}
+          baseurl=https://fcitx5-lotus.pages.dev/rpm/fedora/${releasever}/x86_64/
+          enabled=1
+          gpgcheck=1
+          gpgkey=https://fcitx5-lotus.pages.dev/pubkey.gpg
+          EOF
+
+          gpg --batch --yes --delete-secret-and-public-key "$KEYID" || true
+
+      - name: Upload RPM artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: rpm-fedora-${{ matrix.releasever }}
+          path: output/*.rpm
+          retention-days: 1
+
+      - name: Upload Fedora Repo artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: repo-rpm-fedora-${{ matrix.releasever }}
+          path: repo/
+          retention-days: 1
+
+  build-rpm-opensuse:
+    name: RPM [opensuse-${{ matrix.releasever }}]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: opensuse/tumbleweed
+            releasever: tumbleweed
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Build openSUSE RPM
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.distro }}
+          options: -v ${{ github.workspace }}:/work
+          run: |
+            set -euo pipefail
+            zypper -n dup
+            zypper install -y rpm-build rpmdevtools
+            rpmdev-setuptree
+            cp /work/packaging/rpm/opensuse/fcitx5-lotus.spec ~/rpmbuild/SPECS/
+            zypper -n install \
+              $(rpmspec -P ~/rpmbuild/SPECS/fcitx5-lotus.spec \
+                | grep '^BuildRequires:' \
+                | awk '{print $2}' \
+                | xargs)
+            mkdir -p ~/rpmbuild/SOURCES
+            cd /work
+            VERSION=$(grep '^Version:' packaging/rpm/opensuse/fcitx5-lotus.spec | awk '{print $2}')
+            tar --exclude='.git' \
+                --exclude='packaging' \
+                --transform "s|^\.|fcitx5-lotus-${VERSION}|" \
+                -czf ~/rpmbuild/SOURCES/fcitx5-lotus-${VERSION}.tar.gz .
+            rpmbuild -bb ~/rpmbuild/SPECS/fcitx5-lotus.spec
+            mkdir -p /work/output
+            for rpm in ~/rpmbuild/RPMS/**/*.rpm; do
+              base=$(basename "$rpm" .rpm)
+              mv "$rpm" "/work/output/${base}.${{ matrix.releasever }}.rpm"
+            done
+
+      - name: Sign RPM packages and Create Repo
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y createrepo-c gnupg2
+
+          sudo chmod -R 777 output/
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
+          echo "pinentry-mode loopback"  > ~/.gnupg/gpg.conf
+          gpg-connect-agent reloadagent /bye || true
+
+          KEYID=$(gpg --list-secret-keys --with-colons | grep '^sec' | head -1 | cut -d: -f5)
+
+          cat > ~/.rpmmacros << EOF
+          %_gpg_name ${KEYID}
+          %__gpg_sign_cmd %{__gpg} gpg \
+            --no-verbose --no-armor --batch \
+            --pinentry-mode loopback \
+            -u "%{_gpg_name}" \
+            -sbo %{__signature_filename} \
+            %{__plaintext_filename}
+          EOF
+
+          for rpm in output/*.rpm; do
+            rpmsign --addsign "$rpm"
+          done
+
+          releasever="${{ matrix.releasever }}"
+          dir="repo/rpm/opensuse/${releasever}/x86_64"
+          mkdir -p "$dir"
+
+          for rpm in output/*.rpm; do
+            [ -f "$rpm" ] || continue
+            [[ "$rpm" == *debug* ]] && continue
+            cp "$rpm" "$dir/"
+          done
+
+          if [ "$(ls -A $dir)" ]; then
+            createrepo_c "$dir"
+            gpg --batch --yes --detach-sign --armor "$dir/repodata/repomd.xml"
+          fi
+
+          mkdir -p repo/rpm/opensuse
+          cat > "repo/rpm/opensuse/fcitx5-lotus-${releasever}.repo" << EOF
+          [fcitx5-lotus]
+          name=fcitx5-lotus — openSUSE ${releasever}
+          baseurl=https://fcitx5-lotus.pages.dev/rpm/opensuse/${releasever}/x86_64/
+          enabled=1
+          gpgcheck=1
+          gpgkey=https://fcitx5-lotus.pages.dev/pubkey.gpg
+          EOF
+
+          gpg --batch --yes --delete-secret-and-public-key "$KEYID" || true
+
+      - name: Upload RPM artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: rpm-opensuse-${{ matrix.releasever }}
+          path: output/*.rpm
+          retention-days: 1
+
+      - name: Upload openSUSE Repo artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: repo-rpm-opensuse-${{ matrix.releasever }}
+          path: repo/
+          retention-days: 1
+
+  build-arch:
+    name: Arch Linux (zstd)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Build on Arch Linux
+        uses: addnab/docker-run-action@v3
+        with:
+          image: archlinux:latest
+          options: -v ${{ github.workspace }}:/work
+          run: |
+            set -euo pipefail
+            pacman -Syu --noconfirm \
+              cmake extra-cmake-modules gcc go \
+              fcitx5 libinput libx11 systemd python \
+              make pkgconf zstd
+
+            cd /work
+            export LDFLAGS="-Wl,-O1 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,-z,pack-relative-relocs"
+            export CGO_LDFLAGS="-Wl,-O1 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,-z,pack-relative-relocs"
+            cmake \
+              -DCMAKE_INSTALL_PREFIX=/usr \
+              -DCMAKE_INSTALL_LIBDIR=/usr/lib \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
+              -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
+              -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
+              -DCMAKE_MODULE_LINKER_FLAGS="$LDFLAGS" \
+              -DINSTALL_OPENRC=ON \
+              -DINSTALL_RUNIT=ON \
+              -DRUNIT_SV_DIR=/etc/runit/sv \
+              -B build .
+            cmake --build build
+            DESTDIR=/work/arch-dist cmake --install build
+            find /work/arch-dist/usr/bin -type f \
+              -exec strip --strip-all {} + 2>/dev/null || true
+            find /work/arch-dist/usr/lib -name "*.so*" -type f \
+              -exec strip --strip-unneeded {} + 2>/dev/null || true
+
+      - name: Package as tar.zst
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION//\//-}"
+          tar -c -I 'zstd -19 -T0' -f "fcitx5-lotus-${VERSION}-x86_64-archlinux.tar.zst" -C arch-dist .
+
+      - name: Upload Arch artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: arch-tar-zst
+          path: fcitx5-lotus-*-x86_64-archlinux.tar.zst
+          retention-days: 1
+
+  release:
+    name: Create GitHub Release
+    needs: [build-deb, build-rpm-fedora, build-rpm-opensuse, build-arch]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts/
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: 'artifacts/**/*'
+
+      - name: Upload to GitHub Releases
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            artifacts/deb-*/**/*.deb
+            artifacts/rpm-*/**/*.rpm
+            artifacts/**/*.tar.zst
+          generate_release_notes: true
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    name: Deploy to Cloudflare Pages
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download all repo artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: repo-*
+          path: downloaded-repos/
+
+      - name: Merge Repos
+        run: |
+          mkdir -p repo
+          for d in downloaded-repos/repo-*/; do
+            if [ -d "$d" ]; then
+              cp -a "$d". repo/
+            fi
+          done
+
+      - name: Copy public key
+        run: cp packaging/pubkey.gpg repo/pubkey.gpg
+
+      - name: Generate index pages
+        uses: gacts/directory-listing@v1
+        with:
+          target: repo
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy repo --project-name=fcitx5-lotus --branch=main --commit-dirty=true

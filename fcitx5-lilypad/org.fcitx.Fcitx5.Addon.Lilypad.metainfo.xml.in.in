@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component type="addon">
+  <id>org.fcitx.Fcitx5.Addon.Lilypad</id>
+  <extends>org.fcitx.Fcitx5</extends>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0+</project_license>
+  <name>Lilypad</name>
+  <summary>Vietnamese input method (Lilypad)</summary>
+  <description>
+    <p>Lilypad is a Vietnamese input method for Fcitx5, supporting multiple typing modes and input
+      methods.</p>
+  </description>
+  <url type="homepage">https://fcitx-im.org</url>
+  <url type="bugtracker">https://github.com/LilypadInputMethod/fcitx5-lilypad/issues</url>
+  <project_group>Fcitx</project_group>
+  <releases>
+    <release version="@PROJECT_VERSION@" date="2026-02-26" />
+  </releases>
+</component>

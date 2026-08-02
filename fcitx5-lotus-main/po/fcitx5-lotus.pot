@@ -1,0 +1,887 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-05 17:36+0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/lotus-config.h:40 src/lotus-engine.cpp:952 src/lotus-engine.cpp:1061
+msgid "OFF"
+msgstr ""
+
+#: src/lotus-config.h:40 src/lotus-engine.cpp:946 src/lotus-engine.cpp:1055
+msgid "Uinput (Smooth)"
+msgstr ""
+
+#: src/lotus-config.h:40 src/lotus-engine.cpp:953 src/lotus-engine.cpp:1062
+msgid "Uinput (Super Smooth)"
+msgstr ""
+
+#: src/lotus-config.h:40 src/lotus-engine.cpp:947 src/lotus-engine.cpp:1056
+msgid "Uinput (Slow)"
+msgstr ""
+
+#: src/lotus-config.h:40 src/lotus-engine.cpp:949 src/lotus-engine.cpp:1058
+msgid "Surrounding Text"
+msgstr ""
+
+#: src/lotus-config.h:40 src/lotus-engine.cpp:950 src/lotus-engine.cpp:1059
+msgid "Preedit"
+msgstr ""
+
+#: src/lotus-config.h:41 src/lotus-engine.cpp:951 src/lotus-engine.cpp:1060
+msgid "Emoji Picker"
+msgstr ""
+
+#: src/lotus-config.h:41 src/lotus-engine.cpp:948 src/lotus-engine.cpp:1057
+msgid "Minecraft"
+msgstr ""
+
+#: src/lotus-config.h:58 src/lotus-config.h:69
+msgid "Disabled"
+msgstr ""
+
+#: src/lotus-config.h:58 src/lotus-config.h:69
+msgid "Non-Start"
+msgstr ""
+
+#: src/lotus-config.h:58 src/lotus-config.h:69
+msgid "Everywhere"
+msgstr ""
+
+#: src/lotus-config.h:80
+msgid "Auto"
+msgstr ""
+
+#: src/lotus-config.h:80
+msgid "Light"
+msgstr ""
+
+#: src/lotus-config.h:80
+msgid "Dark"
+msgstr ""
+
+#: src/lotus-config.h:187
+msgid "Key"
+msgstr ""
+
+#: src/lotus-config.h:187
+msgid "Value"
+msgstr ""
+
+#: src/lotus-config.h:191 src/lotus-config.h:258 src/lotus-engine.cpp:200
+#: src/lotus-engine.cpp:345
+msgid "Macro"
+msgstr ""
+
+#: src/lotus-config.h:195 src/lotus-config.h:233 src/lotus-config.h:259
+msgid "Custom Keymap"
+msgstr ""
+
+#: src/lotus-config.h:197
+msgid "App"
+msgstr ""
+
+#: src/lotus-config.h:197 src/lotus-config.h:208
+msgid "Mode"
+msgstr ""
+
+#: src/lotus-config.h:200
+msgid "Rules"
+msgstr ""
+
+#: src/lotus-config.h:210
+msgid "Input Method"
+msgstr ""
+
+#: src/lotus-config.h:211
+msgid "Output Charset"
+msgstr ""
+
+#: src/lotus-config.h:213
+msgid "Mode Menu Hotkey"
+msgstr ""
+
+#: src/lotus-config.h:214
+msgid "Cycle Mode Hotkey"
+msgstr ""
+
+#: src/lotus-config.h:215
+msgid "App Rules"
+msgstr ""
+
+#: src/lotus-config.h:216
+msgid "Type w to Produce ư"
+msgstr ""
+
+#: src/lotus-config.h:217
+msgid "Type [ -> ơ, ] -> ư, { -> Ơ, } -> Ư"
+msgstr ""
+
+#: src/lotus-config.h:220
+msgid "Enable Spell Check"
+msgstr ""
+
+#: src/lotus-config.h:220
+msgid "Enable Macro"
+msgstr ""
+
+#: src/lotus-config.h:221 src/lotus-engine.cpp:201 src/lotus-engine.cpp:346
+msgid "Capitalize Macro"
+msgstr ""
+
+#: src/lotus-config.h:222
+msgid "Auto capitalize after sentence-ending punctuation (. ! ? Enter)"
+msgstr ""
+
+#: src/lotus-config.h:223
+msgid "Double Space to Period"
+msgstr ""
+
+#: src/lotus-config.h:224
+msgid "Double Hyphen to Em-Dash (--)"
+msgstr ""
+
+#: src/lotus-config.h:225 src/lotus-engine.cpp:203
+msgid "Auto Restore Invalid Words"
+msgstr ""
+
+#: src/lotus-config.h:226
+msgid "Use oà, uý (Instead Of òa, úy)"
+msgstr ""
+
+#: src/lotus-config.h:227
+msgid "Allow Type With More Freedom"
+msgstr ""
+
+#: src/lotus-config.h:228
+msgid "Allow dd To Produce đ When Auto Restore Invalid Words Is On"
+msgstr ""
+
+#: src/lotus-config.h:229
+msgid "Fix Uinput Mode With Ack"
+msgstr ""
+
+#: src/lotus-config.h:230
+msgid "Use Lotus Status Icons"
+msgstr ""
+
+#: src/lotus-config.h:232 src/lotus-engine.cpp:205 src/lotus-engine.cpp:348
+msgid "Custom Dictionary"
+msgstr ""
+
+#: src/lotus-config.h:235
+msgid "Show Uinput (Smooth)"
+msgstr ""
+
+#: src/lotus-config.h:236
+msgid "Shortcut for Uinput (Smooth)"
+msgstr ""
+
+#: src/lotus-config.h:237
+msgid "Show Uinput (Slow)"
+msgstr ""
+
+#: src/lotus-config.h:238
+msgid "Shortcut for Uinput (Slow)"
+msgstr ""
+
+#: src/lotus-config.h:239
+msgid "Show Uinput (Super Smooth)"
+msgstr ""
+
+#: src/lotus-config.h:240
+msgid "Shortcut for Uinput (Super Smooth)"
+msgstr ""
+
+#: src/lotus-config.h:241
+msgid "Show Minecraft"
+msgstr ""
+
+#: src/lotus-config.h:242
+msgid "Shortcut for Minecraft"
+msgstr ""
+
+#: src/lotus-config.h:243
+msgid "Show Surrounding Text"
+msgstr ""
+
+#: src/lotus-config.h:244
+msgid "Shortcut for Surrounding Text"
+msgstr ""
+
+#: src/lotus-config.h:245
+msgid "Show Preedit"
+msgstr ""
+
+#: src/lotus-config.h:246
+msgid "Shortcut for Preedit"
+msgstr ""
+
+#: src/lotus-config.h:247
+msgid "Show Emoji Picker"
+msgstr ""
+
+#: src/lotus-config.h:248
+msgid "Shortcut for Emoji Picker"
+msgstr ""
+
+#: src/lotus-config.h:248
+msgid "Show OFF"
+msgstr ""
+
+#: src/lotus-config.h:249
+msgid "Shortcut for OFF"
+msgstr ""
+
+#: src/lotus-config.h:249
+msgid "Show Default Typing"
+msgstr ""
+
+#: src/lotus-config.h:250
+msgid "Shortcut for Default Typing"
+msgstr ""
+
+#: src/lotus-config.h:251
+msgid "Allow Macro in Off Mode"
+msgstr ""
+
+#: src/lotus-config.h:253
+msgid "Mode Order"
+msgstr ""
+
+#: src/lotus-config.h:255
+msgid "Time Format ($TIME in macro)"
+msgstr ""
+
+#: src/lotus-config.h:256
+msgid "Date Format ($DATE in macro)"
+msgstr ""
+
+#: src/lotus-config.h:260
+msgid "Icon Color"
+msgstr ""
+
+#: src/lotus-engine.cpp:172
+msgid "Charset"
+msgstr ""
+
+#: src/lotus-engine.cpp:199 src/lotus-engine.cpp:344
+msgid "Spell Check"
+msgstr ""
+
+#: src/lotus-engine.cpp:203 src/lotus-engine.cpp:347
+msgid "Auto Non-VN Restore"
+msgstr ""
+
+#: src/lotus-engine.cpp:209
+msgid "Settings"
+msgstr ""
+
+#: src/lotus-engine.cpp:954 src/lotus-engine.cpp:999
+msgid "Default Typing"
+msgstr ""
+
+#: src/lotus-engine.cpp:1021
+msgid "Type"
+msgstr ""
+
+#: src/lotus-engine.cpp:1038
+msgid "App: "
+msgstr ""
+
+#: src/lotus-engine.cpp:1063
+msgid "Unknown Mode"
+msgstr ""
+
+#: src/lotus-engine.cpp:1128
+msgid "Lotus - Off"
+msgstr ""
+
+#: src/lotus-state.cpp:235
+msgid "Page "
+msgstr ""
+
+#: org.fcitx.Fcitx5.Addon.Lotus.metainfo.xml.in.in:7
+msgid "Lotus"
+msgstr ""
+
+#: org.fcitx.Fcitx5.Addon.Lotus.metainfo.xml.in.in:8
+msgid "Vietnamese input method (Lotus)"
+msgstr ""
+
+#: org.fcitx.Fcitx5.Addon.Lotus.metainfo.xml.in.in:10
+msgid ""
+"Lotus is a Vietnamese input method for Fcitx5, supporting multiple typing "
+"modes and input methods."
+msgstr ""
+
+msgid "Lotus Wrapper For Fcitx"
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:64
+#, python-brace-format
+msgid "Version {}"
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:79
+msgid "Modern, fast, and stable Vietnamese input method for Linux."
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:96
+msgid "Report Bug"
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:101
+msgid "Request Feature"
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:111
+msgid "Export Debug Logs"
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:123
+msgid "Developed by"
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:157
+msgid "Licensed under the GNU General Public License v3.0"
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:167
+msgid "Save Debug Log"
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:206 settings-gui/ui/pages/backup.py:183
+#: settings-gui/ui/pages/backup.py:296 settings-gui/ui/main_window.py:300
+msgid "Success"
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:206
+msgid "Debug logs exported to:\n"
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:208 settings-gui/ui/pages/backup.py:188
+#: settings-gui/ui/pages/backup.py:242 settings-gui/ui/pages/backup.py:314
+#: settings-gui/ui/pages/dict_editor.py:246
+msgid "Error"
+msgstr ""
+
+#: settings-gui/ui/pages/about.py:208
+msgid "Failed to export logs:\n"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:52
+msgid "Backup & Restore"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:57
+msgid "Export/Import Settings"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:61
+msgid ""
+"Save or restore configuration via JSON files. Select components to include:"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:70 settings-gui/ui/pages/backup.py:216
+msgid "Main Settings"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:71 settings-gui/ui/pages/backup.py:217
+#: settings-gui/ui/pages/macro_editor.py:53 settings-gui/ui/main_window.py:188
+msgid "Macros"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:72 settings-gui/ui/pages/backup.py:218
+msgid "Custom Keymaps"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:73 settings-gui/ui/pages/backup.py:219
+msgid "Application Rules"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:85
+msgid "Export Backup..."
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:91
+msgid "Import Backup..."
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:101
+msgid "Items found in backup:"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:107
+msgid "Restore Selected Now"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:132 settings-gui/ui/pages/backup.py:255
+msgid "Warning"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:132
+msgid "Select at least one item to export."
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:141
+msgid "Export Backup"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:143 settings-gui/ui/pages/backup.py:197
+msgid "JSON Backup (*.json);;All Files (*)"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:183
+msgid "Backup exported to:\n"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:188
+msgid "Failed to export backup:\n"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:195
+msgid "Select Backup File"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:234
+msgid "Invalid backup file: No recognizable components found."
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:242
+msgid "Failed to open backup file:\n"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:255
+msgid "Select at least one item to restore."
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:261
+msgid "Confirm Restore"
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:263
+msgid ""
+"Are you sure you want to restore selected components? This will overwrite "
+"current configuration."
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:298
+msgid ""
+"Selected components restored. Fcitx5 restart may be required for some "
+"changes."
+msgstr ""
+
+#: settings-gui/ui/pages/backup.py:314
+msgid "Failed to restore backup:\n"
+msgstr ""
+
+#: settings-gui/ui/pages/dict_editor.py:71
+msgid ""
+"Words in the custom dictionary will be excluded from 'Auto Restore Invalid "
+"Words'. Use this for names, technical terms, or words not yet in the built-"
+"in dictionary."
+msgstr ""
+
+#: settings-gui/ui/pages/dict_editor.py:85
+msgid "Search words..."
+msgstr ""
+
+#: settings-gui/ui/pages/dict_editor.py:89
+#: settings-gui/ui/pages/keymap_editor.py:241
+#: settings-gui/ui/pages/macro_editor.py:222
+msgid "Search:"
+msgstr ""
+
+#: settings-gui/ui/pages/dict_editor.py:104
+msgid "Word (e.g. khongdau)"
+msgstr ""
+
+#: settings-gui/ui/pages/dict_editor.py:108
+#: settings-gui/ui/pages/dict_editor.py:318
+#: settings-gui/ui/pages/keymap_editor.py:280
+#: settings-gui/ui/pages/keymap_editor.py:453
+#: settings-gui/ui/pages/macro_editor.py:178
+#: settings-gui/ui/pages/macro_editor.py:465
+msgid "Add"
+msgstr ""
+
+#: settings-gui/ui/pages/dict_editor.py:112
+msgid "Word:"
+msgstr ""
+
+#: settings-gui/ui/pages/dict_editor.py:134
+#: settings-gui/ui/pages/keymap_editor.py:308
+#: settings-gui/ui/pages/mode_manager.py:377
+#: settings-gui/ui/pages/macro_editor.py:208
+msgid "Remove"
+msgstr ""
+
+#: settings-gui/ui/pages/dict_editor.py:246
+#, python-brace-format
+msgid "Failed to save dictionary: {}"
+msgstr ""
+
+#: settings-gui/ui/pages/dict_editor.py:273
+#: settings-gui/ui/pages/dict_editor.py:305
+msgid "Warning: Dictionary words should not contain spaces."
+msgstr ""
+
+#: settings-gui/ui/pages/dict_editor.py:314
+msgid "Exists"
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:221
+#: settings-gui/ui/main_window.py:198
+msgid "Keymap"
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:237
+msgid "Search keys..."
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:247
+msgid "Original Input Method:"
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:253
+msgid "Apply Preset"
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:272
+msgid "Key (Example: s)"
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:281
+#: settings-gui/ui/pages/keymap_editor.py:454
+msgid "Add Keymap"
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:292
+msgid "Action"
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:309
+msgid "Remove selected row"
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:449
+#: settings-gui/ui/pages/macro_editor.py:462
+msgid "Update"
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:450
+msgid "Update Keymap"
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:461
+msgid "Confirm"
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:462
+msgid "This operation will replace all existing keys with "
+msgstr ""
+
+#: settings-gui/ui/pages/keymap_editor.py:464
+msgid ". Are you sure?"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:120
+#: settings-gui/ui/pages/mode_manager.py:133
+#: settings-gui/ui/pages/mode_manager.py:376
+msgid "Add Application"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:135
+msgid "Assign an input mode to a specific application."
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:150
+msgid "Search process name..."
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:154
+msgid "Refresh Process List"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:168
+msgid "Running"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:174
+msgid "Enter application name or path..."
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:178
+msgid "Manual input"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:182
+msgid "No application selected"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:185 settings-gui/ui/main_window.py:153
+msgid "&Cancel"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:188
+msgid "&Add"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:324
+msgid "Selected:"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:365
+msgid "Search applications..."
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:398 settings-gui/ui/main_window.py:183
+msgid "Applications"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:405
+msgid "Global Default Mode:"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:428
+msgid "Select an application"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:658
+msgid "Confirm Remove"
+msgstr ""
+
+#: settings-gui/ui/pages/mode_manager.py:659
+msgid "Remove rules for this application?"
+msgstr ""
+
+#: settings-gui/ui/pages/dynamic_settings.py:78
+msgid "Configure basic input method settings and behaviors."
+msgstr ""
+
+#: settings-gui/ui/pages/dynamic_settings.py:80
+msgid "Customize the look and feel of the Lotus status icons and theme."
+msgstr ""
+
+#: settings-gui/ui/pages/dynamic_settings.py:83
+msgid "Fine-tune spelling corrections and advanced typing options."
+msgstr ""
+
+#: settings-gui/ui/pages/dynamic_settings.py:86
+msgid "Manage input mode shortcuts, display order, and fast cycling."
+msgstr ""
+
+#: settings-gui/ui/pages/dynamic_settings.py:92
+msgid ""
+"Assign hotkeys to open the mode menu or quickly cycle through enabled modes."
+msgstr ""
+
+#: settings-gui/ui/pages/dynamic_settings.py:218
+msgid "Failed to load configuration."
+msgstr ""
+
+#: settings-gui/ui/pages/dynamic_settings.py:260
+msgid ""
+"Drag the handle on the left to reorder modes in the menu. Use checkboxes to "
+"toggle visibility, and click the buttons to reassign shortcuts."
+msgstr ""
+
+#: settings-gui/ui/pages/dynamic_settings.py:295
+msgid "No interface settings available yet."
+msgstr ""
+
+#: settings-gui/ui/pages/dynamic_settings.py:590
+#, python-brace-format
+msgid "Duplicate shortcut '{}' used for multiple enabled modes."
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:62
+msgid "Macro in Off Mode"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:84
+msgid "Search macros..."
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:103
+msgid "Macros support dynamic placeholders: $TIME and $DATE."
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:125
+#: settings-gui/ui/pages/macro_editor.py:148 settings-gui/ui/components.py:275
+#: settings-gui/ui/components.py:389
+msgid "None"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:133
+msgid "Time Format:"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:156
+msgid "Date Format:"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:170
+msgid "Abbreviation (e.g. kg)"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:174
+msgid "Full text (e.g. khô gà)"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:183
+msgid "Key:"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:185
+msgid "Value:"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:192
+msgid "Abbreviation"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:192
+msgid "Expanded Text"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:210
+msgid "Move Up"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:212
+msgid "Move Down"
+msgstr ""
+
+#: settings-gui/ui/pages/macro_editor.py:402
+#: settings-gui/ui/pages/macro_editor.py:450
+msgid "Macro keys cannot contain spaces or special characters."
+msgstr ""
+
+#: settings-gui/ui/components.py:188
+msgid "Clear hotkey"
+msgstr ""
+
+#: settings-gui/ui/components.py:261
+msgid "[ Recording... ]"
+msgstr ""
+
+#: settings-gui/ui/components.py:385
+msgid "[ Press Key... ]"
+msgstr ""
+
+#: settings-gui/ui/helpers.py:15
+msgid "You can type tone marks at the end of the word or anywhere inside."
+msgstr ""
+
+#: settings-gui/ui/helpers.py:18
+msgid ""
+"Fix typing issues in Uinput mode for Chromium-based browsers like Chrome or "
+"Edge."
+msgstr ""
+
+#: settings-gui/ui/helpers.py:21
+msgid ""
+"Automatically match expansion case to trigger key case.\n"
+"\n"
+"Example if 'kg' is 'khô gà':\n"
+"- kg -> khô gà\n"
+"- Kg -> Khô gà\n"
+"- KG -> KHÔ GÀ"
+msgstr ""
+
+#: settings-gui/ui/helpers.py:28
+msgid ""
+"Automatically revert the typed sequence if the resulting word is not in the "
+"dictionary.\n"
+"This helps prevent accidental Vietnamese transformations on English words or "
+"mixed text."
+msgstr ""
+
+#: settings-gui/ui/helpers.py:32
+msgid ""
+"Allow macros to work when the input mode is OFF.\n"
+"When disabled, macros are only available in active typing modes."
+msgstr ""
+
+#: settings-gui/ui/main_window.py:40
+msgid "Lotus Settings"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:147
+msgid "&Reset"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:158
+msgid "&Apply"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:163
+msgid "&OK"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:173
+msgid "General"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:178
+msgid "Typing"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:193
+msgid "Dictionary"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:203
+msgid "Shortcuts"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:208
+msgid "Appearance"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:215
+msgid "Backup"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:225
+msgid "About"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:233
+msgid "Confirm Reset"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:234
+msgid "Restore all settings to defaults?"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:282
+msgid "Cannot Save"
+msgstr ""
+
+#: settings-gui/ui/main_window.py:300
+msgid "Settings saved."
+msgstr ""
+
+#: settings-gui/org.fcitx.Fcitx5.Addon.Lotus.Settings.desktop.in:2
+msgid "Fcitx5 Lotus Settings"
+msgstr ""
+
+#: settings-gui/org.fcitx.Fcitx5.Addon.Lotus.Settings.desktop.in:3
+msgid "Configure Fcitx5 Lotus Input Method"
+msgstr ""

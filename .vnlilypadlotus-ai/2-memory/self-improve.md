@@ -1,0 +1,32 @@
+# VKNETD SELF-IMPROVEMENT LOG & RULES
+
+## 📌 Nguyên tắc Tự sửa lỗi (Self-Correction Rules)
+
+### 1. Luôn kiểm tra log trước khi đoán lỗi
+- **Lỗi:** Đoán mò nguyên nhân bug khi chưa thu thập full error traceback.
+- **Quy tắc:** Bắt buộc thu thập log stdout/stderr hoặc `journalctl` trước khi sửa code.
+
+### 2. Không làm rác thư mục dự án
+- **Lỗi:** Tạo file `.md` hoặc file tạm ở gốc dự án.
+- **Quy tắc:** Chỉ ghi tài liệu vào đúng 4 ngăn kéo trong `.vnlilypadlotus-ai/`.
+
+### 3. Đảm bảo an toàn Panic / Freeze Bàn phím
+- **Lỗi:** Quên giải phóng `EVIOCGRAB` khi code bị panic.
+- **Quy tắc:** Mọi thao tác grabbing bàn phím đều phải có Catch Panic / Signal Handler hoặc Watchdog bọc ngoài.
+
+---
+
+## 📜 Lịch sử Sửa đổi Hành vi
+- **2026-07-27:** Rút kinh nghiệm Wayland `zwp_virtual_keyboard_v1`: Ngay khi khởi tạo đối tượng bàn phím ảo (`create_virtual_keyboard`), BẮT BUỘC phải gọi `vk.keymap()` truyền sơ đồ bàn phím XKB qua file descriptor (`memfd_create`) trước khi gửi bất kỳ lệnh `vk.key()` nào. Nếu phát phím ảo trước khi gửi keymap, Compositor (Niri) sẽ lập tức ngắt kết nối với lỗi protocol fatal `key sent before keymap` làm daemon bị crash giữa chừng và treo Keyboard Grab.
+- **2026-07-27:** Rút kinh nghiệm khi `keyboard_grab` chiếm phím mà `actions.is_empty()`: Việc chỉ gọi `im.commit(serial)` mà không phát phím ảo giải phóng sẽ khiến Niri Compositor coi như phím phần cứng chưa được giải quyết, kích hoạt re-dispatch liên tục hàng nghìn lần/giây gây tràn 1000 dòng trắng trong log terminal. BẮT BUỘC phát phím ảo `vk.key(key, 1/0)` qua `zwp_virtual_keyboard_v1` để giải phóng phím trên Seat trước khi commit serial.
+- **2026-07-27:** Rút kinh nghiệm ngắt nhịp vi mô trên Terminal: Không được bắn xả cả phím xóa `KEY_BACKSPACE` và `commit_string` trong cùng 1 nanosecond. BẮT BUỘC phân rã vi bước `MicroStep` và cài màng ngắt nhịp `WaitingMicroDelay` ($1\,\text{ms}$) trong vòng lặp `libc::poll` để Terminal render sạch phím xóa màn hình trước khi chèn chữ mới.
+- **2026-07-27:** Rút kinh nghiệm về Vòng đời Keyboard Grab khi Deactivate: KHÔNG ĐƯỢC gọi `grab.release()` hoặc hủy `keyboard_grab` khi nhận `Event::Deactivate`, vì Niri Compositor sẽ coi như IME đã hủy kết nối và không phát `Event::Activate` khi chuyển sang cửa sổ mới. BẮT BUỘC duy trì `keyboard_grab` liên tục trên Seat và tái sử dụng khi `Event::Activate` bộc lộ cửa sổ mới.
+- **2026-07-31:** Rút kinh nghiệm NGHIÊM CẤM `deleteSurroundingText` & `Preedit`: User đã nhắc nhở 3 lần trong 1 phiên rằng `deleteSurroundingText` không được dùng. AI BẮT BUỘC phải ghi nhớ quyết định kiến trúc của User và KHÔNG BAO GIỜ tự ý thêm lại `deleteSurroundingText` hoặc `Preedit` dù với bất kỳ lý do "tối ưu" nào. 100% thao tác thay thế từ phải đi qua `performReplacement()` sử dụng Kernel Uinput Sequencer Layer.
+- **2026-07-31:** Rút kinh nghiệm KHÔNG ĐỔ LỖI CHO COMPONENT NGOÀI: Khi bộ gõ `lotus` có bug, AI KHÔNG ĐƯỢC đổ lỗi cho `bamboo` hoặc xóa `bamboo` khỏi config `~/.config/fcitx5/profile`. Phải tập trung phân tích bug trong mã nguồn `lotus` trước.
+- **2026-07-31:** Rút kinh nghiệm KHÔNG SLEEP TRÊN MAIN THREAD: `std::this_thread::sleep_for()` trên Main Event Loop Thread của Fcitx5 sẽ đóng băng toàn bộ hệ thống xử lý phím. NGHIÊM CẤM dùng `sleep_for` trong các hàm `handleUInputKeyPress`, `keyEvent`, `performReplacement` hoặc bất kỳ callback nào chạy trên Main Thread.
+- **2026-07-31:** Rút kinh nghiệm GIAO TIẾP EVDEV SYN_REPORT: Khi phát nhiều phím xóa uinput liên tiếp trong `lotus-server.cpp`, BẮT BUỘC phải chèn `usleep(1500)` ($1.5\,\text{ms}$) giữa các lần `send_backspace()` để Linux Kernel evdev phân tách từng sự kiện `SYN_REPORT` riêng biệt. Nếu không, Kernel sẽ gộp phím xóa thành 1 frame, khiến App chỉ nhận được 1 phím xóa thay vì N.
+- **2026-08-01:** Rút kinh nghiệm THỨ TỰ IPC WAYLAND `commitString` VÀ UINPUT BACKSPACE: Nếu gọi `ic_->commitString()` trực tiếp trong `keyEvent` khi nhận phím xóa uinput cuối cùng, IPC `commit_string` sẽ đến App TRƯỚC khi phím xóa uinput cuối cùng được Fcitx5 forward tới App. Kết quả App chèn chữ mới xong rồi mới xóa chữ cuối (tạo bug `chaáo` - 1 char = `chaá`). BẮT BUỘC hoãn `commitString` 2ms qua `engine_->instance()->eventLoop().addTimeEvent(...)` và lưu `commit_timer_` làm member của class để duy trì RAII Lifecycle.
+- **2026-08-02:** Rút kinh nghiệm KIỂM TRA MÔI TRƯỜNG TRƯỚC KHI DEBUG SÂU: Phiên đã đốt ~5 vòng `dbus-monitor` + `FCITX_LOG_LEVEL=debug` để "tìm bug AT-SPI" trong khi nguyên nhân thật là session Linux CHƯA bật accessibility (`GTK_MODULES`/`ACCESSIBILITY_ENABLED`/`NO_AT_BRIDGE`/`AT_SPI_BUS_ADDRESS` trống → Chrome/Firefox không nạp atk-bridge, bus `/run/user/1000/at-spi/bus_1` không tồn tại). QUY TẮC MỚI: Khi tính năng phụ thuộc bus/tín hiệu ngoài (DBus, Wayland signal, socket), BẮT BUỘC kiểm tra môi trường (biến env, bus tồn tại, service chạy) TRƯỚC khi đi sâu vào sửa code.
+- **2026-08-02:** Rút kinh nghiệm CODE NGOÀI GIT KHÔNG REVERT ĐƯỢC BẰNG GIT: `fcitx5-lotus-main/` nằm trong `.gitignore` (line 7) và không có `.git` riêng → không tồn tại snapshot cũ, `git checkout`/`git revert` vô ích cho code addon. User yêu cầu revert code C++ về bản đóng gói cũ nhưng không thể. QUY TẮC MỚI: 1) Khi sửa code ngoài git, hỏi user trước khi sửa lớn; 2) Khi user yêu cầu revert, kiểm tra tính khả thi của git TRƯỚC khi hứa hẹn, báo rõ ràng ngay lập tức nếu ngoài git.
+- **2026-08-02:** Rút kinh nghiệm ĐỌC SPEC TRƯỚC KHI VIẾT DBUS PARSER: Payload AT-SPI2 `text-changed` là tuple 5 phần `s i i v a{sv}` với **arg0 (string) là detail** — không phải int index. Quy tắc: khi parse signal DBus/socket lạ, tra spec/API doc của protocol TRƯỚC, đừng tự đoán kiểu dữ liệu arg.
+- **2026-08-02:** Rút kinh nghiệm GHI LẠI MỌI THAY ĐỔI CODE NGOÀI GIT: Toàn bộ `fcitx5-lotus-main/` nằm trong `.gitignore`, chưa từng được commit. Khi user yêu cầu "revert" lần 2 (AT-SPI2), vẫn phải gỡ TAY vì không có snapshot. QUY TẮC MỚI: 1) Trước mỗi sửa đổi lớn code C++, ghi tóm tắt thay đổi vào checkpoint ngay trong phiên; 2) Nếu user yêu cầu rollback, kiểm tra `git ls-files` trước và báo ngay nếu ngoài git; 3) Cân nhắc đề xuất thêm `fcitx5-lotus-main/` vào git để có snapshot.

@@ -1,0 +1,24 @@
+Source: fcitx5-lotus
+Section: utils
+Priority: optional
+Maintainer: Nguyen Hoang Ky <nhktmdzhg@gmail.com>
+Build-Depends: debhelper (>= 13),
+               cmake,
+               g++,
+               golang,
+               extra-cmake-modules,
+               fcitx5-modules-dev,
+               libfcitx5core-dev,
+               libfcitx5config-dev,
+               libfcitx5utils-dev,
+               libinput-dev,
+               libudev-dev,
+               pkg-config,
+               libx11-dev,
+               python3
+Standards-Version: 4.6.0
+
+Package: fcitx5-lotus
+Architecture: any
+Depends: acl, fcitx5, fcitx5-data, udev, hicolor-icon-theme, python3-qtpy, python3-qtpy-pyqt6 | python3-qtpy-pyside6 | python3-qtpy-pyqt5 | python3-pyqt5, python3-dbus, ${misc:Depends}, ${shlibs:Depends}
+Description: Vietnamese input method for fcitx5

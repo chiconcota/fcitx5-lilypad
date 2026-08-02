@@ -1,0 +1,36 @@
+#!/usr/bin/openrc-run
+# Copyright (c) 2026 Zebra2711 <zebra2711t@gmail.com>
+# All rights reserved. Released under the 2-clause BSD license.
+
+user="${RC_SVCNAME#*.}"
+supervisor=supervise-daemon
+respawn_delay=0
+respawn_max=0
+
+name="fcitx5-lotus-server"
+description="Fcitx5 Lotus Server for $user"
+capabilities="^cap_sys_nice,^cap_sys_ptrace"
+command="/usr/bin/fcitx5-lotus-server"
+command_args="-u $user"
+command_user="uinput_proxy:input"
+pidfile="/run/${RC_SVCNAME}.pid"
+depend() {
+    need localmount
+    after udev
+}
+
+start_pre() {
+   if [ "$user" = "${RC_SVCNAME}" ]; then
+        eerror "$name cannot be started directly. You must create"
+        eerror "symbolic links to it for the users you want to start"
+        einfo "Usage:"
+        einfo "     sudo ln -s /etc/init.d/fcitx5-lotus /etc/init.d/fcitx5-lotus.\$(whoami)"
+        einfo "     sudo rc-service fcitx5-lotus.\$(whoami) restart"
+        return 1
+   fi
+   setfacl -m u:uinput_proxy:rw /dev/uinput
+}
+
+stop_post() {
+    rm -f "$pidfile"
+}

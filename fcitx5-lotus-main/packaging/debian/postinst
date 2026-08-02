@@ -1,0 +1,60 @@
+#!/bin/sh
+set -e
+
+blue='\033[1;34m'
+green='\033[1;32m'
+yellow='\033[1;33m'
+bold='\033[1;1m'
+all_off='\033[0m'
+
+REAL_USER="${SUDO_USER:-$LOGNAME}"
+[ -z "$REAL_USER" ] && REAL_USER=$(logname)
+
+if [ "$1" = "configure" ]; then
+    modprobe uinput || true
+    if command -v udevadm >/dev/null; then
+        udevadm control --reload-rules || true
+        udevadm trigger || true
+    fi
+    systemd-sysusers || true
+
+    echo ""
+    printf "%b\n" "${blue}╔══════════════════════════════════════════╗${all_off}"
+    printf "%b\n" "${blue}║       Thiết lập tự động cho Lotus        ║${all_off}"
+    printf "%b\n" "${blue}╚══════════════════════════════════════════╝${all_off}"
+    echo ""
+
+    if [ -z "$2" ]; then
+        printf "%b\n" "${bold}[1/2] Đang bật Lotus Server cho ${REAL_USER}...${all_off}"
+        if systemctl enable --now "fcitx5-lotus-server@${REAL_USER}.service" 2>/dev/null; then
+            printf "%b\n" "  ${green}✓ Lotus Server đã được kích hoạt.${all_off}"
+        else
+            printf "%b\n" "  ${yellow}⚠ Cần bật thủ công: sudo systemctl enable --now fcitx5-lotus-server@${REAL_USER}.service${all_off}"
+        fi
+        echo ""
+
+        printf "%b\n" "${bold}[2/2] Đang dọn dẹp IBus (nếu có)...${all_off}"
+        killall ibus-daemon 2>/dev/null || true
+        USER_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+        rm -f "$USER_HOME/.config/autostart/ibus"* 2>/dev/null || true
+        printf "%b\n" "  ${green}✓ Đã tắt IBus để tránh xung đột.${all_off}"
+        echo ""
+
+        printf "%b\n" "${blue}─────────────────────────────────────────────${all_off}"
+        printf "%b\n" "${bold}Cần làm tiếp (Xem chi tiết trên trang chủ dự án):${all_off}"
+        printf "%b\n" "  3. Thêm biến môi trường."
+        printf "%b\n" "  4. Thêm fcitx5 vào autostart cho DE/WM của bạn."
+        printf "%b\n" "  5. Cấu hình bộ gõ: Chạy ${green}fcitx5-configtool${all_off} để thêm Lotus."
+        printf "%b\n" "${bold}Các bước bổ sung nếu cần:${all_off}"
+        printf "%b\n" "  - Wayland (KDE/Hyprland): Thiết lập Virtual Keyboard & Permission."
+        printf "%b\n" "  - Kanata: Exclude 'Lotus-Uinput-Server' trong cấu hình."
+        printf "%b\n" "${blue}─────────────────────────────────────────────${all_off}"
+        printf "%b\n" "  ${yellow}→ Vui lòng khởi động lại máy để áp dụng thay đổi.${all_off}"
+        echo ""
+    else
+        systemctl restart "fcitx5-lotus-server@${REAL_USER}.service" || true
+    fi
+fi
+
+#DEBHELPER#
+exit 0

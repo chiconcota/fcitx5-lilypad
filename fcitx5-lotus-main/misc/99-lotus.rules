@@ -1,0 +1,3 @@
+KERNEL=="uinput", SUBSYSTEM=="misc", OPTIONS+="static_node=uinput", MODE="0660", GROUP="input"
+ACTION=="add|change", KERNEL=="uinput", SUBSYSTEM=="misc", RUN+="/usr/bin/setfacl -m u:uinput_proxy:rw /dev/uinput"
+SUBSYSTEM=="input", MODE="0660", GROUP="input"

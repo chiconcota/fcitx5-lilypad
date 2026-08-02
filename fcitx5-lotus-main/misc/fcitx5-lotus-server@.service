@@ -1,0 +1,21 @@
+[Unit]
+Description=Fcitx5 Lotus Server for %i
+After=multi-user.target udev.target
+
+[Service]
+User=uinput_proxy
+Group=input
+
+CapabilityBoundingSet=CAP_SYS_NICE CAP_SYS_PTRACE
+AmbientCapabilities=CAP_SYS_NICE CAP_SYS_PTRACE
+
+Type=simple
+
+ExecStartPre=+/usr/bin/setfacl -m u:uinput_proxy:rw /dev/uinput
+ExecStart=/usr/bin/fcitx5-lotus-server -u %i
+
+Restart=on-failure
+RestartSec=0
+
+[Install]
+WantedBy=multi-user.target

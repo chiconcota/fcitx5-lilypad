@@ -1,0 +1,6 @@
+[InputMethod]
+Name=Lilypad
+Icon=fcitx-lilypad
+LangCode=vi
+Addon=lilypad
+Configurable=True

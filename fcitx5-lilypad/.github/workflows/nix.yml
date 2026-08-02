@@ -1,0 +1,90 @@
+name: Build on Nix
+
+on:
+  push:
+    paths:
+      - '**.nix'
+      - 'flake.lock'
+  pull_request:
+    paths:
+      - '**.nix'
+      - 'flake.lock'
+  workflow_dispatch:
+
+jobs:
+  nix-flake-check:
+    name: Check 📋
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Run Checks
+        run: nix flake check --show-trace
+
+  build-package:
+    name: Build Package ❄️
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Build fcitx5-lotus
+        id: build
+        run: |
+          nix build -L .#packages.x86_64-linux.fcitx5-lotus 2>&1 | tee build.log || true
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+      - name: Extract hashes from log
+        run: |
+          FOUND=0
+          HASH_TYPE=""
+
+          while IFS= read -r line; do
+            if echo "$line" | grep -q "hash mismatch"; then
+              FOUND=1
+              if echo "$line" | grep -q "go-modules"; then
+                HASH_TYPE="vendorHash (Go modules)"
+              else
+                HASH_TYPE="hash (src fetchFromGitHub)"
+              fi
+              echo "📦 Hash mismatch: $HASH_TYPE"
+            fi
+            if [ "$FOUND" = "1" ]; then
+              echo "$line"
+            fi
+          done < build.log
+
+          if [ "${{ steps.build.outputs.exit_code }}" != "0" ]; then
+            if [ "$FOUND" = "0" ]; then
+              echo "❌ Build failed"
+            else
+              echo "❌ Build failed due to hash mismatch"
+            fi
+            exit 1
+          else
+            echo "✅ Build succeeded"
+          fi
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-log
+          path: build.log

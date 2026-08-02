@@ -1,0 +1,22 @@
+#!/bin/sh -e
+# Copyright (c) 2026 Contributors to the LotusInputMethod project
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+svc="$(basename "$(pwd)")"
+user="${svc#*.}"
+if [ "$user" = "$svc" ]; then
+    echo "fcitx5-lotus cannot be started directly." >&2
+    echo "Use symlink like: fcitx5-lotus.<user>" >&2
+    exit 1
+fi
+
+setfacl -m u:uinput_proxy:rw /dev/uinput
+
+exec setpriv \
+    --reuid=uinput_proxy \
+    --regid=input \
+    --init-groups \
+    --bounding-set -all,+sys_nice,+sys_ptrace \
+    --inh-caps +sys_nice,+sys_ptrace \
+    --ambient-caps +sys_nice,+sys_ptrace \
+    /usr/bin/fcitx5-lotus-server -u "$user" 2>&1

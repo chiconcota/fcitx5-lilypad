@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Fcitx5 Lilypad Settings
+Comment=Configure Fcitx5 Lilypad Input Method
+Exec=fcitx5-lilypad-settings
+Icon=fcitx-lilypad
+StartupWMClass=org.fcitx.Fcitx5.Addon.Lilypad.Settings
+Terminal=false
+Type=Application
+Categories=Settings;DesktopSettings;

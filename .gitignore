@@ -1,0 +1,21 @@
+# Build artifacts
+/target
+/build
+fcitx5-lilypad/build/
+fcitx5-lotus-main/build/
+*.o
+*.so
+*.a
+*.lo
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# System and logs
+*.log
+.DS_Store
+*.swp
+*.tmp

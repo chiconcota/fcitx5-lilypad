@@ -1,0 +1,139 @@
+name: Báo lỗi
+description: Báo cáo lỗi để giúp chúng tôi cải thiện
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Cảm ơn bạn đã dành thời gian báo cáo lỗi! Vui lòng điền đầy đủ thông tin bên dưới.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Mô tả lỗi
+      description: Mô tả rõ ràng về lỗi bạn gặp phải
+      placeholder: Khi tôi gõ..., bộ gõ hiển thị...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Các bước tái hiện
+      description: Các bước để tái hiện lỗi
+      placeholder: |
+        1. Mở...
+        2. Gõ...
+        3. Nhấn...
+        4. Lỗi xuất hiện
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Kết quả mong đợi
+      description: Mô tả kết quả bạn mong đợi
+      placeholder: Khi gõ..., bộ gõ nên hiển thị...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Kết quả thực tế
+      description: Mô tả kết quả thực tế xảy ra
+      placeholder: Thay vào đó, bộ gõ hiển thị...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Phiên bản fcitx5-lotus
+      description: Bạn đang sử dụng phiên bản nào?
+      placeholder: 'ví dụ: 1.2.3'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Cách cài đặt
+      description: Bạn đã cài đặt fcitx5-lotus bằng cách nào?
+      options:
+        - AUR (fcitx5-lotus)
+        - AUR (fcitx5-lotus-bin)
+        - AUR (fcitx5-lotus-git)
+        - Cloudflare Pages (Debian/Ubuntu/Fedora/OpenSUSE)
+        - NixOS
+        - Tự build từ source
+        - Khác
+    validations:
+      required: true
+
+  - type: input
+    id: distro
+    attributes:
+      label: Hệ điều hành / Distro
+      description: Bạn đang sử dụng hệ điều hành nào?
+      placeholder: 'ví dụ: Arch Linux, Ubuntu 24.04, Fedora 40...'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: desktop_env
+    attributes:
+      label: Môi trường Desktop
+      description: Bạn đang sử dụng môi trường desktop nào?
+      options:
+        - KDE Plasma
+        - GNOME
+        - XFCE
+        - Sway
+        - Hyprland
+        - i3
+        - Khác (ghi cụ thể ở dưới)
+    validations:
+      required: false
+
+  - type: input
+    id: input_type
+    attributes:
+      label: Kiểu gõ
+      description: Bạn đang sử dụng kiểu gõ nào?
+      placeholder: Ví dụ Telex, VNI, VIQR, .....
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnose
+    attributes:
+      label: Diagnose
+      description: |
+        Nếu có lỗi, vui lòng cung cấp diagnose từ fcitx5.
+        Bạn có thể lấy diagnose bằng lệnh: `fcitx5-diagnose`.
+      render: shell
+
+  - type: textarea
+    id: log_server
+    attributes:
+      label: Log của Uinput server
+      description: |
+        Log của uinput server (Lấy ở `/tmp/fcitx5-lotus-server.log`, tốt nhất nên dừng dịch vụ trước khi lấy log)
+      placeholder: Dán nội dung file log vào đây
+
+  - type: textarea
+    id: log_fcitx5
+    attributes:
+      label: Log của fcitx5
+      description: |
+        Log của fcitx5 (Chạy lệnh `fcitx5 --verbose lotus=4` ở terminal trong quá trình tái hiện lỗi)
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Thông tin bổ sung
+      description: Bất kỳ thông tin nào khác có thể hữu ích
+      placeholder: Ảnh chụp màn hình, cấu hình, v.v.
