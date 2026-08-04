@@ -1,11 +1,11 @@
-# vnlilypadlotus SYSTEM MAP & MODULE STATUS MAP (DỰ ÁN NÂNG CẤP FCITX5 LOTUS)
+# vnlilypadlotus SYSTEM MAP & MODULE STATUS MAP (DỰ ÁN FCITX5 LILYPAD SEQUENCER)
 
-> **Architectural Paradigm:** Hybrid Fcitx5 C++ Addon + Bamboo Telex Engine (Go C-FFI) + Sequencer Token Swallow Layer (`lotus-state.cpp` + `lotus-sequencer.cpp`).
-> **Current Version:** `v2.0.0-lotus` (trạng thái main đã khôi phục — AT-SPI2 đã gỡ)
+> **Architectural Paradigm:** Hybrid Fcitx5 C++ Addon (`fcitx5-lilypad`) + Bamboo Telex Engine (Go C-FFI `bamboo-core`) + Sequencer Token Swallow Layer (`lilypad-state.cpp` + `lilypad-sequencer.cpp`).
+> **Current Version:** `v2.1.0-sequence` (Tích hợp thành công Sequencer Layer, Backspace Passthrough & Spurious Reset Guard)
 
 ---
 
-## 1. TỔNG QUAN KIẾN TRÚC HYBRID (FCITX5 LOTUS UPGRADE ARCHITECTURE)
+## 1. TỔNG QUAN KIẾN TRÚC HYBRID (FCITX5 LILYPAD SEQUENCER ARCHITECTURE)
 
 ```text
  ┌────────────────────────────────────────────────────────────────────────┐
@@ -13,21 +13,24 @@
  │  - Quản lý Wayland IPC (zwp_input_method_v2) & X11 / DBus IME Frontend │
  │  - Quản lý Focus, Window Manager, System Tray Icon & GUI Configuration │
  └───────────────────────────────────┬────────────────────────────────────┘
-                                     │ (Sự kiện Phím / KeyEvent)
+                                     │ (KeyEvent & InputContext)
                                      ▼
  ┌────────────────────────────────────────────────────────────────────────┐
- │           SEQUENCER TOKEN SWALLOW LAYER (BỘ NÃO ĐIỀU PHỐI)             │
- │  - lotus-sequencer.h/.cpp: Serial ID Tagging (Serial #1, #2, #N...)    │
- │  - lotus-state.cpp: Đếm token nguyên tử expected_backspaces_           │
- │  - Cho phím xóa uinput chui vào App xóa chữ thô (return false)        │
- │  - Khi đủ N phím xóa dội về → commitString() chèn chữ có dấu 0ms      │
+ │            LILYPAD SEQUENCER LAYER (BỘ NÃO ĐIỀU PHỐI CHÍNH)            │
+ │  - lilypad-sequencer.h/.cpp: Serial ID Tagging & MicroStep Queue       │
+ │  - lilypad-state.cpp: Đếm token nguyên tử expected_swallow_backspaces_ │
+ │  - Backspace Passthrough (return false): Phím xóa uinput bay tới App  │
+ │  - EventLoop 5ms Micro-delay + Wayland Frame ACK Barrier (35ms Timeout) │
+ │  - Universal ReplayBufferedKeys: Bảo vệ 100% phím gõ nhanh             │
+ │  - Spurious Reset Guard (!isFocusOut): Bảo vệ ô nhập Electron/AFFiNE   │
  └─────────────────┬──────────────────────────────────┬───────────────────┘
-                   │ (Gửi phím gõ thô)                 │ (Bắn phím xóa)
+                   │ (Gửi phím gõ thô)                 │ (Phát phím xóa)
                    ▼                                  ▼
  ┌──────────────────────────────────┐ ┌──────────────────────────────────┐
- │     LOTUS TELEX ENGINE (GO)      │ │   PURE UINPUT BACKSPACE EMISSION │
- │  - Xử lý quy tắc Telex/VNI       │ │  - Bắn N phím KEY_BACKSPACE qua  │
- │  - Thư viện C-FFI (bamboo-core)  │ │    /dev/uinput (1.5ms inter-gap) │
+ │   BAMBOO TELEX ENGINE (GO C-FFI)  │ │ PURE KERNEL UINPUT SERVER DAEMON │
+ │  - Engine xử lý quy tắc Telex/VNI│ │  - fcitx5-lilypad-server daemon  │
+ │  - Thư viện C-FFI (bamboo-core)  │ │  - Bắn N phím KEY_BACKSPACE qua  │
+ │  - State Rebuild (EngineRebuild) │ │    /dev/uinput (1.5ms inter-gap) │
  └──────────────────────────────────┘ └──────────────────────────────────┘
 ```
 
