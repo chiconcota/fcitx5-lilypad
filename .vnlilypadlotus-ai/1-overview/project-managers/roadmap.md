@@ -31,8 +31,10 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
 - [x] Thêm chế độ gõ **`Sequence`** (UI dropdown, C++ enum `#9`, Python Settings GUI) cho `fcitx5-lilypad`.
 - [x] Khởi tạo Git repository mới tinh trên `main`, kết nối remote `git@github.com:chiconcota/fcitx5-lilypad.git` và push 100% code lên GitHub.
 
-**TIẾP THEO (Kế hoạch mở rộng):**
-- [ ] Phát triển mã nguồn thực thi thuật toán cho chế độ **`Sequence`** trên `fcitx5-lilypad`.
-- [ ] Tối ưu hóa nhịp gõ cho các ứng dụng web/electron nặng (**AFFiNE**, **Facebook Web**).
+**TIẾP THEO (Kế hoạch phiên sau — AFFiNE & Canvas Block Editors Optimization):**
+- [x] Phát triển mã nguồn thực thi thuật toán cho chế độ **`Sequence`** (ID 9) trên `fcitx5-lilypad` (Hoàn thành 2026-08-04).
+- [ ] **Tối ưu hóa nhịp gõ cho ứng dụng AFFiNE (Electron / BlockSuite Canvas Editor):**
+  - [ ] **Thử nghiệm Phương án 1 (Anti-Debounce Reset Guard 300ms ~ 500ms):** Đặt rào chắn khóa `clearAllBuffers()` đối với các sự kiện chuyển đổi ô nhập liệu có tần số ngắn dưới 300ms~500ms khi `appName == "AFFiNE"`.
+  - [ ] **Thử nghiệm Phương án 3 (Global Word Buffer Persistence):** Chuyển bộ nhớ từ Tiếng Việt (Word Buffer) lên tầng `LilypadEngine` dùng chung thay vì gắn theo `LilypadState` của từng `InputContext` riêng lẻ.
 
 > **Ghi chú:** Nếu tái khởi động AT-SPI2 sau này, tham khảo commit `aea7094` (docs QD 012) + phiên memory 2026-08-02 đợt 1.

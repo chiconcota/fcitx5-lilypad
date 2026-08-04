@@ -22,7 +22,9 @@
    - Gỡ bỏ rào chắn điều kiện `dbus` trong `replayBufferedKeys()`. Mọi phím gõ nhanh trong lúc xóa (như phím `n` trong `thương`) đều được tái phát lại 100% trên Wayland Native/X11/DBus.
 4. **Bảo vệ Bộ Đệm Cho Ứng Dụng Electron/Canvas Block Editors (AFFiNE):**
    - Bổ sung rào chắn `!isFocusOut` trong `LilypadState::reset()` để chặn các sự kiện tái kích hoạt ô nhập liệu liên tục của AFFiNE/Electron không làm xóa bộ đệm gõ Tiếng Việt.
-   - Chuẩn bị 2 phương án (Anti-Debounce Guard & Global Word Buffer Persistence) cho phiên làm việc tiếp theo với AFFiNE.
+   - **Lưu 2 Phương án triển khai cho phiên kế tiếp:**
+     - **Phương án 1 (Anti-Debounce Reset Guard 300ms ~ 500ms):** Nhận diện `App name: AFFiNE` (hoặc các ứng dụng Canvas/Block Editor), đặt ngắt nhịp thời gian khóa lệnh `clearAllBuffers()` và `ResetEngine()` đối với các sự kiện chuyển đổi Input Context có khoảng cách ngắn dưới 300ms~500ms. Chỉ reset khi phím Space/Enter/Tab/Esc hoặc thực sự chuyển cửa sổ.
+     - **Phương án 3 (Global Word Buffer Persistence ở tầng `LilypadEngine`):** Chuyển bộ nhớ từ Tiếng Việt (Word Buffer) lên tầng `LilypadEngine` dùng chung thay vì gắn chết theo `LilypadState` của từng `InputContext` riêng lẻ, giúp giữ nguyên ngữ cảnh gõ dù AFFiNE có liên tục tạo và hủy ô nhập liệu 30 lần/giây.
 
 ---
 
