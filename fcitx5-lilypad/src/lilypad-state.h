@@ -18,9 +18,11 @@
 #include "lilypad.h"
 #include "emoji-entry.h"
 #include "lilypad-utils.h"
+#include "lilypad-sequencer.h"
 
 #include <cstddef>
 #include <fcitx-utils/misc.h>
+#include <fcitx-utils/event.h>
 #include <fcitx/inputcontext.h>
 
 struct EmojiEntry;
@@ -105,6 +107,8 @@ namespace fcitx {
         bool                    isPrevPunctuation_  = false;
         int64_t                 lastDeactivateTime_ = 0;
         bool                    wa_chromium_flag    = false;
+        Sequencer               sequencer_;
+        std::unique_ptr<EventSourceTime> commit_timer_;
 
         /**
          * @brief Connects to the uinput server.

@@ -26,7 +26,7 @@ std::atomic<int>              uinput_client_fd_{-1};
 std::atomic<unsigned int>     realtextLen{0};
 std::atomic<int>              mouse_socket_fd{-1};
 
-FCITX_DEFINE_LOG_CATEGORY(lilypad, "lilypad", fcitx::LogLevel::NoLog);
+FCITX_DEFINE_LOG_CATEGORY(lilypad, "lilypad", fcitx::LogLevel::Debug);
 
 std::string buildSocketPath(const char* base_path_suffix) {
     struct passwd  pwd{};

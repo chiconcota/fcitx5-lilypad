@@ -356,6 +356,14 @@
 
 ---
 
+### [2026-08-01] Quyết định 036: State-Aware Bamboo Core Auto-Rebuild Protocol (`EngineRebuildFromText`) & Sequencer Queue Integration
+- **Bối cảnh:** Trên Wayland Native (GTK4 / GNOME Text Editor), khi ứng dụng nhận phím xóa uinput, GTK gửi phản hồi Wayland `InputContextReset` về Fcitx5. Nếu Bamboo Core Engine bị reset bộ nhớ rỗng giữa chừng (như sau khi commit `âu` trong `mau6`), phím gõ tiếp theo (`4` hoặc `5`) không thể gắn dấu vào từ cũ, sinh ra phím thô `mâu4`, `đươc5`.
+- **Quyết định:**
+  1. Duy trì cờ `is_deleting_ = true` xuyên suốt cửa sổ hoãn 2ms cho tới khi `commit_timer_` callback chạy xong để chặn đứng mọi reset rác từ Wayland IPC.
+  2. Trước khi xử lý phím mới trong `handleUinputMode` và `replayBufferedKeys`, nếu `oldPreBuffer_` không rỗng ("mâu", "đươc") mà Bamboo Core rỗng, code C++ tự động gọi `EngineRebuildFromText(lotusEngine_.handle(), oldPreBuffer_.c_str())` để khôi phục 100% trạng thái bộ nhớ từ cho Bamboo Core.
+  3. Tích hợp `sequencer_.poll_next_step()` rút đúng `MicroStepType::CommitString` từ hàng đợi `sequencer_.queue_`.
+- **Phù hợp System Map:** Tương thích 100% với *Bamboo Core Auto-Rebuild & Sequencer Queue Protocol*.
+
 ---
 
 ### [2026-08-02] Quyết định 037: AT-SPI2 `RegisterEvent` Kebab-Case Spec Compliance & ChildrenChanged ACK

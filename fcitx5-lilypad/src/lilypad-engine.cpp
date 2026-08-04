@@ -50,6 +50,7 @@ namespace fcitx {
             case LilypadMode::Preedit: return 5;
             case LilypadMode::Emoji: return 6;
             case LilypadMode::Minecraft: return 8;
+            case LilypadMode::Sequence: return 9;
             default: return 0;
         }
     }
@@ -64,6 +65,7 @@ namespace fcitx {
             case 5: return LilypadMode::Preedit;
             case 6: return LilypadMode::Emoji;
             case 8: return LilypadMode::Minecraft;
+            case 9: return LilypadMode::Sequence;
             default: return LilypadMode::Off;
         }
     }
@@ -419,7 +421,7 @@ namespace fcitx {
 
         state->waitAck_ = false;
         if (*config_.fixUinputWithAck) {
-            if (targetMode == LilypadMode::Uinput || targetMode == LilypadMode::Smooth || targetMode == LilypadMode::Minecraft || targetMode == LilypadMode::SuperSmooth) {
+            if (targetMode == LilypadMode::Uinput || targetMode == LilypadMode::Smooth || targetMode == LilypadMode::Minecraft || targetMode == LilypadMode::SuperSmooth || targetMode == LilypadMode::Sequence) {
 #if __cplusplus >= 202002L
                 std::ranges::transform(appName, appName.begin(), ::tolower);
 #else
@@ -649,6 +651,8 @@ namespace fcitx {
                         mode = LilypadMode::Off;
                     else if (name == "SuperSmooth")
                         mode = LilypadMode::SuperSmooth;
+                    else if (name == "Sequence")
+                        mode = LilypadMode::Sequence;
                     else if (name == "Default")
                         mode = config().mode.value();
                     else
@@ -952,6 +956,7 @@ namespace fcitx {
             {"Emoji", {LilypadMode::Emoji, _("Emoji Picker"), getShortcut(*config_.shortcutEmoji), *config_.showModeEmoji}},
             {"Off", {LilypadMode::Off, _("OFF"), getShortcut(*config_.shortcutOff), *config_.showModeOff}},
             {"SuperSmooth", {LilypadMode::SuperSmooth, _("Uinput (Super Smooth)"), getShortcut(*config_.shortcutSuperSmooth), *config_.showModeSuperSmooth}},
+            {"Sequence", {LilypadMode::Sequence, _("Sequence"), getShortcut(*config_.shortcutSequence), *config_.showModeSequence}},
             {"Default", {config_.mode.value(), _("Default Typing"), getShortcut(*config_.shortcutDefault), *config_.showModeDefault}}};
 
         std::vector<ModeInfo> allModes;
@@ -1061,6 +1066,7 @@ namespace fcitx {
             case LilypadMode::Emoji: modeLabel = _("Emoji Picker"); break;
             case LilypadMode::Off: modeLabel = _("OFF"); break;
             case LilypadMode::SuperSmooth: modeLabel = _("Uinput (Super Smooth)"); break;
+            case LilypadMode::Sequence: modeLabel = _("Sequence"); break;
             default: modeLabel = _("Unknown Mode"); break;
         }
 

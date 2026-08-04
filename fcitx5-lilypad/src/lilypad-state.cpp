@@ -438,6 +438,38 @@ namespace fcitx {
         if (!is_deleting_.load()) {
             return false;
         }
+        if (realMode == LilypadMode::Sequence) {
+            if (isBackspace(currentSym)) {
+                if (sequencer_.should_swallow_backspace()) {
+                    if (sequencer_.expected_swallow_backspaces() == 0) {
+                        sequencer_.clear_barrier();
+                        MicroStep step;
+                        if (sequencer_.poll_next_step(step) && step.type == MicroStepType::CommitString) {
+                            sequencer_.set_waiting_ack();
+                            auto& eventLoop    = engine_->instance()->eventLoop();
+                            auto  now_time     = ::fcitx::now(CLOCK_MONOTONIC);
+                            auto  timeout_time = now_time + 5000; // 5ms micro-delay in microseconds (5000us)
+                            std::string commitStr = step.text;
+                            uint32_t serial = step.serial;
+                            commit_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, timeout_time, 0, [this, commitStr, serial](EventSourceTime*, uint64_t) {
+                                ic_->commitString(commitStr);
+                                LILYPAD_INFO("Commit (Sequence Mode): " + commitStr);
+                                sequencer_.receive_ack(serial);
+                                is_deleting_.store(false, std::memory_order_release);
+                                if (!buffered_keys_.empty()) {
+                                    LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys");
+                                    replayBufferedKeys();
+                                }
+                                return false;
+                            });
+                        }
+                    }
+                    return false; // Passthrough backspace to App so old raw text gets erased!
+                }
+            }
+            return false;
+        }
+
         if (isBackspace(currentSym)) {
             current_backspace_count_ += 1;
             if (current_backspace_count_ < expected_backspaces_) {
@@ -475,6 +507,37 @@ namespace fcitx {
 
     void LilypadState::performReplacement(const std::string& deletedPart, const std::string& addedPart) {
         LILYPAD_INFO("Perform replacement: " + deletedPart + " -> " + addedPart); //NOLINT
+        if (realMode == LilypadMode::Sequence) {
+            uint32_t serial = sequencer_.next_serial();
+            int bsCount = static_cast<int>(utf8::length(deletedPart));
+            if (bsCount > 0) {
+                MicroStep bsStep;
+                bsStep.type = MicroStepType::EmitBackspace;
+                bsStep.count = bsCount;
+                bsStep.serial = serial;
+                sequencer_.push_action(bsStep);
+            }
+            MicroStep commitStep;
+            commitStep.type = MicroStepType::CommitString;
+            commitStep.text = addedPart;
+            commitStep.serial = serial;
+            sequencer_.push_action(commitStep);
+
+            // Pop EmitBackspace step so barrier is active and CommitString step is at front of queue
+            if (bsCount > 0) {
+                MicroStep dummyBs;
+                sequencer_.poll_next_step(dummyBs);
+            }
+
+            pending_commit_string_ = addedPart;
+            expected_backspaces_ = bsCount;
+            current_backspace_count_ = 0;
+            is_deleting_.store(true, std::memory_order_release);
+            send_backspace_uinput(bsCount);
+            LILYPAD_INFO("Send " + std::to_string(bsCount) + " backspaces (Sequence Mode)");
+            return;
+        }
+
         current_backspace_count_ = 0;
         pending_commit_string_   = addedPart;
         expected_backspaces_     = static_cast<int>(utf8::length(deletedPart));
@@ -1086,7 +1149,8 @@ namespace fcitx {
             case LilypadMode::Uinput:
             case LilypadMode::Smooth:
             case LilypadMode::Minecraft:
-            case LilypadMode::SuperSmooth: {
+            case LilypadMode::SuperSmooth:
+            case LilypadMode::Sequence: {
                 handleUinputMode(keyEvent, currentSym);
                 break;
             }
@@ -1117,6 +1181,11 @@ namespace fcitx {
         size_t      textLen     = utf8::length(text);
         realtextLen.store(textLen, std::memory_order_release);
         if (is_deleting_.load(std::memory_order_acquire)) {
+            return;
+        }
+
+        // Prevent spurious internal input context updates (e.g. AFFiNE / Electron) from wiping engine buffer while typing
+        if (!isFocusOut && (realMode == LilypadMode::Sequence || realMode == LilypadMode::Uinput)) {
             return;
         }
 
@@ -1151,7 +1220,8 @@ namespace fcitx {
             case LilypadMode::Uinput:
             case LilypadMode::Smooth:
             case LilypadMode::Minecraft:
-            case LilypadMode::SuperSmooth: {
+            case LilypadMode::SuperSmooth:
+            case LilypadMode::Sequence: {
                 ic_->inputPanel().reset();
                 break;
             }

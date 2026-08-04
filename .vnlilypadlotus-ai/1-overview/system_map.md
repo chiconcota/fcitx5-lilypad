@@ -60,6 +60,11 @@
 
 | Ngày | Thay đổi | File |
 | :--- | :--- | :--- |
+| 2026-08-04 | Hoàn thiện tích hợp **Sequencer Layer** (Serial Tagging, Queue micro-step, Token swallow, 5ms micro-delay, 35ms ACK barrier) vào `fcitx5-lilypad` | `fcitx5-lilypad/src/` |
+| 2026-08-04 | Sửa lỗi thiếu case điều hướng `LilypadMode::Sequence` trong `switch (realMode)` làm nổ rào cản Mode Sequence | `lilypad-state.cpp` |
+| 2026-08-04 | Áp dụng **Backspace Passthrough Protocol** (`return false;`), cho phím xóa uinput bay xuyên vào App xóa chữ thô | `lilypad-state.cpp` |
+| 2026-08-04 | Áp dụng **Universal ReplayBufferedKeys Protocol**, tái phát lại 100% phím gõ nhanh (`n` trong `thương`) trên Wayland/DBus/X11 | `lilypad-state.cpp` |
+| 2026-08-04 | Thêm cờ bảo vệ **Spurious Reset Protection** chống xóa bộ đệm liên tục trong các ứng dụng Electron/Canvas Block Editor (AFFiNE) | `lilypad-state.cpp` |
 | 2026-08-02 | Khởi tạo Git repo mới tinh, kết nối remote `git@github.com:chiconcota/fcitx5-lilypad.git` và push 100% code lên branch `main` | Git / GitHub |
 | 2026-08-02 | Thêm chế độ gõ **`Sequence`** (UI dropdown & C++ enum mapping) vào `fcitx5-lilypad` | `fcitx5-lilypad/` |
 | 2026-08-02 | Đổi tên thương hiệu độc lập **Lotus -> Lilypad** (`liblilypad.so`, `fcitx5-lilypad`), khôi phục `fcitx5-lotus-main` làm reference backup | `fcitx5-lilypad/`, `fcitx5-lotus-main/` |

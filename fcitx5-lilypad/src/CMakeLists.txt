@@ -2,6 +2,7 @@ set(fcitx_lilypad_sources
   lilypad.cpp
   lilypad-engine.cpp
   lilypad-state.cpp
+  lilypad-sequencer.cpp
   lilypad-candidates.cpp
   lilypad-utils.cpp
   lilypad-monitor.cpp
