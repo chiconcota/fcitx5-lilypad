@@ -423,3 +423,23 @@
   2. Trước khi xử lý phím mới trong `handleUinputMode` và `replayBufferedKeys`, nếu `oldPreBuffer_` không rỗng ("mâu", "đươc") mà Bamboo Core rỗng, code C++ tự động gọi `EngineRebuildFromText(lotusEngine_.handle(), oldPreBuffer_.c_str())` để khôi phục 100% trạng thái bộ nhớ từ cho Bamboo Core.
   3. Tích hợp `sequencer_.poll_next_step()` rút đúng `MicroStepType::CommitString` từ hàng đợi `sequencer_.queue_`.
 - **Phù hợp System Map:** Tương thích 100% với *Bamboo Core Auto-Rebuild & Sequencer Queue Protocol*.
+
+---
+
+### [2026-08-04] Quyết định 042: Systemd User Service Auto-start Enable & Robust Numeric UID Parsing
+- **Bối cảnh:** Bộ gõ `fcitx5-lilypad` bị rớt kết nối uinput server `Connection refused` do dịch vụ `fcitx5-lilypad-server@.service` ở trạng thái `disabled`, không tự động khởi chạy khi bật máy.
+- **Quyết định:**
+  1. Kích hoạt dịch vụ systemd user service khởi động cùng OS: `sudo systemctl enable --now fcitx5-lilypad-server@chiconcota.service`.
+  2. Cập nhật `lilypad-server.cpp` bổ sung fallback parse numeric UID string (VD: `-u 1000`) sang username thực tế, giúp tương thích 100% với các template systemd service khác nhau.
+- **Phù hợp System Map:** Tương thích 100% với *Kernel Layer & Uinput Server Daemon*.
+
+---
+
+### [2026-08-04] Quyết định 043: ONLYOFFICE Cross-Protocol (X11/Wayland) Multi-Context Buffer Protection & App Identity Unification
+- **Bối cảnh:** ONLYOFFICE Desktop Editors dùng khung cửa sổ X11 (`xcb`) kết hợp vùng soạn thảo văn bản bên trong Wayland (`wayland` / `dbus`). Khi chuyển focus giữa khung ngoài và vùng soạn thảo con, Fcitx5 (cả Lotus lẫn Lilypad) bị dính lỗi tự động gọi `clearAllBuffers()` xóa sạch bộ nhớ gõ Tiếng Việt vì phân biệt sai giao thức X11/Wayland.
+- **Quyết định:**
+  1. Chuẩn hóa `getProgramName()` trong `lilypad-engine.cpp` quy hợp 100% tên tiến trình (`ONLYOFFICE`, `DesktopEditors`, `editors_helper`) về một danh tính duy nhất `"ONLYOFFICE"`.
+  2. Bổ sung cờ `--enable-wayland-ime` vào `/usr/bin/onlyoffice-desktopeditors` và shortcut desktop.
+  3. Gỡ bỏ câu lệnh cưỡng chế xóa bộ đệm X11 (`if (getFrontendName(ic_) != "dbus") clearAllBuffers();`) tại `LilypadState::reset()` trong `lilypad-state.cpp`, bảo vệ 100% bộ đệm gõ Tiếng Việt khi chuyển đổi giao thức X11 $\leftrightarrow$ Wayland.
+  4. Đã bổ sung `"onlyoffice"`, `"desktopeditors"`, `"editors_helper"` vào `ack-apps.h` và tự động kích hoạt `wa_chromium_flag = true`.
+- **Phù hợp System Map:** Tương thích 100% với *Application Context Resolution & Cross-Protocol Buffer Protection*.

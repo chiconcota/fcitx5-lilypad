@@ -1184,8 +1184,8 @@ namespace fcitx {
             return;
         }
 
-        // Prevent spurious internal input context updates (e.g. AFFiNE / Electron) from wiping engine buffer while typing
-        if (!isFocusOut && (realMode == LilypadMode::Sequence || realMode == LilypadMode::Uinput)) {
+        // Prevent spurious internal input context updates (e.g. ONLYOFFICE / AFFiNE / Electron) from wiping engine buffer
+        if (!isFocusOut && (realMode == LilypadMode::Sequence || realMode == LilypadMode::Uinput || realMode == LilypadMode::Smooth || realMode == LilypadMode::SuperSmooth)) {
             return;
         }
 
@@ -1202,12 +1202,12 @@ namespace fcitx {
                     LILYPAD_INFO("Commit: " + std::string(commit.get()));
                 }
             }
-            ResetEngine(lilypadEngine_.handle());
-            oldPreBuffer_.clear();
-            hasHistory_ = false;
+            if (isFocusOut) {
+                ResetEngine(lilypadEngine_.handle());
+                oldPreBuffer_.clear();
+                hasHistory_ = false;
+            }
         }
-        if (getFrontendName(ic_) != "dbus")
-            clearAllBuffers();
 
         switch (realMode) {
             case LilypadMode::Preedit: {

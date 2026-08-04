@@ -420,22 +420,22 @@ namespace fcitx {
         state->wa_chromium_flag = false;
 
         state->waitAck_ = false;
-        if (*config_.fixUinputWithAck) {
-            if (targetMode == LilypadMode::Uinput || targetMode == LilypadMode::Smooth || targetMode == LilypadMode::Minecraft || targetMode == LilypadMode::SuperSmooth || targetMode == LilypadMode::Sequence) {
+        std::string appNameLower = appName;
 #if __cplusplus >= 202002L
-                std::ranges::transform(appName, appName.begin(), ::tolower);
+        std::ranges::transform(appNameLower, appNameLower.begin(), ::tolower);
 #else
-                std::transform(appName.begin(), appName.end(), appName.begin(), ::tolower);
+        std::transform(appNameLower.begin(), appNameLower.end(), appNameLower.begin(), ::tolower);
 #endif
-                for (const auto& ackApp : ack_apps) {
-                    if (appName.find(ackApp) != std::string::npos) {
-                        if (is_dbus) {
-                            state->waitAck_ = true;
-                            LILYPAD_INFO(ackApp + " detected, waiting for ack");
-                        }
-                        state->wa_chromium_flag = true;
-                        break;
+        if (targetMode == LilypadMode::Uinput || targetMode == LilypadMode::Smooth || targetMode == LilypadMode::Minecraft || targetMode == LilypadMode::SuperSmooth || targetMode == LilypadMode::Sequence) {
+            for (const auto& ackApp : ack_apps) {
+                if (appNameLower.find(ackApp) != std::string::npos) {
+                    if (is_dbus && *config_.fixUinputWithAck) {
+                        state->waitAck_ = true;
+                        LILYPAD_INFO(ackApp + " detected, waiting for ack");
                     }
+                    state->wa_chromium_flag = true;
+                    LILYPAD_INFO(ackApp + " detected: set wa_chromium_flag=true");
+                    break;
                 }
             }
         }
@@ -733,9 +733,10 @@ namespace fcitx {
         if (realMode == LilypadMode::Preedit && event.type() != EventType::InputContextFocusOut) {
             state->commitBuffer();
         } else {
-            if (event.type() == EventType::InputContextFocusOut && is_dbus && !surrvalid) {
+            std::string appName = getProgramName(ic);
+            if ((event.type() == EventType::InputContextFocusOut && is_dbus && !surrvalid) || appName == "ONLYOFFICE") {
                 state->lastDeactivateTime_ = now_ms();
-                LILYPAD_INFO("Skip clearAllBuffers");
+                LILYPAD_INFO("Skip clearAllBuffers for " + appName);
             } else {
                 if (surrvalid && state->oldPreBuffer_.empty())
                     state->clearAllBuffers();
@@ -1143,6 +1144,18 @@ namespace fcitx {
             return "unknown-app";
         }
         std::string programName = ic->program();
+        std::string lower = programName;
+#if __cplusplus >= 202002L
+        std::ranges::transform(lower, lower.begin(), ::tolower);
+#else
+        std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+#endif
+        if (lower.find("onlyoffice") != std::string::npos ||
+            lower.find("desktopeditors") != std::string::npos ||
+            lower.find("editors_helper") != std::string::npos) {
+            return "ONLYOFFICE";
+        }
+
         if (programName.empty() || programName == "wayland" || programName == "x11") {
             // Fallback: InputContext address-based resolution
             // This ensures at least per-window separation.

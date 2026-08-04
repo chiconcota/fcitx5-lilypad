@@ -175,6 +175,21 @@ int main(int argc, char* argv[]) {
     } else {
         target_user = get_current_username();
     }
+
+    // Handle numeric UID string if passed as -u (e.g., -u 1000)
+    try {
+        size_t idx = 0;
+        unsigned long uid_val = std::stoul(target_user, &idx);
+        if (idx == target_user.length()) {
+            struct passwd  pwd{};
+            struct passwd* result = nullptr;
+            char           buf[1024];
+            if (getpwuid_r(static_cast<uid_t>(uid_val), &pwd, buf, sizeof(buf), &result) == 0 && result != nullptr) {
+                target_user = result->pw_name;
+            }
+        }
+    } catch (...) {}
+
     LilypadLogger::instance().info("Target user: " + target_user);
 
     uid_t expected_uid = get_uid_for_user(target_user);

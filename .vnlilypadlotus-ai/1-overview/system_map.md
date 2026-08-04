@@ -63,6 +63,7 @@
 
 | Ngày | Thay đổi | File |
 | :--- | :--- | :--- |
+| 2026-08-04 | Kích hoạt Systemd User Service (`fcitx5-lilypad-server@chiconcota.service`) tự động khởi động cùng hệ thống và bổ sung parse UID trong `lilypad-server.cpp` | `fcitx5-lilypad/server/` |
 | 2026-08-04 | Hoàn thiện tích hợp **Sequencer Layer** (Serial Tagging, Queue micro-step, Token swallow, 5ms micro-delay, 35ms ACK barrier) vào `fcitx5-lilypad` | `fcitx5-lilypad/src/` |
 | 2026-08-04 | Sửa lỗi thiếu case điều hướng `LilypadMode::Sequence` trong `switch (realMode)` làm nổ rào cản Mode Sequence | `lilypad-state.cpp` |
 | 2026-08-04 | Áp dụng **Backspace Passthrough Protocol** (`return false;`), cho phím xóa uinput bay xuyên vào App xóa chữ thô | `lilypad-state.cpp` |

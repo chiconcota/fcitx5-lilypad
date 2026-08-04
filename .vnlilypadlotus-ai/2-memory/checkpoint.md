@@ -26,18 +26,29 @@
      - **Phương án 1 (Anti-Debounce Reset Guard 300ms ~ 500ms):** Nhận diện `App name: AFFiNE` (hoặc các ứng dụng Canvas/Block Editor), đặt ngắt nhịp thời gian khóa lệnh `clearAllBuffers()` và `ResetEngine()` đối với các sự kiện chuyển đổi Input Context có khoảng cách ngắn dưới 300ms~500ms. Chỉ reset khi phím Space/Enter/Tab/Esc hoặc thực sự chuyển cửa sổ.
      - **Phương án 3 (Global Word Buffer Persistence ở tầng `LilypadEngine`):** Chuyển bộ nhớ từ Tiếng Việt (Word Buffer) lên tầng `LilypadEngine` dùng chung thay vì gắn chết theo `LilypadState` của từng `InputContext` riêng lẻ, giúp giữ nguyên ngữ cảnh gõ dù AFFiNE có liên tục tạo và hủy ô nhập liệu 30 lần/giây.
 
+5. **Sửa lỗi không tự động kết nối Server khi bật máy:**
+   - Kích hoạt dịch vụ systemd tự động khởi động cùng hệ thống: `sudo systemctl enable --now fcitx5-lilypad-server@chiconcota.service`.
+6. **Sửa lỗi ONLYOFFICE không nhận bộ gõ (Multi-Context & Wayland IME Flags):**
+   - **Xử lý Tầng Hệ thống / Launcher:** Bổ sung cờ `--enable-wayland-ime` vào `/usr/bin/onlyoffice-desktopeditors` và `/usr/share/applications/onlyoffice-desktopeditors.desktop` để kích hoạt giao thức Wayland IME cho nhân Chromium CEF bên trong ONLYOFFICE.
+   - **Xử lý Tầng C++ Engine (`lilypad-engine.cpp`):** 
+     - Chuẩn hóa hàm `getProgramName()` quy hợp 100% tên tiến trình (`ONLYOFFICE`, `DesktopEditors`, `editors_helper`) về một danh tính duy nhất `"ONLYOFFICE"`.
+     - Bổ sung rào chắn bỏ qua `clearAllBuffers()` trong `deactivate()` khi chuyển đổi focus giữa khung cửa sổ ngoài và vùng soạn thảo văn bản bên trong của ONLYOFFICE, bảo toàn 100% bộ nhớ gõ Tiếng Việt.
+     - Đã thêm `"onlyoffice"`, `"desktopeditors"`, `"editors_helper"` vào `ack-apps.h` và tự động kích hoạt `wa_chromium_flag = true`.
+
 ---
 
 ## 📁 File Đã Thay Đổi Trong Phiên:
 
 | File | Thay đổi |
 | :--- | :--- |
+| `fcitx5-lilypad/server/lilypad-server.cpp` | Bổ sung fallback parse numeric UID sang username trong `target_user` |
 | `fcitx5-lilypad/src/lilypad-sequencer.h` | Thêm class `Sequencer`, `clear_barrier()`, `BarrierState` |
 | `fcitx5-lilypad/src/lilypad-sequencer.cpp` | Cài đặt `push_action`, `poll_next_step`, `should_swallow_backspace` |
 | `fcitx5-lilypad/src/lilypad-state.cpp` | Sửa switch `LilypadMode::Sequence`, Backspace passthrough, `replayBufferedKeys`, spurious reset guard |
 | `fcitx5-lilypad/src/lilypad-engine.cpp` | Ánh xạ Mode `Sequence` (ID 9) trong UI, labels, parsing |
 | `fcitx5-lilypad/src/CMakeLists.txt` | Thêm `lilypad-sequencer.cpp` vào danh sách biên dịch |
 | `/usr/lib/fcitx5/liblilypad.so` | Thư viện C++ Addon đã biên dịch & cài đặt lên hệ thống |
+| `/usr/bin/fcitx5-lilypad-server` | Server daemon đã biên dịch & cài đặt lên hệ thống |
 
 ---
 
