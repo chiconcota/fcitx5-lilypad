@@ -32,11 +32,16 @@ namespace fcitx {
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - start_time_
                 ).count();
+                uint64_t prev = last_measured_ack_ms_.load(std::memory_order_acquire);
                 uint64_t measured = static_cast<uint64_t>(std::max<int64_t>(1, elapsed));
-                // Instant Direct Tracking: Bám đuổi 100% độ trễ thực tế của App (100ms -> 150ms -> 5ms)
-                uint64_t adaptive = std::clamp<uint64_t>(measured, min_delay_ms_, max_ack_timeout_ms_);
+                // EMA Machine Learning Style Adaptive Control: 35% measured + 65% history
+                uint64_t adaptive = std::clamp<uint64_t>(
+                    static_cast<uint64_t>(0.35 * measured + 0.65 * prev),
+                    min_delay_ms_,
+                    max_ack_timeout_ms_
+                );
                 last_measured_ack_ms_.store(adaptive, std::memory_order_release);
-                LILYPAD_INFO("📊 [NIRI SENSOR ACK] Serial #" + std::to_string(serial) + " elapsed=" + std::to_string(elapsed) + "ms -> Instant Adaptive Delay: " + std::to_string(adaptive) + "ms");
+                LILYPAD_INFO("📊 [NIRI SENSOR ACK] Serial #" + std::to_string(serial) + " elapsed=" + std::to_string(elapsed) + "ms -> EMA Adaptive Delay: " + std::to_string(adaptive) + "ms");
             }
         }
 
