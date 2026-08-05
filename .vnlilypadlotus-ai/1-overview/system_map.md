@@ -1,7 +1,7 @@
 # vnlilypadlotus SYSTEM MAP & MODULE STATUS MAP (DỰ ÁN FCITX5 LILYPAD SEQUENCER)
 
 > **Architectural Paradigm:** Hybrid Fcitx5 C++ Addon (`fcitx5-lilypad`) + Bamboo Telex Engine (Go C-FFI `bamboo-core`) + Sequencer Token Swallow Layer (`lilypad-state.cpp` + `lilypad-sequencer.cpp`).
-> **Current Version:** `v2.1.0-sequence` (Tích hợp thành công Sequencer Layer, Backspace Passthrough & Spurious Reset Guard)
+> **Current Version:** `v2.2.0-modular-sensor` (Tái cấu trúc Modular IAckSensor Architecture, NiriAckSensor, EMA Control & Batch Replay)
 
 ---
 
@@ -20,10 +20,16 @@
  │  - lilypad-sequencer.h/.cpp: Serial ID Tagging & MicroStep Queue       │
  │  - lilypad-state.cpp: Đếm token nguyên tử expected_swallow_backspaces_ │
  │  - Backspace Passthrough (return false): Phím xóa uinput bay tới App  │
- │  - EventLoop 5ms Micro-delay + Wayland Frame ACK Barrier (35ms Timeout) │
- │  - Universal ReplayBufferedKeys: Bảo vệ 100% phím gõ nhanh             │
- │  - Spurious Reset Guard (!isFocusOut): Bảo vệ ô nhập Electron/AFFiNE   │
- └─────────────────┬──────────────────────────────────┬───────────────────┘
+ └───────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │           MODULAR ACK SENSOR LAYER (CẢM BIẾN TỰ ĐỘNG THÍCH ỨNG)         │
+ │  - ack-sensors/ack-sensor.h: IAckSensor Abstract Class                 │
+ │  - ack-sensors/niri-sensor.h/.cpp: NiriAckSensor (EMA Machine Learning) │
+ │  - ack-sensors/generic-sensor.h/.cpp: GenericAckSensor Fallback        │
+ │  - ack-sensors/sensor-factory.h/.cpp: AckSensorFactory Auto-Detect     │
+ └───────────────────────────────────┬────────────────────────────────────┘
                    │ (Gửi phím gõ thô)                 │ (Phát phím xóa)
                    ▼                                  ▼
  ┌──────────────────────────────────┐ ┌──────────────────────────────────┐

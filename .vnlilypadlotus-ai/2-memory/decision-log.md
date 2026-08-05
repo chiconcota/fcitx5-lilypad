@@ -3,6 +3,25 @@
 > **Kiến trúc Chuẩn:** Fcitx5 Lotus Upgrade Architecture (`v2.0.0-lotus`)
 > **Nguyên tắc Đối soát:** Chỉ lưu trữ các Quyết định Kỹ thuật đang thực tế vận hành và phù hợp 100% với [system_map.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.vnlilypadlotus-ai/1-overview/system_map.md). Tất cả các thử nghiệm cũ (EVIOCGRAB evdev grab, zwp_virtual_keyboard_v1, DeleteSurroundingText, libunikey FFI, delay cứng) đã được lọc bỏ triệt để.
 
+### [2026-08-05] Quyết định 014: Optimized Batch Replay for Buffered Keys (0.1ms Character vs 3ms Space Micro-gap)
+- **Bối cảnh:** Khi tay gõ siêu tốc trong lúc rào chắn đang bật, các phím đệm `buffered_keys_` bị hoãn $15\text{ms}$ cho từng phím con trong vòng lặp đệ quy, gây dồn tích độ trễ lên tới 4.5 giây (`Typing so fast, add key to queue`).
+- **Quyết định:**
+  1. Phân biệt loại phím đệm khi xả hàng đợi: Phím ký tự thường (`a, b, c...`) xả tức thì $0.1\text{ms}$ (Batch Flush) bẻ gãy bẫy đệ quy.
+  2. Riêng phím CÁCH (`Space`): Giữ nhịp ngắt vi mô $3\text{ms}$ để tách gói IPC an toàn với Chromium/Facebook.
+- **Phù hợp System Map:** Tương thích 100% với *Sequencer Layer* & *Wayland IPC Layer*.
+
+---
+
+### [2026-08-05] Quyết định 013: Modular IAckSensor Architecture & EMA Machine Learning Adaptive Control
+- **Bối cảnh:** Các Compositor (Niri, Sway, Hyprland, KWin, Mutter) phát tín hiệu Wayland Frame ACK khác nhau, việc viết gộp vào Sequencer Core làm mã nguồn bị phình to và không đo được độ trễ thực tế.
+- **Quyết định:**
+  1. Tách lớp cảm biến thành các Module cắm/rút (`IAckSensor`, `NiriAckSensor`, `GenericAckSensor`, `AckSensorFactory`).
+  2. Tự động kiểm tra `$XDG_CURRENT_DESKTOP` để nạp đúng Module cảm biến phù hợp.
+  3. Áp dụng Thuật toán Trung bình động lũy thừa (EMA: $0.35 \times \text{Measured} + 0.65 \times \text{Prev}$) giúp độ trễ tự động thích ứng với App lag và tự suy giảm (decay) nhanh về $5\text{ms}$ khi App mượt.
+- **Phù hợp System Map:** Tương thích 100% với *Modular AckSensor Architecture*.
+
+---
+
 ### [2026-08-05] Quyết định 012: Proportional Backspace Micro-delay & 15ms Replay Gap (Khắc phục nuốt từ Facebook ContentEditable)
 - **Bối cảnh:** Khi xóa 2-3 ký tự (`ung -> úng`) trên ô bình luận Facebook / Chromium ContentEditable DOM, việc chèn `commitString` quá gấp (5ms) hoặc nhả phím đệm Space quá sớm (2ms) làm Chromium DOM chưa kịp định vị con trỏ chuột và nuốt mất chuỗi commit (`sản xu`, `đư `).
 - **Quyết định:**

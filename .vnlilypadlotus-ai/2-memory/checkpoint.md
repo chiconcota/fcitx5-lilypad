@@ -4,19 +4,21 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `feature/modular-ack-sensors` (Đã đóng gói v2.1.0-stable lên `main`)
-- **Tình trạng:** **ĐÃ HOÀN THÀNH BẢN VÁ HOÀN HẢO TẠI MAIN (STALE SERIAL PRUNING & PROPORTIONAL BACKSPACE DELAY). ĐÓNG GÓI VÀ TÁCH NHÁNH FEATURE MỚI.**
+- **Nhánh Git làm việc:** `feature/modular-ack-sensors` (Tất cả 5 commits đã hoàn thành và sẵn sàng đóng gói Production)
+- **Tình trạng:** **ĐÃ NÂNG CẤP THÀNH CÔNG V2.2.0 (MODULAR ACKSENSOR & BATCH REPLAY). HỆ THỐNG ĐÃ ĐƯỢC NIÊM PHONG VÀ SẴN SÀNG CHO PHIÊN ĐÓNG GÓI PRODUCTION tiếp theo.**
 
 ---
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-05 - Chi tiết Fix Stale Serial & Facebook DOM):
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-05 - Tái cấu trúc Sensor & Batch Replay):
 
-1. **Khắc phục Stale Serial Microstep Pruning:**
-   - Triệt hạ hoàn toàn lỗi lấy nhầm vi bước cũ (`ể` thay vì `ê`) trong `Sequencer::poll_next_step()`.
-2. **Khắc phục Nuốt chữ Facebook ContentEditable DOM:**
-   - Áp dụng micro-delay tỷ lệ theo số phím xóa (`6000 + bsCount * 4000` microseconds: 10ms - 18ms).
-   - Nâng hoãn nhịp replaying phím đệm Space lên `15ms`.
-   - Chuẩn hóa vị trí `set_waiting_ack()` trong `Sequencer::poll_next_step()`.
+1. **Kiến trúc Modular IAckSensor:**
+   - Tách Lớp Cảm biến ACK thành các Module cắm/rút (`IAckSensor`, `NiriAckSensor`, `GenericAckSensor`, `AckSensorFactory`).
+   - Tự động phát hiện biến môi trường `$XDG_CURRENT_DESKTOP` để nạp Module Sensor tương ứng.
+2. **Thuật toán EMA Machine Learning Adaptive Control:**
+   - Tự động điều chỉnh độ trễ thích ứng theo nhịp lag của App ($0.35 \times \text{Measured} + 0.65 \times \text{Prev}$) và tự động suy giảm (decay) nhanh về $5\text{ms}$ khi App mượt.
+3. **Tối ưu Luồng Replay Batch Flush:**
+   - Phân biệt phím CÁCH (`Space` - hoãn 3ms chống đè IPC) và phím thường (`a, b, c...` - xả tức thì 0.1ms).
+   - Bẻ gãy 100% bẫy đệ quy hoãn 15ms từng phím, triệt hạ hoàn toàn lỗi kẹt phím 4.5s khi gõ tốc độ cao.
 
 1. **Phát hiện Root Cause trên AFFiNE (BlockSuite Canvas):**
    - Log debug xác nhận: Mỗi khi bộ gõ `commitString()` 1 ký tự, BlockSuite Editor của AFFiNE lập tức phát sự kiện `activate()` / `InputContextFocusIn` ngầm 10ms sau đó.
