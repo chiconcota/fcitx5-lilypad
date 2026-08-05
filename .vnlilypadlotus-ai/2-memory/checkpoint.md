@@ -5,35 +5,21 @@
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
 - **Nhánh Git làm việc:** `main` (Remote `origin`: `git@github.com:chiconcota/fcitx5-lilypad.git`)
-- **Tình trạng:** **ĐÃ HOÀN THÀNH TÍNH NĂNG SEQUENCER LAYER CHO MODE SEQUENCE (ID 9)**
+- **Tình trạng:** **HOÀN THÀNH TỐI ƯU CẢM BIẾN ACK NĂNG ĐỘNG (250MS) & XÓA VI MÔ CHUẨN XÁC TRÊN MESSENGER / FACEBOOK WEB**
 
 ---
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc:
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-05):
 
-1. **Hoàn thiện Sequencer Layer C++ cho `fcitx5-lilypad`:**
-   - Tích hợp `Sequencer` class vào [lilypad-sequencer.h](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/src/lilypad-sequencer.h) và [lilypad-sequencer.cpp](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/src/lilypad-sequencer.cpp) với micro-delay 5ms và ACK timeout 35ms.
-   - Sửa lỗi thiếu `case LilypadMode::Sequence:` trong các hàm `switch (realMode)` tại [lilypad-state.cpp](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/src/lilypad-state.cpp).
-2. **Sửa lỗi Backspace Passthrough & Queue Step Order:**
-   - Bổ sung `poll_next_step(dummyBs)` trong `performReplacement()` để đưa `CommitString` bước 2 lên đầu hàng đợi ngay khi phát phím xóa.
-   - Bổ sung `clear_barrier()` và chuyển lệnh chèn chữ `commitString` qua Fcitx5 Event Loop với hoãn nhịp 5ms.
-   - Trả về `return false;` cho phím xóa uinput bay xuyên qua ứng dụng (Passthrough) để thực sự xóa ký tự thô cũ trên màn hình.
-3. **Bảo vệ Phím Gõ Nhanh (`replayBufferedKeys`):**
-   - Gỡ bỏ rào chắn điều kiện `dbus` trong `replayBufferedKeys()`. Mọi phím gõ nhanh trong lúc xóa (như phím `n` trong `thương`) đều được tái phát lại 100% trên Wayland Native/X11/DBus.
-4. **Bảo vệ Bộ Đệm Cho Ứng Dụng Electron/Canvas Block Editors (AFFiNE):**
-   - Bổ sung rào chắn `!isFocusOut` trong `LilypadState::reset()` để chặn các sự kiện tái kích hoạt ô nhập liệu liên tục của AFFiNE/Electron không làm xóa bộ đệm gõ Tiếng Việt.
-   - **Lưu 2 Phương án triển khai cho phiên kế tiếp:**
-     - **Phương án 1 (Anti-Debounce Reset Guard 300ms ~ 500ms):** Nhận diện `App name: AFFiNE` (hoặc các ứng dụng Canvas/Block Editor), đặt ngắt nhịp thời gian khóa lệnh `clearAllBuffers()` và `ResetEngine()` đối với các sự kiện chuyển đổi Input Context có khoảng cách ngắn dưới 300ms~500ms. Chỉ reset khi phím Space/Enter/Tab/Esc hoặc thực sự chuyển cửa sổ.
-     - **Phương án 3 (Global Word Buffer Persistence ở tầng `LilypadEngine`):** Chuyển bộ nhớ từ Tiếng Việt (Word Buffer) lên tầng `LilypadEngine` dùng chung thay vì gắn chết theo `LilypadState` của từng `InputContext` riêng lẻ, giúp giữ nguyên ngữ cảnh gõ dù AFFiNE có liên tục tạo và hủy ô nhập liệu 30 lần/giây.
-
-5. **Sửa lỗi không tự động kết nối Server khi bật máy:**
-   - Kích hoạt dịch vụ systemd tự động khởi động cùng hệ thống: `sudo systemctl enable --now fcitx5-lilypad-server@chiconcota.service`.
-6. **Sửa lỗi ONLYOFFICE không nhận bộ gõ (Multi-Context & Wayland IME Flags):**
-   - **Xử lý Tầng Hệ thống / Launcher:** Bổ sung cờ `--enable-wayland-ime` vào `/usr/bin/onlyoffice-desktopeditors` và `/usr/share/applications/onlyoffice-desktopeditors.desktop` để kích hoạt giao thức Wayland IME cho nhân Chromium CEF bên trong ONLYOFFICE.
-   - **Xử lý Tầng C++ Engine (`lilypad-engine.cpp`):** 
-     - Chuẩn hóa hàm `getProgramName()` quy hợp 100% tên tiến trình (`ONLYOFFICE`, `DesktopEditors`, `editors_helper`) về một danh tính duy nhất `"ONLYOFFICE"`.
-     - Bổ sung rào chắn bỏ qua `clearAllBuffers()` trong `deactivate()` khi chuyển đổi focus giữa khung cửa sổ ngoài và vùng soạn thảo văn bản bên trong của ONLYOFFICE, bảo toàn 100% bộ nhớ gõ Tiếng Việt.
-     - Đã thêm `"onlyoffice"`, `"desktopeditors"`, `"editors_helper"` vào `ack-apps.h` và tự động kích hoạt `wa_chromium_flag = true`.
+1. **Sửa lỗi Cảm biến ACK Thích ứng (`calculate_adaptive_delay_ms`):**
+   - Kích hoạt `calculate_adaptive_delay_ms(elapsed)` trong `Sequencer::receive_ack()` ở [lilypad-sequencer.cpp](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/src/lilypad-sequencer.cpp#L63) và gán `last_measured_ack_ms_ = adaptive`.
+   - Nâng trần Safety Timeout `max_ack_timeout_ms` từ `35ms` lên **`250ms`** trong [lilypad-sequencer.h](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/src/lilypad-sequencer.h#L38). Khi ứng dụng lag đến 159ms, rào chắn tự động nới rộng ra 150ms~250ms chờ app render xong 100%, triệt hạ lỗi nuốt mất chữ `thươn`.
+2. **Tối ưu hóa Xóa vi mô (Micro-replacement) & Caret Buffer Lock Cap:**
+   - Chuẩn hóa luồng `performReplacement` trong [lilypad-state.cpp](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/src/lilypad-state.cpp#L513-L565) về phím xóa vi mô tối ưu (`utf8::length(deletedPart)`). Khi `o` -> `ơ`, chỉ phát đúng 1 phím xóa; khi `uơ` -> `ươn`, chỉ phát đúng 2 phím xóa.
+   - Triệt hạ lỗi đơ React DOM Facebook làm dính chữ rác `tthuo7n`.
+   - Giữ vững rào chắn khống chế trần phím xóa `bsCount <= utf8::length(oldPreBuffer_)` tuyệt đối không cho phím xóa bay quá phím Space sang từ phía trước.
+3. **Chuẩn hóa Replay Reset:**
+   - Đã bổ sung `ResetEngine()` và `oldPreBuffer_.clear()` cho nhánh `!processed` trong `replayBufferedKeys()` để phím Space/điều hướng nhả từ hàng đợi đệm luôn lập ranh giới từ mới sạch sẽ.
 
 ---
 
@@ -41,10 +27,12 @@
 
 | File | Thay đổi |
 | :--- | :--- |
-| `fcitx5-lilypad/server/lilypad-server.cpp` | Bổ sung fallback parse numeric UID sang username trong `target_user` |
-| `fcitx5-lilypad/src/lilypad-sequencer.h` | Thêm class `Sequencer`, `clear_barrier()`, `BarrierState` |
-| `fcitx5-lilypad/src/lilypad-sequencer.cpp` | Cài đặt `push_action`, `poll_next_step`, `should_swallow_backspace` |
-| `fcitx5-lilypad/src/lilypad-state.cpp` | Sửa switch `LilypadMode::Sequence`, Backspace passthrough, `replayBufferedKeys`, spurious reset guard |
+| `fcitx5-lilypad/src/lilypad-sequencer.h` | Nâng `max_ack_timeout_ms` từ 35ms lên 250ms |
+| `fcitx5-lilypad/src/lilypad-sequencer.cpp` | Kích hoạt `calculate_adaptive_delay_ms(elapsed)` trong `receive_ack()` và gán `last_measured_ack_ms_ = adaptive` |
+| `fcitx5-lilypad/src/lilypad-state.cpp` | Micro-replacement optimization, Caret Buffer Lock Cap, Replay Reset logic |
+| `.vnlilypadlotus-ai/1-overview/system_map.md` | Cập nhật Recent Change Log & trạng thái module |
+| `.vnlilypadlotus-ai/2-memory/decision-log.md` | Bổ sung Quyết định 010 |
+| `.vnlilypadlotus-ai/2-memory/checkpoint.md` | Niêm phong bộ nhớ phiên làm việc |
 | `fcitx5-lilypad/src/lilypad-engine.cpp` | Ánh xạ Mode `Sequence` (ID 9) trong UI, labels, parsing |
 | `fcitx5-lilypad/src/CMakeLists.txt` | Thêm `lilypad-sequencer.cpp` vào danh sách biên dịch |
 | `/usr/lib/fcitx5/liblilypad.so` | Thư viện C++ Addon đã biên dịch & cài đặt lên hệ thống |

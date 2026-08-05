@@ -457,8 +457,13 @@ namespace fcitx {
                                 sequencer_.receive_ack(serial);
                                 is_deleting_.store(false, std::memory_order_release);
                                 if (!buffered_keys_.empty()) {
-                                    LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys");
-                                    replayBufferedKeys();
+                                    LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys after 2ms micro-gap");
+                                    auto& loop = engine_->instance()->eventLoop();
+                                    auto  t    = ::fcitx::now(CLOCK_MONOTONIC) + 2000; // 2ms gap
+                                    commit_timer_ = loop.addTimeEvent(CLOCK_MONOTONIC, t, 0, [this](EventSourceTime*, uint64_t) {
+                                        replayBufferedKeys();
+                                        return false;
+                                    });
                                 }
                                 return false;
                             });
@@ -508,8 +513,19 @@ namespace fcitx {
     void LilypadState::performReplacement(const std::string& deletedPart, const std::string& addedPart) {
         LILYPAD_INFO("Perform replacement: " + deletedPart + " -> " + addedPart); //NOLINT
         if (realMode == LilypadMode::Sequence) {
-            uint32_t serial = sequencer_.next_serial();
+            // Micro-replacement (Xóa vi mô tối ưu):
+            // Delete only the minimal suffix `deletedPart` using exact utf8 codepoint length,
+            // capped by max word length oldPreBuffer_ to guarantee word boundary safety.
             int bsCount = static_cast<int>(utf8::length(deletedPart));
+            if (!oldPreBuffer_.empty() && deletedPart != " " && deletedPart != "-") {
+                int maxBs = static_cast<int>(utf8::length(oldPreBuffer_));
+                if (bsCount > maxBs) {
+                    LILYPAD_WARN("Capping backspaces from " + std::to_string(bsCount) + " to max word length " + std::to_string(maxBs));
+                    bsCount = maxBs;
+                }
+            }
+
+            uint32_t serial = sequencer_.next_serial();
             if (bsCount > 0) {
                 MicroStep bsStep;
                 bsStep.type = MicroStepType::EmitBackspace;
@@ -534,7 +550,7 @@ namespace fcitx {
             current_backspace_count_ = 0;
             is_deleting_.store(true, std::memory_order_release);
             send_backspace_uinput(bsCount);
-            LILYPAD_INFO("Send " + std::to_string(bsCount) + " backspaces (Sequence Mode)");
+            LILYPAD_INFO("Send " + std::to_string(bsCount) + " backspaces (Sequence Mode - Micro replacement)");
             return;
         }
 
@@ -1344,6 +1360,9 @@ namespace fcitx {
 
             if (!processed) {
                 ic_->commitString(keyUtf8);
+                hasHistory_ = false;
+                ResetEngine(lilypadEngine_.handle());
+                oldPreBuffer_.clear();
                 continue;
             }
 

@@ -42,9 +42,9 @@ namespace fcitx {
     }
 
     uint64_t Sequencer::calculate_adaptive_delay_ms(uint64_t measured_ack_ms) {
-        last_measured_ack_ms_ = measured_ack_ms;
-        // Adaptive formula: min_delay_ms (5ms) <= adaptive <= max_ack_timeout_ms (35ms)
+        // Adaptive formula: min_delay_ms (5ms) <= adaptive <= max_ack_timeout_ms (250ms)
         uint64_t adaptive = std::clamp(measured_ack_ms + 1, config_.min_delay_ms, config_.max_ack_timeout_ms);
+        last_measured_ack_ms_ = adaptive;
         LILYPAD_INFO("📊 [ADAPTIVE DELAY] Measured App ACK: " + std::to_string(measured_ack_ms) + "ms -> Dynamic Barrier: " + std::to_string(adaptive) + "ms");
         return adaptive;
     }
@@ -60,6 +60,7 @@ namespace fcitx {
             if (serial >= active_serial_.load(std::memory_order_acquire)) {
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - barrier_start_time_).count();
                 LILYPAD_INFO("✅ [SERIAL ACK RELEASED] Compositor responded for Serial #" + std::to_string(serial) + " elapsed=" + std::to_string(elapsed) + "ms");
+                calculate_adaptive_delay_ms(elapsed);
                 barrier_ = BarrierState::Ready;
             } else {
                 LILYPAD_INFO("🛡️ [SERIAL STALE DISCARD] Discarded out-of-order ACK Serial #" + std::to_string(serial) + " (active: #" + std::to_string(active_serial_.load()) + ")");

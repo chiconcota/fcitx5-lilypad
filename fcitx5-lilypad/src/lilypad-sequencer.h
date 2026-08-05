@@ -34,8 +34,8 @@ namespace fcitx {
     };
 
     struct SequencerConfig {
-        uint64_t min_delay_ms       = 5;  ///< 5ms micro-delay
-        uint64_t max_ack_timeout_ms = 35; ///< 35ms safety timeout for Wayland Frame ACK
+        uint64_t min_delay_ms       = 5;   ///< 5ms micro-delay
+        uint64_t max_ack_timeout_ms = 250; ///< 250ms safety timeout for Wayland Frame ACK
     };
 
     /**

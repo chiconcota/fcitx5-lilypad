@@ -3,6 +3,23 @@
 > **Kiến trúc Chuẩn:** Fcitx5 Lotus Upgrade Architecture (`v2.0.0-lotus`)
 > **Nguyên tắc Đối soát:** Chỉ lưu trữ các Quyết định Kỹ thuật đang thực tế vận hành và phù hợp 100% với [system_map.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.vnlilypadlotus-ai/1-overview/system_map.md). Tất cả các thử nghiệm cũ (EVIOCGRAB evdev grab, zwp_virtual_keyboard_v1, DeleteSurroundingText, libunikey FFI, delay cứng) đã được lọc bỏ triệt để.
 
+### [2026-08-05] Quyết định 010: Dynamic Adaptive ACK Sensor & Micro-replacement Optimization (Cap 250ms & Caret Buffer Lock)
+- **Bối cảnh:** Khi ứng dụng Web/Electron (Messenger, Facebook Post, AFFiNE) bị jank/lag (lên tới 159ms), cảm biến Sequencer chưa gọi `calculate_adaptive_delay_ms()` trong `receive_ack()`, làm rào chắn bị reset ngầm ở 35ms và bắn phím mới đè IPC làm mất chữ `thươn`. Đồng thời, việc lạm dụng Whole-Word Replacement (5 phím xóa) làm ô soạn thảo Facebook bị sót phím xóa sinh chữ rác `tthuo7n`.
+- **Quyết định:**
+  1. Kích hoạt `calculate_adaptive_delay_ms(elapsed)` ngay trong `Sequencer::receive_ack()` để tự động điều chỉnh Dynamic Barrier theo độ trễ thực tế của App.
+  2. Nâng trần Safety Timeout `max_ack_timeout_ms` từ `35ms` lên **`250ms`** để gánh được các nhịp lag DOM nặng trên Facebook/Electron.
+  3. Chuẩn hóa luồng gõ về **Xóa vi mô (Micro-replacement)** dựa trên `utf8::length(deletedPart)`, kết hợp với **Caret Buffer Lock Cap (`bsCount <= utf8::length(oldPreBuffer_)`)** ngăn phím xóa bay quá phím Space.
+- **Phù hợp System Map:** Tương thích 100% với *Sequencer Token Swallow Layer* & *Wayland IPC Layer*.
+
+---
+
+### [2026-08-04] Quyết định 009: Phân tách IPC Frame cho Phím Đệm (2ms Micro-gap Replay) & Kế hoạch Whole-Word Replacement
+- **Bối cảnh:** Khi gõ nhanh phím `Space` hoặc các phím ký tự tiếp theo trong lúc Sequencer đang thực hiện thay thế chữ (`is_deleting_ = true`), các phím đệm được gọi ngay lập tức trong cùng 1 nhịp synchronous call với `commitString()`, làm Chromium/Electron/Messenger bị đè gói IPC hoặc hủy mất lệnh commit.
+- **Quyết định:**
+  1. Thêm hoãn nhịp vi mô `2ms` (`addTimeEvent`) trước khi `replayBufferedKeys()` nhả các phím đệm (như `Space`).
+  2. Tạo bản thiết kế Whole-Word Replacement (thay thế nguyên từ) cho Mode Sequence để giải quyết triệt để lỗi vỡ DOM node trên Messenger Web.
+- **Phù hợp System Map:** Tương thích 100% với *Sequencer Layer* & *Wayland IPC Layer*.
+
 ---
 
 ### [2026-08-02] Quyết định 007: Đổi tên Thương hiệu Độc lập (Lilypad) & Phục hồi Lotus Tham chiếu Backup

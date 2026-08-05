@@ -61,8 +61,9 @@
 
 ## 4. RECENT CHANGE LOG
 
-| Ngày | Thay đổi | File |
-| :--- | :--- | :--- |
+| 2026-08-05 | Kích hoạt `calculate_adaptive_delay_ms(elapsed)` trong `receive_ack()` và nâng Safety Timeout trần lên 250ms trong `lilypad-sequencer.cpp/.h` | `lilypad-sequencer.cpp/.h` |
+| 2026-08-05 | Tối ưu luồng xóa về Micro-replacement (`deletedPart`), kết hợp Caret Buffer Lock Cap & Replay Reset logic | `lilypad-state.cpp` |
+| 2026-08-04 | Bổ sung hoãn nhịp vi mô `2ms` trước khi `replayBufferedKeys()` nhả phím `Space` đứng chờ trong hàng đợi để triệt hạ Race Condition trên Messenger | `lilypad-state.cpp` |
 | 2026-08-04 | Kích hoạt Systemd User Service (`fcitx5-lilypad-server@chiconcota.service`) tự động khởi động cùng hệ thống và bổ sung parse UID trong `lilypad-server.cpp` | `fcitx5-lilypad/server/` |
 | 2026-08-04 | Hoàn thiện tích hợp **Sequencer Layer** (Serial Tagging, Queue micro-step, Token swallow, 5ms micro-delay, 35ms ACK barrier) vào `fcitx5-lilypad` | `fcitx5-lilypad/src/` |
 | 2026-08-04 | Sửa lỗi thiếu case điều hướng `LilypadMode::Sequence` trong `switch (realMode)` làm nổ rào cản Mode Sequence | `lilypad-state.cpp` |
