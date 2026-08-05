@@ -4,8 +4,8 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `feature/modular-ack-sensors` (Tất cả 5 commits đã hoàn thành và sẵn sàng đóng gói Production)
-- **Tình trạng:** **ĐÃ NÂNG CẤP THÀNH CÔNG V2.2.0 (MODULAR ACKSENSOR & BATCH REPLAY). HỆ THỐNG ĐÃ ĐƯỢC NIÊM PHONG VÀ SẴN SÀNG CHO PHIÊN ĐÓNG GÓI PRODUCTION tiếp theo.**
+- **Nhánh Git làm việc:** `main` (Remote `origin`: `git@github.com:chiconcota/fcitx5-lilypad.git`)
+- **Tình trạng:** **ĐÃ MERGE THÀNH CÔNG V2.2.0 (MODULAR ACKSENSOR & BATCH REPLAY) LÊN MAIN & PUSH GITHUB.**
 
 ---
 
