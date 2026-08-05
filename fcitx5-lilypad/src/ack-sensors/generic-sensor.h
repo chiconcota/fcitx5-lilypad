@@ -23,10 +23,12 @@ namespace fcitx {
         void on_transaction_start(uint32_t serial) override {
             active_serial_.store(serial, std::memory_order_release);
             start_time_ = std::chrono::steady_clock::now();
+            has_start_time_.store(true, std::memory_order_release);
         }
 
         void on_ack_received(uint32_t serial) override {
-            if (serial >= active_serial_.load(std::memory_order_acquire)) {
+            if (has_start_time_.load(std::memory_order_acquire) && serial >= active_serial_.load(std::memory_order_acquire)) {
+                has_start_time_.store(false, std::memory_order_release);
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - start_time_
                 ).count();
@@ -52,6 +54,7 @@ namespace fcitx {
       private:
         std::atomic<uint32_t> active_serial_{0};
         std::atomic<uint64_t> last_measured_ack_ms_{5};
+        std::atomic<bool>     has_start_time_{false};
         std::chrono::steady_clock::time_point start_time_;
         uint64_t min_delay_ms_ = 5;
         uint64_t max_ack_timeout_ms_ = 250;
