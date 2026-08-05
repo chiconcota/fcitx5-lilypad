@@ -114,9 +114,10 @@ namespace fcitx {
                    " text=" + out_step.text);
 
         if (out_step.type == MicroStepType::EmitBackspace) {
+            uint64_t dynamic_delay_ms = sensor_ ? sensor_->get_last_measured_ack_ms() : last_measured_ack_ms_;
             barrier_             = BarrierState::WaitingMicroDelay;
             barrier_start_time_  = now;
-            barrier_target_time_ = now + std::chrono::milliseconds(20); // Fixed 20ms safety guard, not compounding feedback loop
+            barrier_target_time_ = now + std::chrono::milliseconds(dynamic_delay_ms);
         } else if (out_step.type == MicroStepType::CommitString) {
             barrier_            = BarrierState::WaitingForAck;
             barrier_start_time_ = now;
