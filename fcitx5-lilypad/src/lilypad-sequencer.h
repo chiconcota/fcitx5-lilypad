@@ -6,7 +6,9 @@
 #include <deque>
 #include <string>
 #include <atomic>
+#include <memory>
 #include <fcitx-utils/log.h>
+#include "ack-sensors/ack-sensor.h"
 
 namespace fcitx {
 
@@ -59,6 +61,13 @@ namespace fcitx {
         bool poll_next_step(MicroStep& out_step);
         bool should_swallow_backspace(uint32_t serial = 0);
         void receive_ack(uint32_t serial);
+        void set_sensor(std::unique_ptr<IAckSensor> sensor) {
+            sensor_ = std::move(sensor);
+        }
+        IAckSensor* sensor() const {
+            return sensor_.get();
+        }
+
         void set_waiting_ack();
         void clear_barrier() {
             barrier_ = BarrierState::Ready;
@@ -86,6 +95,7 @@ namespace fcitx {
         std::atomic<int>                      expected_swallow_backspaces_{0};
         SequencerConfig                       config_;
         uint64_t                              last_measured_ack_ms_ = 5;
+        std::unique_ptr<IAckSensor>           sensor_;
     };
 
 } // namespace fcitx

@@ -52,7 +52,10 @@ namespace fcitx {
     void Sequencer::set_waiting_ack() {
         barrier_            = BarrierState::WaitingForAck;
         barrier_start_time_ = std::chrono::steady_clock::now();
-        LILYPAD_INFO("🛡️ [SEQUENCER BARRIER] Set WaitingForAck (Niri Frame ACK) for Serial #" + std::to_string(active_serial_.load()));
+        if (sensor_) {
+            sensor_->on_transaction_start(active_serial_.load());
+        }
+        LILYPAD_INFO("🛡️ [SEQUENCER BARRIER] Set WaitingForAck (Sensor: " + (sensor_ ? sensor_->get_name() : "Native") + ") for Serial #" + std::to_string(active_serial_.load()));
     }
 
     void Sequencer::receive_ack(uint32_t serial) {
@@ -61,6 +64,9 @@ namespace fcitx {
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - barrier_start_time_).count();
                 LILYPAD_INFO("✅ [SERIAL ACK RELEASED] Compositor responded for Serial #" + std::to_string(serial) + " elapsed=" + std::to_string(elapsed) + "ms");
                 calculate_adaptive_delay_ms(elapsed);
+                if (sensor_) {
+                    sensor_->on_ack_received(serial);
+                }
                 barrier_ = BarrierState::Ready;
             } else {
                 LILYPAD_INFO("🛡️ [SERIAL STALE DISCARD] Discarded out-of-order ACK Serial #" + std::to_string(serial) + " (active: #" + std::to_string(active_serial_.load()) + ")");

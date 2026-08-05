@@ -4,7 +4,7 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `main` (Remote `origin`: `git@github.com:chiconcota/fcitx5-lilypad.git`)
+- **Nhánh Git làm việc:** `feature/modular-ack-sensors` (Đã đóng gói v2.1.0-stable lên `main`)
 - **Tình trạng:** **ĐÃ HOÀN THÀNH BẢN VÁ HOÀN HẢO TẠI MAIN (STALE SERIAL PRUNING & PROPORTIONAL BACKSPACE DELAY). ĐÓNG GÓI VÀ TÁCH NHÁNH FEATURE MỚI.**
 
 ---

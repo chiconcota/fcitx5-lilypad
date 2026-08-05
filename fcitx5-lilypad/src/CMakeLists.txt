@@ -7,6 +7,9 @@ set(fcitx_lilypad_sources
   lilypad-utils.cpp
   lilypad-monitor.cpp
   emoji.cpp
+  ack-sensors/niri-sensor.cpp
+  ack-sensors/generic-sensor.cpp
+  ack-sensors/sensor-factory.cpp
 )
 
 add_library(lilypad MODULE ${fcitx_lilypad_sources})

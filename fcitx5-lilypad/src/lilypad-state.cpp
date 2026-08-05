@@ -27,6 +27,8 @@
 
 #include <thread>
 
+#include "ack-sensors/sensor-factory.h"
+
 namespace fcitx {
     constexpr int      MAX_SCAN_LENGTH = 15;
 
@@ -36,6 +38,7 @@ namespace fcitx {
     }
 
     LilypadState::LilypadState(LilypadEngine* engine, InputContext* ic) : engine_(engine), ic_(ic) {
+        sequencer_.set_sensor(AckSensorFactory::create_sensor());
         setEngine();
     }
 
@@ -448,7 +451,7 @@ namespace fcitx {
                             auto& eventLoop    = engine_->instance()->eventLoop();
                             auto  now_time     = ::fcitx::now(CLOCK_MONOTONIC);
                             int bsCount = std::max(1, expected_backspaces_);
-                            uint64_t micro_delay_us = 6000 + static_cast<uint64_t>(bsCount * 4000); // 1bs=10ms, 2bs=14ms, 3bs=18ms for DOM settlement
+                            uint64_t micro_delay_us = sequencer_.sensor() ? sequencer_.sensor()->get_micro_delay_us(bsCount) : (6000 + static_cast<uint64_t>(bsCount * 4000));
                             auto  timeout_time = now_time + micro_delay_us;
                             std::string commitStr = step.text;
                             uint32_t serial = step.serial;
