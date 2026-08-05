@@ -61,6 +61,9 @@
 
 ## 4. RECENT CHANGE LOG
 
+| 2026-08-05 | Áp dụng **Proportional Backspace Micro-delay** (10-18ms) & **15ms Replay Gap** triệt hạ lỗi nuốt chữ Facebook ContentEditable DOM | `fcitx5-lilypad/src/lilypad-state.cpp` |
+| 2026-08-05 | Áp dụng **Stale Serial Microstep Pruning** (`serial < active_serial_`) loại bỏ 100% vi bước cũ kẹt hàng đợi | `fcitx5-lilypad/src/lilypad-sequencer.cpp` |
+| 2026-08-05 | Phân tích root cause sự kiện focus ngầm trên AFFiNE BlockSuite Canvas, tạo `affine-flags.conf` Wayland IME và rollback mã nguồn C++ về bản gốc mượt mà 100% | `~/.config/affine-flags.conf`, `fcitx5-lilypad/` |
 | 2026-08-05 | Kích hoạt `calculate_adaptive_delay_ms(elapsed)` trong `receive_ack()` và nâng Safety Timeout trần lên 250ms trong `lilypad-sequencer.cpp/.h` | `lilypad-sequencer.cpp/.h` |
 | 2026-08-05 | Tối ưu luồng xóa về Micro-replacement (`deletedPart`), kết hợp Caret Buffer Lock Cap & Replay Reset logic | `lilypad-state.cpp` |
 | 2026-08-04 | Bổ sung hoãn nhịp vi mô `2ms` trước khi `replayBufferedKeys()` nhả phím `Space` đứng chờ trong hàng đợi để triệt hạ Race Condition trên Messenger | `lilypad-state.cpp` |

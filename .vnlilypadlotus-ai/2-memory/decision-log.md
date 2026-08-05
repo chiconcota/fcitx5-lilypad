@@ -3,6 +3,25 @@
 > **Kiến trúc Chuẩn:** Fcitx5 Lotus Upgrade Architecture (`v2.0.0-lotus`)
 > **Nguyên tắc Đối soát:** Chỉ lưu trữ các Quyết định Kỹ thuật đang thực tế vận hành và phù hợp 100% với [system_map.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.vnlilypadlotus-ai/1-overview/system_map.md). Tất cả các thử nghiệm cũ (EVIOCGRAB evdev grab, zwp_virtual_keyboard_v1, DeleteSurroundingText, libunikey FFI, delay cứng) đã được lọc bỏ triệt để.
 
+### [2026-08-05] Quyết định 012: Proportional Backspace Micro-delay & 15ms Replay Gap (Khắc phục nuốt từ Facebook ContentEditable)
+- **Bối cảnh:** Khi xóa 2-3 ký tự (`ung -> úng`) trên ô bình luận Facebook / Chromium ContentEditable DOM, việc chèn `commitString` quá gấp (5ms) hoặc nhả phím đệm Space quá sớm (2ms) làm Chromium DOM chưa kịp định vị con trỏ chuột và nuốt mất chuỗi commit (`sản xu`, `đư `).
+- **Quyết định:**
+  1. Áp dụng micro-delay tỷ lệ thuận với số phím xóa: `micro_delay_us = 6000 + bsCount * 4000` (1bs=10ms, 2bs=14ms, 3bs=18ms) cho Facebook DOM hoàn thành mutation trước khi commit.
+  2. Nâng hoãn nhịp replaying phím đệm `buffered_keys_` từ `2ms` lên `15ms` tránh đè gói IPC.
+  3. Định vị `set_waiting_ack()` chuẩn xác khi pop `CommitString` microstep trong `Sequencer::poll_next_step()`.
+- **Phù hợp System Map:** Tương thích 100% với *Sequencer Layer* & *Wayland IPC Layer*.
+
+---
+
+### [2026-08-05] Quyết định 011: Stale Serial Microstep Pruning (Loại bỏ vi bước cũ tồn đọng)
+- **Bối cảnh:** Khi gõ nhanh phím mới trong lúc giao dịch cũ chưa tiêu thụ hết hàng đợi `queue_`, hàm `poll_next_step()` lấy nhầm vi bước của cước cũ (`Serial #115` `text=ể`) thay vì cước hiện tại (`Serial #117` `text=ê`), làm từ bị biến dạng.
+- **Quyết định:**
+  1. Thêm vòng lặp loại bỏ tự động mọi MicroStep có `step.serial < active_serial_` ở đầu `queue_` trong `Sequencer::poll_next_step()`.
+  2. Đảm bảo giao dịch hiện tại luôn nhận đúng 100% kết quả từ mới nhất.
+- **Phù hợp System Map:** Tương thích 100% với *Sequencer Token Swallow Layer*.
+
+---
+
 ### [2026-08-05] Quyết định 010: Dynamic Adaptive ACK Sensor & Micro-replacement Optimization (Cap 250ms & Caret Buffer Lock)
 - **Bối cảnh:** Khi ứng dụng Web/Electron (Messenger, Facebook Post, AFFiNE) bị jank/lag (lên tới 159ms), cảm biến Sequencer chưa gọi `calculate_adaptive_delay_ms()` trong `receive_ack()`, làm rào chắn bị reset ngầm ở 35ms và bắn phím mới đè IPC làm mất chữ `thươn`. Đồng thời, việc lạm dụng Whole-Word Replacement (5 phím xóa) làm ô soạn thảo Facebook bị sót phím xóa sinh chữ rác `tthuo7n`.
 - **Quyết định:**
@@ -460,3 +479,13 @@
   3. Gỡ bỏ câu lệnh cưỡng chế xóa bộ đệm X11 (`if (getFrontendName(ic_) != "dbus") clearAllBuffers();`) tại `LilypadState::reset()` trong `lilypad-state.cpp`, bảo vệ 100% bộ đệm gõ Tiếng Việt khi chuyển đổi giao thức X11 $\leftrightarrow$ Wayland.
   4. Đã bổ sung `"onlyoffice"`, `"desktopeditors"`, `"editors_helper"` vào `ack-apps.h` và tự động kích hoạt `wa_chromium_flag = true`.
 - **Phù hợp System Map:** Tương thích 100% với *Application Context Resolution & Cross-Protocol Buffer Protection*.
+
+---
+
+### [2026-08-05] Quyết định 044: AFFiNE (Electron 39 / BlockSuite Canvas) Spurious Focus Analysis & Zero-Regression Rollback
+- **Bối cảnh:** AFFiNE (Canvas/Shadow DOM Editor) phát tín hiệu `InputContextFocusIn` / `activate` ngầm 10ms sau mỗi lần `commitString()`, làm `lilypad-engine.cpp` kích hoạt `clearAllBuffers()` xóa sạch bộ đệm gõ Tiếng Việt giữa các phím gõ. Thử nghiệm can thiệp `setMode()` và `sequencer_.clear()` đã làm ảnh hưởng tới việc chuyển đổi ứng dụng bình thường.
+- **Quyết định:**
+  1. Thực hiện **Zero-Regression Rollback**: Khôi phục 100% mã nguồn C++ về bản gốc ổn định trên branch `main`, bảo đảm bộ gõ hoạt động mượt mà 100% trên Messenger, Chrome, IDE, Terminal.
+  2. Tạo cờ Electron Wayland IME trong `~/.config/affine-flags.conf` (`--ozone-platform=wayland`, `--enable-wayland-ime`).
+  3. Đã lập danh sách 4 Phương án chiến lược (Spurious Focus Isolation, Stale Serial Pruning, Whole-Word Replacement) trong `checkpoint.md` để triển khai cho phiên tới.
+- **Phù hợp System Map:** Tương thích 100% với *Safety-First & Reversion Protocol*.

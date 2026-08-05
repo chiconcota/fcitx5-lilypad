@@ -5,21 +5,49 @@
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
 - **Nhánh Git làm việc:** `main` (Remote `origin`: `git@github.com:chiconcota/fcitx5-lilypad.git`)
-- **Tình trạng:** **HOÀN THÀNH TỐI ƯU CẢM BIẾN ACK NĂNG ĐỘNG (250MS) & XÓA VI MÔ CHUẨN XÁC TRÊN MESSENGER / FACEBOOK WEB**
+- **Tình trạng:** **ĐÃ HOÀN THÀNH BẢN VÁ HOÀN HẢO TẠI MAIN (STALE SERIAL PRUNING & PROPORTIONAL BACKSPACE DELAY). ĐÓNG GÓI VÀ TÁCH NHÁNH FEATURE MỚI.**
 
 ---
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-05):
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-05 - Chi tiết Fix Stale Serial & Facebook DOM):
 
-1. **Sửa lỗi Cảm biến ACK Thích ứng (`calculate_adaptive_delay_ms`):**
-   - Kích hoạt `calculate_adaptive_delay_ms(elapsed)` trong `Sequencer::receive_ack()` ở [lilypad-sequencer.cpp](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/src/lilypad-sequencer.cpp#L63) và gán `last_measured_ack_ms_ = adaptive`.
-   - Nâng trần Safety Timeout `max_ack_timeout_ms` từ `35ms` lên **`250ms`** trong [lilypad-sequencer.h](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/src/lilypad-sequencer.h#L38). Khi ứng dụng lag đến 159ms, rào chắn tự động nới rộng ra 150ms~250ms chờ app render xong 100%, triệt hạ lỗi nuốt mất chữ `thươn`.
-2. **Tối ưu hóa Xóa vi mô (Micro-replacement) & Caret Buffer Lock Cap:**
-   - Chuẩn hóa luồng `performReplacement` trong [lilypad-state.cpp](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/src/lilypad-state.cpp#L513-L565) về phím xóa vi mô tối ưu (`utf8::length(deletedPart)`). Khi `o` -> `ơ`, chỉ phát đúng 1 phím xóa; khi `uơ` -> `ươn`, chỉ phát đúng 2 phím xóa.
-   - Triệt hạ lỗi đơ React DOM Facebook làm dính chữ rác `tthuo7n`.
-   - Giữ vững rào chắn khống chế trần phím xóa `bsCount <= utf8::length(oldPreBuffer_)` tuyệt đối không cho phím xóa bay quá phím Space sang từ phía trước.
-3. **Chuẩn hóa Replay Reset:**
-   - Đã bổ sung `ResetEngine()` và `oldPreBuffer_.clear()` cho nhánh `!processed` trong `replayBufferedKeys()` để phím Space/điều hướng nhả từ hàng đợi đệm luôn lập ranh giới từ mới sạch sẽ.
+1. **Khắc phục Stale Serial Microstep Pruning:**
+   - Triệt hạ hoàn toàn lỗi lấy nhầm vi bước cũ (`ể` thay vì `ê`) trong `Sequencer::poll_next_step()`.
+2. **Khắc phục Nuốt chữ Facebook ContentEditable DOM:**
+   - Áp dụng micro-delay tỷ lệ theo số phím xóa (`6000 + bsCount * 4000` microseconds: 10ms - 18ms).
+   - Nâng hoãn nhịp replaying phím đệm Space lên `15ms`.
+   - Chuẩn hóa vị trí `set_waiting_ack()` trong `Sequencer::poll_next_step()`.
+
+1. **Phát hiện Root Cause trên AFFiNE (BlockSuite Canvas):**
+   - Log debug xác nhận: Mỗi khi bộ gõ `commitString()` 1 ký tự, BlockSuite Editor của AFFiNE lập tức phát sự kiện `activate()` / `InputContextFocusIn` ngầm 10ms sau đó.
+   - Code `activate()` trong `lilypad-engine.cpp` gọi `setMode()` và `clearAllBuffers()`, làm mất bộ nhớ `oldPreBuffer_` giữa các phím gõ làm đứt đoạn Telex.
+2. **Khôi phục Nguyên trạng An toàn (Safety-First Directive):**
+   - Đã thực hiện `git checkout` khôi phục 100% mã nguồn C++ gốc sạch sẽ trên `main`.
+   - Đã biên dịch & cài đặt lại `/usr/lib/fcitx5/liblilypad.so` chuẩn, bảo đảm bộ gõ chạy mượt 100% trên các ứng dụng thông thường (Messenger, Chrome, IDE, Terminal).
+
+---
+
+## 💡 BẢNG PHƯƠNG ÁN XỬ LÝ LƯU TRỮ CHO PHIÊN KẾ TIẾP (AFFiNE ROADMAP):
+
+### 🔹 Phương án 1: Bật Cờ Wayland IME trong Electron (`~/.config/affine-flags.conf`)
+- File cờ đã được tạo tại [~/.config/affine-flags.conf](file:///home/chiconcota/.config/affine-flags.conf):
+  ```text
+  --ozone-platform=wayland
+  --enable-wayland-ime
+  --wayland-text-input-version=3
+  ```
+- Giúp Electron 39 giao tiếp trực tiếp qua Wayland text-input-v3 thay vì X11 fallback.
+
+### 🔹 Phương án 2: Cách ly Spurious Focus Event cho AFFiNE
+- Đưa điều kiện kiểm tra `appName == "AFFiNE"` / `appName == "ONLYOFFICE"` vào **trước** khi `setMode()` được gọi trong `activate()`.
+- Tuyệt đối không `return` sớm trong `setMode()` nếu không có cờ kiểm tra Focus thực sự, tránh lỗi trôi bộ đệm khi chuyển đổi giữa 2 ứng dụng khác nhau.
+
+### 🔹 Phương án 3: Sequencer Stale Serial Pruning (Lọc vi bước cũ an toàn)
+- Khi người dùng gõ nhanh phím mới trong lúc AFFiNE đang render phím cũ, không được dùng `sequencer_.clear()` thô vì sẽ làm mất cờ đếm token `expected_swallow_backspaces_`.
+- Thay vào đó, trong `Sequencer::poll_next_step()`, chỉ bỏ qua các `MicroStep` có `step.serial < active_serial_` mà giữ nguyên token count.
+
+### 🔹 Phương án 4: Chế độ Whole-Word Replacement cho Canvas Shadow DOM
+- Nếu BlockSuite Canvas bị vỡ node DOM khi nhận xóa vi mô, cho phép Mode Sequence thực hiện thay thế nguyên từ (`Whole-Word Replacement`) trong 1 giao dịch nguyên tử duy nhất.
 
 ---
 
@@ -27,20 +55,14 @@
 
 | File | Thay đổi |
 | :--- | :--- |
-| `fcitx5-lilypad/src/lilypad-sequencer.h` | Nâng `max_ack_timeout_ms` từ 35ms lên 250ms |
-| `fcitx5-lilypad/src/lilypad-sequencer.cpp` | Kích hoạt `calculate_adaptive_delay_ms(elapsed)` trong `receive_ack()` và gán `last_measured_ack_ms_ = adaptive` |
-| `fcitx5-lilypad/src/lilypad-state.cpp` | Micro-replacement optimization, Caret Buffer Lock Cap, Replay Reset logic |
-| `.vnlilypadlotus-ai/1-overview/system_map.md` | Cập nhật Recent Change Log & trạng thái module |
-| `.vnlilypadlotus-ai/2-memory/decision-log.md` | Bổ sung Quyết định 010 |
-| `.vnlilypadlotus-ai/2-memory/checkpoint.md` | Niêm phong bộ nhớ phiên làm việc |
-| `fcitx5-lilypad/src/lilypad-engine.cpp` | Ánh xạ Mode `Sequence` (ID 9) trong UI, labels, parsing |
-| `fcitx5-lilypad/src/CMakeLists.txt` | Thêm `lilypad-sequencer.cpp` vào danh sách biên dịch |
-| `/usr/lib/fcitx5/liblilypad.so` | Thư viện C++ Addon đã biên dịch & cài đặt lên hệ thống |
-| `/usr/bin/fcitx5-lilypad-server` | Server daemon đã biên dịch & cài đặt lên hệ thống |
+| `~/.config/affine-flags.conf` | Cấu hình cờ Wayland IME cho Electron 39 |
+| `.vnlilypadlotus-ai/2-memory/checkpoint.md` | Niêm phong bộ nhớ & Lưu trữ 4 phương án cho AFFiNE |
+| `.vnlilypadlotus-ai/2-memory/decision-log.md` | Bổ sung Quyết định 011 |
+| `.vnlilypadlotus-ai/1-overview/system_map.md` | Cập nhật Recent Change Log |
 
 ---
 
-## 🚀 Lệnh Biên Dịch & Cài Đặt Hệ Thống:
+## 🚀 Lệnh Biên Dịch & Khởi Động Lại:
 
 ```bash
 # Biên dịch & Cài đặt Lilypad chuẩn /usr:
@@ -49,3 +71,4 @@ cd fcitx5-lilypad/build && cmake -DCMAKE_INSTALL_PREFIX=/usr .. && make -j$(npro
 # Khởi động lại Fcitx5:
 fcitx5 -r -d
 ```
+

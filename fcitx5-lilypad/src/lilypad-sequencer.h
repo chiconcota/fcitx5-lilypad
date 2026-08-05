@@ -51,6 +51,9 @@ namespace fcitx {
         uint32_t active_serial() const {
             return active_serial_.load();
         }
+        uint64_t last_measured_ack_ms() const {
+            return last_measured_ack_ms_;
+        }
 
         void push_action(const MicroStep& step);
         bool poll_next_step(MicroStep& out_step);

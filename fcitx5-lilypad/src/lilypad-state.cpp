@@ -445,10 +445,11 @@ namespace fcitx {
                         sequencer_.clear_barrier();
                         MicroStep step;
                         if (sequencer_.poll_next_step(step) && step.type == MicroStepType::CommitString) {
-                            sequencer_.set_waiting_ack();
                             auto& eventLoop    = engine_->instance()->eventLoop();
                             auto  now_time     = ::fcitx::now(CLOCK_MONOTONIC);
-                            auto  timeout_time = now_time + 5000; // 5ms micro-delay in microseconds (5000us)
+                            int bsCount = std::max(1, expected_backspaces_);
+                            uint64_t micro_delay_us = 6000 + static_cast<uint64_t>(bsCount * 4000); // 1bs=10ms, 2bs=14ms, 3bs=18ms for DOM settlement
+                            auto  timeout_time = now_time + micro_delay_us;
                             std::string commitStr = step.text;
                             uint32_t serial = step.serial;
                             commit_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, timeout_time, 0, [this, commitStr, serial](EventSourceTime*, uint64_t) {
@@ -457,9 +458,9 @@ namespace fcitx {
                                 sequencer_.receive_ack(serial);
                                 is_deleting_.store(false, std::memory_order_release);
                                 if (!buffered_keys_.empty()) {
-                                    LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys after 2ms micro-gap");
+                                    LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys after 15ms micro-gap");
                                     auto& loop = engine_->instance()->eventLoop();
-                                    auto  t    = ::fcitx::now(CLOCK_MONOTONIC) + 2000; // 2ms gap
+                                    auto  t    = ::fcitx::now(CLOCK_MONOTONIC) + 15000; // 15ms micro-gap for Chromium DOM
                                     commit_timer_ = loop.addTimeEvent(CLOCK_MONOTONIC, t, 0, [this](EventSourceTime*, uint64_t) {
                                         replayBufferedKeys();
                                         return false;

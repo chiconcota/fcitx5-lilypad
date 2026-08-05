@@ -90,6 +90,13 @@ namespace fcitx {
             }
         }
 
+        while (!queue_.empty() && queue_.front().serial < active_serial_.load(std::memory_order_acquire)) {
+            LILYPAD_INFO("🛡️ [SERIAL STALE DISCARD] Discarding outdated MicroStep [Serial #" +
+                       std::to_string(queue_.front().serial) + "] for active Serial #" +
+                       std::to_string(active_serial_.load()));
+            queue_.pop_front();
+        }
+
         if (queue_.empty()) {
             return false;
         }
@@ -104,6 +111,9 @@ namespace fcitx {
             barrier_             = BarrierState::WaitingMicroDelay;
             barrier_start_time_  = now;
             barrier_target_time_ = now + std::chrono::milliseconds(last_measured_ack_ms_);
+        } else if (out_step.type == MicroStepType::CommitString) {
+            barrier_            = BarrierState::WaitingForAck;
+            barrier_start_time_ = now;
         }
 
         return true;
