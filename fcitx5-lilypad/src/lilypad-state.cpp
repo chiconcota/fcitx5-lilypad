@@ -461,9 +461,11 @@ namespace fcitx {
                                 sequencer_.receive_ack(serial);
                                 is_deleting_.store(false, std::memory_order_release);
                                 if (!buffered_keys_.empty()) {
-                                    LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys after 15ms micro-gap");
-                                    auto& loop = engine_->instance()->eventLoop();
-                                    auto  t    = ::fcitx::now(CLOCK_MONOTONIC) + 15000; // 15ms micro-gap for Chromium DOM
+                                     bool isSpace = (buffered_keys_.front().sym == ' ' || Key::keySymToUTF8(static_cast<KeySym>(buffered_keys_.front().sym)) == " ");
+                                     uint64_t replay_delay_us = isSpace ? 3000 : 100; // 3ms cho Space, 0.1ms cho phím thường
+                                     LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys (isSpace: " + std::to_string(isSpace) + ") after " + std::to_string(replay_delay_us) + "us");
+                                     auto& loop = engine_->instance()->eventLoop();
+                                     auto  t    = ::fcitx::now(CLOCK_MONOTONIC) + replay_delay_us;
                                     commit_timer_ = loop.addTimeEvent(CLOCK_MONOTONIC, t, 0, [this](EventSourceTime*, uint64_t) {
                                         replayBufferedKeys();
                                         return false;
