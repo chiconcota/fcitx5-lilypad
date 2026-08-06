@@ -48,18 +48,14 @@ Nếu bạn đang sử dụng **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixO
 
 ## 💡 Điểm Nổi Bật Của Kiến Trúc Mới (`v2.2.0-modular-sensor`)
 
-1. **0% Cướp Phím Phần Cứng (100% Phím Tắt & Phím Chức Năng Hoạt Động Tự Do):**
-   - Bộ gõ không chiếm giữ bàn phím phần ứng ở tầng Kernel (`0% EVIOCGRAB`).
-   - Mọi phím tắt (`Ctrl+C`, `Ctrl+V`, `Ctrl+Z`, `Alt+Tab`, `Super+Space`) và phím chức năng (`F1..F12`, Mũi tên, Volume, Brightness) chảy tự nhiên 100% không bao giờ bị đơ hay kẹt phím.
-
-2. **Chế Độ Gõ `Sequence` (ID 9) & Modular IAckSensor Architecture:**
+1. **Chế Độ Gõ `Sequence` (ID 9) & Modular IAckSensor Architecture:**
    - **Tích hợp Sequencer Layer C++:** Duy trì máy trạng thái vi bước nguyên tử (Micro-Step State Machine), đếm token xóa nguyên tử `expected_swallow_backspaces_`, và tự động đo độ trễ `elapsed` thực tế của ứng dụng.
    - **EMA Machine Learning Control:** Tự động nới rộng Dynamic Barrier khi App/Messenger bị lag DOM và tự suy giảm (decay) nhanh về $5\text{ms}$ khi App mượt.
 
-3. **Optimized Batch Replay Protocol:**
+2. **Optimized Batch Replay Protocol:**
    - Xả hàng đợi phím đệm tốc độ $0.1\text{ms}$ cho ký tự thường và hoãn nhịp $3\text{ms}$ cho phím `Space`, bẻ gãy 100% bẫy đệ quy hoãn 15ms từng phím, triệt hạ hoàn toàn lỗi kẹt phím 4.5s khi gõ tốc độ cao.
 
-4. **Multi-User Systemd Daemon (`fcitx5-lilypad-server@.service`):**
+3. **Multi-User Systemd Daemon (`fcitx5-lilypad-server@.service`):**
    - Chạy dịch vụ daemon uinput độc lập per-user, tự động xác thực IPC bằng `SO_PEERCRED` (`cred.uid == expected_uid`), đảm bảo an toàn tuyệt đối cho hệ thống multi-user.
 
 ---
