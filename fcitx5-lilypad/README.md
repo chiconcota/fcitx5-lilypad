@@ -3,158 +3,108 @@
 <a id="readme-top"></a>
 
 <div align="center">
-  <a href="https://lilypadinputmethod.github.io/">
+  <a href="https://github.com/chiconcota/fcitx5-lilypad">
     <img src="data/fcitx-lilypad-README.svg" alt="Logo" width="80" height="80">
   </a>
 
-<h2 align="center">Fcitx5 Lilypad</h2>
+<h2 align="center">Fcitx5 Lilypad (vnlilypad-lotus)</h2>
 
 <p align="center">
-    <b>Bộ gõ tiếng Việt đơn giản, hiệu năng cao cho Linux</b>
-    <br />
-    <a href="https://lilypadinputmethod.github.io/"><strong>Khám phá trang chủ »</strong></a>
+    <b>Bộ gõ tiếng Việt thế hệ mới cho Linux Wayland & X11</b>
     <br />
     <br />
-    <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/releases">
-      <img src="https://img.shields.io/github/v/release/LilypadInputMethod/fcitx5-lilypad?style=flat&color=success" alt="Release">
+    <a href="https://github.com/chiconcota/fcitx5-lilypad/releases">
+      <img src="https://img.shields.io/github/v/release/chiconcota/fcitx5-lilypad?style=flat&color=success" alt="Release">
     </a>
-    <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/LilypadInputMethod/fcitx5-lilypad?style=flat&color=blue" alt="License">
+    <a href="https://github.com/chiconcota/fcitx5-lilypad/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/chiconcota/fcitx5-lilypad?style=flat&color=blue" alt="License">
     </a>
-    <a href="https://lilypadinputmethod.github.io/">
-      <img src="https://img.shields.io/badge/website-live-brightgreen?style=flat&logo=firefox&logoColor=white" alt="Website">
+    <a href="https://github.com/niri-wm/niri">
+      <img src="https://img.shields.io/badge/tested_compositor-Niri-purple.svg" alt="Niri Tested">
     </a>
-    <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/stargazers">
-      <img src="https://img.shields.io/github/stars/LilypadInputMethod/fcitx5-lilypad?style=flat&color=yellow" alt="Stars">
+    <a href="#cài-đặt--hướng-dẫn-sử-dụng">
+      <img src="https://img.shields.io/badge/target_packaging-AUR_Arch_Linux-blue.svg" alt="AUR Target">
     </a>
-    <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/network/members">
-      <img src="https://img.shields.io/github/forks/LilypadInputMethod/fcitx5-lilypad?style=flat&color=orange" alt="Forks">
+    <a href="https://github.com/chiconcota/fcitx5-lilypad/issues">
+      <img src="https://img.shields.io/github/issues/chiconcota/fcitx5-lilypad?style=flat&color=red" alt="Issues">
     </a>
-    <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/issues">
-      <img src="https://img.shields.io/github/issues/LilypadInputMethod/fcitx5-lilypad?style=flat&color=red" alt="Issues">
-    </a>
-    <a href="#contributors-">
-      <img src="https://img.shields.io/badge/all_contributors-8-orange.svg?style=flat-square" alt="All Contributors">
-    </a>
-    <a href="https://deepwiki.com/LilypadInputMethod/fcitx5-lilypad"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
   </p>
 
 <p align="center">
-    <a href="https://lilypadinputmethod.github.io/#installation"><strong>Cài đặt »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/issues/new?template=bug_report.yml">Báo lỗi</a>
+    <a href="#cài-đặt--hướng-dẫn-sử-dụng"><strong>Cài đặt »</strong></a>
     ·
-    <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/issues/new?template=feature_request.yml">Yêu cầu tính năng</a>
+    <a href="https://github.com/chiconcota/fcitx5-lilypad/issues/new">Báo lỗi</a>
+    ·
+    <a href="https://github.com/chiconcota/fcitx5-lilypad/issues/new">Yêu cầu tính năng</a>
   </p>
 </div>
 
 <br />
 
-Dự án này là bản fork được tối ưu hóa từ [bộ gõ VMK](https://github.com/thanhpy2009/VMK). Chân thành cảm ơn tác giả Thành đã đặt nền móng cho bộ gõ này.
-
-## Cài đặt & Hướng dẫn sử dụng
-
-Để có trải nghiệm tốt nhất và nhận được các hướng dẫn cài đặt, cấu hình chi tiết, chính xác cho từng bản phân phối Linux (Arch, Debian, Ubuntu, Fedora, NixOS...), vui lòng truy cập trang chủ của dự án:
-
-**[Xem Hướng dẫn cài đặt chi tiết tại đây](https://lilypadinputmethod.github.io/#installation)**
+Dự án này là bản nâng cấp tối ưu hóa kiến trúc dựa trên [VMK](https://github.com/thanhpy2009/VMK). Chân thành cảm ơn tác giả Thành đã đặt nền móng cho bộ gõ này.
 
 ---
 
-## Biên dịch từ mã nguồn (Dành cho nhà phát triển)
+## 🚀 Định Hướng Đóng Gói Lên AUR (Arch User Repository)
 
-Nếu bạn muốn tự biên dịch bộ gõ từ mã nguồn để đóng góp hoặc tuỳ chỉnh:
+Bộ gõ **`fcitx5-lilypad`** đang được chuẩn bị hoàn thiện để phát hành chính thức gói **AUR (`fcitx5-lilypad`)** dành cho người dùng Arch Linux và các distro biến thể (Manjaro, EndeavourOS, Garuda Linux).
 
-### Yêu cầu hệ thống
+---
 
-- **Debian/Ubuntu:** `sudo apt-get install cmake extra-cmake-modules libfcitx5core-dev libfcitx5config-dev libfcitx5utils-dev libinput-dev libudev-dev g++ golang hicolor-icon-theme pkg-config libx11-dev fcitx5-modules-dev python3-qtpy python3-dbus acl`
-- **Fedora/RHEL:** `sudo dnf install cmake extra-cmake-modules fcitx5-devel libinput-devel libudev-devel gcc-c++ golang hicolor-icon-theme systemd-devel libX11-devel python3-pyside6 python3-QtPy python3-dbus acl`
-- **openSUSE:** `sudo zypper install cmake extra-cmake-modules fcitx5-devel libinput-devel systemd-devel gcc-c++ go hicolor-icon-theme systemd-devel libX11-devel udev python3-pyside6 python3-QtPy python3-dbus-python acl`
+## 🎯 Trạng Thái Hiện Tại & Môi Trường Thử Nghiệm
 
-### Cài đặt
+Hiện tại, dự án được tác giả **tối ưu hóa và kiểm thử trực tiếp trên Niri Compositor (Arch Linux)** với module cảm biến thích ứng `NiriAckSensor`. 
+
+Do giới hạn về thiết bị thử nghiệm, tác giả **chưa thể kiểm thử toàn diện trên tất cả các Window Compositors và Linux Distros khác nhau**. Vì vậy, **sự đóng góp, thử nghiệm và phản hồi từ Cộng đồng Linux Việt Nam là cực kỳ quan trọng!**
+
+### 📊 Ma Trận Tương Thích (Compositor & Distro Matrix)
+
+| Window Compositor | Trạng thái | Ghi chú | Nhu cầu đóng góp |
+| :--- | :---: | :--- | :---: |
+| **Niri** | 🟢 **Sẵn sàng** | Tích hợp `NiriAckSensor` + EMA Machine Learning Control | Thử nghiệm nâng cao |
+| **Hyprland** | 🟡 **Thử nghiệm** | Chạy vạn năng qua `GenericAckSensor` | **Cần Tester & Maintainer** |
+| **Sway** | 🟡 **Thử nghiệm** | Hỗ trợ qua Wayland `zwp_input_method_v1/v2` | **Cần Tester** |
+| **KDE Plasma (Wayland)**| 🟡 **Thử nghiệm** | Cần kiểm thử độ trễ IPC Wayland | **Cần Tester** |
+| **GNOME (Wayland)** | 🟡 **Thử nghiệm** | Cần kiểm thử tương thích với Mutter | **Cần Tester** |
+| **X11 (Generic)** | 🟢 **Sẵn sàng** | Hỗ trợ qua Fcitx5 X11 Frontend | Phản hồi ứng dụng |
+
+---
+
+## 🤝 Kêu Gọi Cộng Đồng Đóng Góp (Call for Testers)
+
+Nếu bạn đang sử dụng **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixOS, Void...**, hãy giúp bộ gõ hoàn thiện hơn bằng cách:
+
+1. **Thử nghiệm bộ gõ** trên môi trường của bạn.
+2. **Báo cáo sự cố (Issue)** nếu gặp lỗi lặp chữ, đơ chữ hoặc kẹt bộ đệm.
+3. **Gửi Log thời gian thực**: Sử dụng script [scripts/read_logs.sh](file:///home/chiconcota/Documents/vnlilypad-lotus/scripts/read_logs.sh) để đính kèm log chi tiết khi báo lỗi.
+4. **Đóng góp Code (Pull Request)**: Viết thêm Cảm biến ACK riêng (`IAckSensor`) cho các compositor như Hyprland hay Sway.
+
+---
+
+## 📦 Cài Đặt & Hướng Dẫn Sử Dụng
+
+### Biên dịch từ Mã Nguồn (Build from Source)
 
 ```bash
-git clone https://github.com/LilypadInputMethod/fcitx5-lilypad.git
+# 1. Clone repository
+git clone https://github.com/chiconcota/fcitx5-lilypad.git
 cd fcitx5-lilypad
-cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=/usr/lib . #LIBDIR tuỳ vào distro
-make
+
+# 2. Biên dịch C++ Addon
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+make -j$(nproc)
 sudo make install
+
+# 3. Kích hoạt Server Daemon qua Systemd
+sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
+
+# 4. Khởi động lại Fcitx5
+fcitx5 -r &
 ```
 
 ---
 
-<a id="đóng-góp"></a>
+## 📄 Giấy Phép (License)
 
-## 🤝 Đóng góp
-
-Đóng góp là điều làm cho cộng đồng mã nguồn mở trở thành một nơi tuyệt vời để học hỏi, truyền cảm hứng và sáng tạo. Mọi đóng góp của bạn đều được **đánh giá cao**.
-
-Vui lòng xem hướng dẫn chi tiết [tại đây](CONTRIBUTING.md) để biết cách tham gia phát triển dự án, quy trình Pull Request, quy tắc code style và **quy tắc ứng xử**.
-
-Đừng quên tặng dự án một ⭐! Cảm ơn bạn rất nhiều!
-
----
-
-## Những người đóng góp ✨
-
-Cảm ơn những con người tuyệt vời ([chú thích emoji](https://allcontributors.org/docs/en/emoji-key)):
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tbody>
-    <tr>
-      <td align="center" valign="top" width="25%"><a href="https://github.com/nhktmdzhg"><img src="https://avatars.githubusercontent.com/u/57983253?v=4?s=100" width="100px;" alt="Nguyen Hoang Ky"/><br /><sub><b>Nguyen Hoang Ky</b></sub></a><br /><a href="#blog-nhktmdzhg" title="Blogposts">📝</a> <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/commits?author=nhktmdzhg" title="Code">💻</a> <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/commits?author=nhktmdzhg" title="Documentation">📖</a> <a href="#projectManagement-nhktmdzhg" title="Project Management">📆</a> <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/pulls?q=is%3Apr+reviewed-by%3Anhktmdzhg" title="Reviewed Pull Requests">👀</a></td>
-      <td align="center" valign="top" width="25%"><a href="https://github.com/hthienloc"><img src="https://avatars.githubusercontent.com/u/148019203?v=4?s=100" width="100px;" alt="Huỳnh Thiện Lộc"/><br /><sub><b>Huỳnh Thiện Lộc</b></sub></a><br /><a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/issues?q=author%3Ahthienloc" title="Bug reports">🐛</a> <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/commits?author=hthienloc" title="Documentation">📖</a> <a href="#design-hthienloc" title="Design">🎨</a> <a href="#translation-hthienloc" title="Translation">🌍</a> <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/commits?author=hthienloc" title="Code">💻</a></td>
-      <td align="center" valign="top" width="25%"><a href="https://github.com/justanoobcoder"><img src="https://avatars.githubusercontent.com/u/57614330?v=4?s=100" width="100px;" alt="Nguyễn Hồng Hiệp"/><br /><sub><b>Nguyễn Hồng Hiệp</b></sub></a><br /><a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/commits?author=justanoobcoder" title="Documentation">📖</a></td>
-      <td align="center" valign="top" width="25%"><a href="https://github.com/Miho1254"><img src="https://avatars.githubusercontent.com/u/83270073?v=4?s=100" width="100px;" alt="Đặng Quang Hiển"/><br /><sub><b>Đặng Quang Hiển</b></sub></a><br /><a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/commits?author=Miho1254" title="Documentation">📖</a> <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/commits?author=Miho1254" title="Code">💻</a></td>
-    </tr>
-    <tr>
-      <td align="center" valign="top" width="25%"><a href="https://github.com/Zebra2711"><img src="https://avatars.githubusercontent.com/u/89755535?v=4?s=100" width="100px;" alt="Zebra2711"/><br /><sub><b>Zebra2711</b></sub></a><br /><a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/issues?q=author%3AZebra2711" title="Bug reports">🐛</a> <a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/commits?author=Zebra2711" title="Code">💻</a></td>
-      <td align="center" valign="top" width="25%"><a href="https://github.com/ductrantrong"><img src="https://avatars.githubusercontent.com/u/96020037?v=4?s=100" width="100px;" alt="ductrantrong"/><br /><sub><b>ductrantrong</b></sub></a><br /><a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/commits?author=ductrantrong" title="Code">💻</a></td>
-      <td align="center" valign="top" width="25%"><a href="https://github.com/hien-ngo29"><img src="https://avatars.githubusercontent.com/u/98635550?v=4?s=100" width="100px;" alt="Ngo Phu Hien"/><br /><sub><b>Ngo Phu Hien</b></sub></a><br /><a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/commits?author=hien-ngo29" title="Code">💻</a></td>
-      <td align="center" valign="top" width="25%"><a href="https://github.com/minhtrancccp"><img src="https://avatars.githubusercontent.com/u/33189614?v=4?s=100" width="100px;" alt="Minh Tran"/><br /><sub><b>Minh Tran</b></sub></a><br /><a href="#platform-minhtrancccp" title="Packaging/porting to new platform">📦</a></td>
-    </tr>
-    <tr>
-      <td align="center" valign="top" width="25%"><a href="https://github.com/hieutran21198"><img src="https://avatars.githubusercontent.com/u/87953912?v=4?s=100" width="100px;" alt="Trần Minh Hiếu (Cirius)"/><br /><sub><b>Trần Minh Hiếu (Cirius)</b></sub></a><br /><a href="#platform-hieutran21198" title="Packaging/porting to new platform">📦</a></td>
-      <td align="center" valign="top" width="25%"><a href="https://github.com/namtao"><img src="https://avatars.githubusercontent.com/u/48555338?v=4?s=100" width="100px;" alt="namtao"/><br /><sub><b>namtao</b></sub></a><br /><a href="https://github.com/LilypadInputMethod/fcitx5-lilypad/commits?author=namtao" title="Code">💻</a></td>
-    </tr>
-  </tbody>
-  <tfoot>
-    <tr>
-      <td align="center" size="13px" colspan="4">
-        <img src="https://raw.githubusercontent.com/all-contributors/all-contributors-cli/1b8533af435da9854653492b1327a23a4dbd0a10/assets/logo-small.svg">
-          <a href="https://all-contributors.js.org/docs/en/bot/usage">Add your contributions</a>
-        </img>
-      </td>
-    </tr>
-  </tfoot>
-</table>
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-
-Dự án này tuân thủ cấu trúc của [all-contributors](https://github.com/all-contributors/all-contributors). Mọi đóng góp đều được hoan nghênh!
-
----
-
-<a id="giấy-phép"></a>
-
-## 📃 Giấy phép
-
-Dự án được phân phối dưới giấy phép GNU General Public License v3. Xem [`LICENSE`](LICENSE) để biết thêm chi tiết.
-
----
-
-## ✨ Lịch sử sao
-
-<a href="https://star-history.com/#LilypadInputMethod/fcitx5-lilypad&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=LilypadInputMethod/fcitx5-lilypad&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=LilypadInputMethod/fcitx5-lilypad&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=LilypadInputMethod/fcitx5-lilypad&type=date&legend=top-left" />
- </picture>
-</a>
+Phân phối dưới Giấy phép GPL-3.0-or-later. Xem `LICENSE` để biết thêm chi tiết.

@@ -1,104 +1,95 @@
-# 🪷 vnlilypad-lotus (Lotus Upgrade Architecture)
+# 🪷 fcitx5-lilypad (vnlilypad-lotus)
 
-> **Bộ gõ Tiếng Việt thế hệ mới trên Linux (Wayland & X11)** dựa trên kiến trúc Hybrid: **Fcitx5 C++ Addon + Sequencer Layer Orchestration + Pure Uinput Server Daemon**.
+> **Bộ gõ Tiếng Việt thế hệ mới cho Linux Wayland & X11** dựa trên kiến trúc Hybrid: **Fcitx5 C++ Addon + Modular IAckSensor + Pure Kernel Uinput Server Daemon**.
 
-[![Release](https://img.shields.io/github/v/release/chiconcota/fcitx5-lilypad?style=flat&color=success)](https://github.com/chiconcota/fcitx5-lilypad)
+[![Release](https://img.shields.io/github/v/release/chiconcota/fcitx5-lilypad?style=flat&color=success)](https://github.com/chiconcota/fcitx5-lilypad/releases)
 [![License](https://img.shields.io/github/license/chiconcota/fcitx5-lilypad?style=flat&color=blue)](LICENSE)
-[![Status](https://img.shields.io/badge/status-active-brightgreen.svg)](https://github.com/chiconcota/fcitx5-lilypad)
+[![Tested Compositor](https://img.shields.io/badge/tested_compositor-Niri-purple.svg)](https://github.com/niri-wm/niri)
+[![Target Packaging](https://img.shields.io/badge/target_packaging-AUR_Arch_Linux-blue.svg)](#-phát-hành--cài-đặt)
+[![Community Status](https://img.shields.io/badge/community-call_for_testers-orange.svg)](#-kêu-gọi-cộng-đồng-đóng-góp--thử-nghiệm-call-for-testers)
 
 ---
 
-## 💡 Điểm Nổi Bật Của Kiến Trúc Mới
+## 🚀 Định Hướng Đóng Gói Lên AUR (Arch User Repository)
 
-1. **0% EVIOCGRAB (100% Phím Tắt & Phím Chức Năng Hoạt Động Tự Do):**
-   - Bộ gõ không chiếm giữ bàn phím phần cứng ở tầng Kernel (`0% EVIOCGRAB`).
+Bộ gõ **`fcitx5-lilypad`** đang được chuẩn bị hoàn thiện để phát hành chính thức gói **AUR (`fcitx5-lilypad`)** dành cho người dùng Arch Linux và các distro biến thể (Manjaro, EndeavourOS, Garuda Linux).
+
+---
+
+## 🎯 Trạng Thái Hiện Tại & Môi Trường Thử Nghiệm
+
+Hiện tại, dự án được tác giả **tối ưu hóa và kiểm thử trực tiếp trên Niri Compositor (Arch Linux)** với module cảm biến thích ứng `NiriAckSensor`. 
+
+Do giới hạn về phần cứng và thiết bị thử nghiệm, tác giả **chưa thể kiểm thử toàn diện trên tất cả các Window Compositors và Linux Distros khác nhau**. Vì vậy, **sự đóng góp, thử nghiệm và phản hồi từ Cộng đồng Linux Việt Nam là cực kỳ quan trọng!**
+
+### 📊 Ma Trận Tương Thích (Compositor & Distro Matrix)
+
+| Window Compositor | Trạng thái | Ghi chú | Nhu cầu đóng góp |
+| :--- | :---: | :--- | :---: |
+| **Niri** | 🟢 **Sẵn sàng** | Tích hợp `NiriAckSensor` + EMA Machine Learning Control | Thử nghiệm nâng cao |
+| **Hyprland** | 🟡 **Thử nghiệm** | Chạy vạn năng qua `GenericAckSensor` | **Cần Tester & Maintainer** |
+| **Sway** | 🟡 **Thử nghiệm** | Hỗ trợ qua Wayland `zwp_input_method_v1/v2` | **Cần Tester** |
+| **KDE Plasma (Wayland)**| 🟡 **Thử nghiệm** | Cần kiểm thử độ trễ IPC Wayland | **Cần Tester** |
+| **GNOME (Wayland)** | 🟡 **Thử nghiệm** | Cần kiểm thử tương thích với Mutter | **Cần Tester** |
+| **X11 (Generic)** | 🟢 **Sẵn sàng** | Hỗ trợ qua Fcitx5 X11 Frontend | Phản hồi ứng dụng |
+
+---
+
+## 🤝 Kêu Gọi Cộng Đồng Đóng Góp (Call for Testers)
+
+Nếu bạn đang sử dụng **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixOS, Void...**, hãy giúp bộ gõ hoàn thiện hơn bằng cách:
+
+1. **Thử nghiệm bộ gõ** trên môi trường của bạn.
+2. **Báo cáo sự cố (Issue)** nếu gặp lỗi lặp chữ, đơ chữ hoặc kẹt bộ đệm.
+3. **Gửi Log thời gian thực**: Sử dụng script [scripts/read_logs.sh](file:///home/chiconcota/Documents/vnlilypad-lotus/scripts/read_logs.sh) để đính kèm log chi tiết khi báo lỗi.
+4. **Đóng góp Code (Pull Request)**: Viết thêm Cảm biến ACK riêng (`IAckSensor`) cho các compositor như Hyprland hay Sway.
+
+---
+
+## 💡 Điểm Nổi Bật Của Kiến Trúc Mới (`v2.2.0-modular-sensor`)
+
+1. **0% Cướp Phím Phần Cứng (100% Phím Tắt & Phím Chức Năng Hoạt Động Tự Do):**
+   - Bộ gõ không chiếm giữ bàn phím phần ứng ở tầng Kernel (`0% EVIOCGRAB`).
    - Mọi phím tắt (`Ctrl+C`, `Ctrl+V`, `Ctrl+Z`, `Alt+Tab`, `Super+Space`) và phím chức năng (`F1..F12`, Mũi tên, Volume, Brightness) chảy tự nhiên 100% không bao giờ bị đơ hay kẹt phím.
 
-2. **Chế Độ Gõ Mới `Sequence` (ID 9) & Sequencer Layer Orchestration:**
-   - **Tích hợp Sequencer Layer C++:** Duy trì máy trạng thái vi bước nguyên tử (Micro-Step State Machine), kết hợp màng ngắt nhịp vi mô (5ms micro-delay) và rào chắn **Wayland Frame ACK Barrier (Niri, Hyprland, GNOME)**.
-   - Triệt tiêu $100\%$ hiện tượng lặp rác chữ (`mminimln`, `choa`) và đè chữ trên Terminal, Chrome, VS Code.
+2. **Chế Độ Gõ `Sequence` (ID 9) & Modular IAckSensor Architecture:**
+   - **Tích hợp Sequencer Layer C++:** Duy trì máy trạng thái vi bước nguyên tử (Micro-Step State Machine), đếm token xóa nguyên tử `expected_swallow_backspaces_`, và tự động đo độ trễ `elapsed` thực tế của ứng dụng.
+   - **EMA Machine Learning Control:** Tự động nới rộng Dynamic Barrier khi App/Messenger bị lag DOM và tự suy giảm (decay) nhanh về $5\text{ms}$ khi App mượt.
 
-3. **Bảo Vệ Bộ Đệm Ứng Dụng Đa Ngữ Cảnh (Multi-Context & Spurious Reset Protection):**
-   - Tự động nhận diện và bảo vệ bộ nhớ gõ Tiếng Việt trên các ứng dụng Electron/Canvas phức tạp (**ONLYOFFICE**, **AFFiNE**, **Slack**, **Discord**).
-   - Khắc phục lỗi xung đột giao thức X11 $\leftrightarrow$ Wayland và xử lý đa tiến trình (`DesktopEditors` vs `editors_helper`).
+3. **Optimized Batch Replay Protocol:**
+   - Xả hàng đợi phím đệm tốc độ $0.1\text{ms}$ cho ký tự thường và hoãn nhịp $3\text{ms}$ cho phím `Space`, bẻ gãy 100% bẫy đệ quy hoãn 15ms từng phím, triệt hạ hoàn toàn lỗi kẹt phím 4.5s khi gõ tốc độ cao.
 
-4. **Bảo Vệ Phím Gõ Nhanh (`replayBufferedKeys`):**
-   - Tự động lưu và tái phát lại 100% các phím gõ siêu tốc trong lúc xóa (như phím `n` trong `thương`) trên cả Wayland Native, X11 và DBus.
-
-5. **Giao Diện Cấu Hình Hiện Đại (PyQt Settings GUI):**
-   - Trình quản lý chế độ gõ (Mode Manager), quy tắc từng ứng dụng (App Rules), chỉnh sửa phím gõ (Keymap Editor), và từ điển tùy chỉnh qua lệnh `fcitx5-lilypad-settings`.
+4. **Multi-User Systemd Daemon (`fcitx5-lilypad-server@.service`):**
+   - Chạy dịch vụ daemon uinput độc lập per-user, tự động xác thực IPC bằng `SO_PEERCRED` (`cred.uid == expected_uid`), đảm bảo an toàn tuyệt đối cho hệ thống multi-user.
 
 ---
 
-## 🏗️ Sơ Đồ Kiến Trúc Hệ Thống
+## 📦 Phát Hành & Cài Đặt (Installation Guide)
 
-```text
- ┌────────────────────────────────────────────────────────────────────────┐
- │                   FCITX5 FRAMEWORK (HẠ TẦNG GÁC CỬA)                   │
- │  - Quản lý Wayland IPC (zwp_input_method_v2) & X11 / DBus IME Frontend │
- │  - Quản lý Focus, Window Manager, System Tray Icon & GUI Configuration │
- └───────────────────────────────────┬────────────────────────────────────┘
-                                     │ (KeyEvent & InputContext)
-                                     ▼
- ┌────────────────────────────────────────────────────────────────────────┐
- │            LILYPAD SEQUENCER LAYER (BỘ NÃO ĐIỀU PHỐI CHÍNH)            │
- │  - lilypad-sequencer.h/.cpp: Serial ID Tagging & MicroStep Queue       │
- │  - lilypad-state.cpp: Đếm token nguyên tử expected_swallow_backspaces_ │
- │  - Backspace Passthrough (return false): Phím xóa uinput bay tới App  │
- │  - EventLoop 5ms Micro-delay + Wayland Frame ACK Barrier (35ms Timeout) │
- │  - Universal ReplayBufferedKeys: Bảo vệ 100% phím gõ nhanh             │
- │  - Spurious Reset Guard (!isFocusOut): Bảo vệ ô nhập Electron/AFFiNE   │
- └─────────────────┬──────────────────────────────────┬───────────────────┘
-                   │ (Gửi phím gõ thô)                 │ (Phát phím xóa)
-                   ▼                                  ▼
- ┌──────────────────────────────────┐ ┌──────────────────────────────────┐
- │   BAMBOO TELEX ENGINE (GO C-FFI)  │ │ PURE KERNEL UINPUT SERVER DAEMON │
- │  - Engine xử lý quy tắc Telex/VNI│ │  - fcitx5-lilypad-server daemon  │
- │  - Thư viện C-FFI (bamboo-core)  │ │  - Bắn N phím KEY_BACKSPACE qua  │
- │  - State Rebuild (EngineRebuild) │ │    /dev/uinput (1.5ms inter-gap) │
- └──────────────────────────────────┘ └──────────────────────────────────┘
-```
+### 1. Biên dịch và Cài đặt từ Mã Nguồn (Build from Source)
 
----
-
-## 🛠️ Hướng Dẫn Cài Đặt & Khởi Chạy
-
-### 1. Biên dịch và Cài đặt:
 ```bash
-cd fcitx5-lilypad/build
+# 1. Clone repository
+git clone https://github.com/chiconcota/fcitx5-lilypad.git
+cd fcitx5-lilypad
+
+# 2. Biên dịch C++ Addon
+mkdir build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/usr ..
 make -j$(nproc)
-echo thanh123 | sudo -S make install
-```
+sudo make install
 
-### 2. Kích hoạt Dịch vụ Uinput Server (Tự khởi động cùng hệ thống):
-```bash
+# 3. Kích hoạt Server Daemon qua Systemd
 sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
+
+# 4. Khởi động lại Fcitx5
+fcitx5 -r &
 ```
 
-### 3. Khởi động lại Fcitx5:
-```bash
-fcitx5 -r -d
-```
-
 ---
 
-## ⌨️ Phím Tắt & Thao Tác Thường Dùng
+## 📄 Thư Mục Dự Án Chi Tiết
 
-| Thao tác | Phím tắt / Lệnh | Mô tả |
-| :--- | :--- | :--- |
-| **Bật / Tắt bộ gõ** | `Ctrl + Space` hoặc `Super + Space` | Chuyển đổi giữa gõ Tiếng Việt và Tiếng Anh thô. |
-| **Menu Chọn Chế Độ (Mode Menu)** | **`** *(Dấu huyền dưới phím Esc)* | Hiển thị menu nhanh chọn chế độ (Sequence, Smooth, Preedit, Off...). |
-| **Mở Giao diện Cấu hình** | `fcitx5-lilypad-settings` | Mở ứng dụng GUI cấu hình giao diện PyQt. |
-
----
-
-## ❓ Thắc Mắc & Xử Lý Sự Cố
-
-- **ONLYOFFICE không nhận bộ gõ:** Đảm bảo ONLYOFFICE được khởi chạy với cờ `--enable-wayland-ime` hoặc khởi động lại ứng dụng sau khi cập nhật phiên bản mới.
-- **Lỗi `Connection refused` uinput server:** Kiểm tra trạng thái dịch vụ bằng `systemctl status fcitx5-lilypad-server@$USER.service` và bật lại dịch vụ.
-
----
-
-## 📄 Giấy Phép
-Dự án được phân phối dưới giấy phép **GNU General Public License v3**. Xem chi tiết tại [LICENSE](LICENSE).
+- Mã nguồn C++ Fcitx5 Addon: [fcitx5-lilypad/](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/)
+- Tài liệu Kiến trúc Hệ thống: [.vnlilypadlotus-ai/](file:///home/chiconcota/Documents/vnlilypad-lotus/.vnlilypadlotus-ai/)
+- Script đọc Log thời gian thực: [scripts/read_logs.sh](file:///home/chiconcota/Documents/vnlilypad-lotus/scripts/read_logs.sh)
