@@ -31,7 +31,7 @@ Do giới hạn về phần cứng và thiết bị thử nghiệm, tác giả *
 | **Sway** | 🟡 **Thử nghiệm** | Hỗ trợ qua Wayland `zwp_input_method_v1/v2` | **Cần Tester** |
 | **KDE Plasma (Wayland)**| 🟡 **Thử nghiệm** | Cần kiểm thử độ trễ IPC Wayland | **Cần Tester** |
 | **GNOME (Wayland)** | 🟡 **Thử nghiệm** | Cần kiểm thử tương thích với Mutter | **Cần Tester** |
-| **X11 (Generic)** | 🟢 **Sẵn sàng** | Hỗ trợ qua Fcitx5 X11 Frontend | Phản hồi ứng dụng |
+| **X11 (Generic)** | 🟡 **Thử nghiệm** | Fallback qua Fcitx5 X11 Frontend + `GenericAckSensor` (không có Wayland Protocols) | **Cần Tester** |
 
 ---
 

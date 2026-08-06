@@ -66,7 +66,7 @@ Due to hardware constraints, the author **cannot test comprehensively across all
 | **Sway** | 🟡 **Testing** | Supported via Wayland `zwp_input_method_v1/v2` | **Testers Needed** |
 | **KDE Plasma (Wayland)**| 🟡 **Testing** | Needs IPC latency testing | **Testers Needed** |
 | **GNOME (Wayland)** | 🟡 **Testing** | Needs Mutter compatibility testing | **Testers Needed** |
-| **X11 (Generic)** | 🟢 **Ready** | Supported via Fcitx5 X11 Frontend | App Feedback |
+| **X11 (Generic)** | 🟡 **Testing** | Fallback via Fcitx5 X11 Frontend + `GenericAckSensor` (No Wayland Protocols) | **Testers Needed** |
 
 ---
 
