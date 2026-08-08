@@ -96,10 +96,9 @@ sudo apt update && sudo apt install -y git fcitx5 fcitx5-config-qt libfcitx5core
 # Fedora:
 # sudo dnf install -y git gcc-c++ cmake extra-cmake-modules fcitx5-devel gettext-devel golang libX11-devel
 
-# 1. Clone repository (with --recursive to fetch bamboo-core submodule)
+# 1. Clone repository (with --recursive to automatically fetch bamboo-core submodule)
 git clone --recursive https://github.com/chiconcota/fcitx5-lilypad.git
 cd fcitx5-lilypad/fcitx5-lilypad
-git submodule update --init --recursive
 
 # 2. Build C++ Addon
 mkdir -p build && cd build
