@@ -73,6 +73,15 @@
   2. Kích hoạt Wayland IPC Keyboard Grab (`enable_keyboard_grab = true`) đón phím mượt mà.
 - **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-config.h`, `lilypad-state.cpp`.
 
+### [2026-08-08] Quyết định 015: Lilypad Green Leaf Vector Brand Identity & Open-Source AI Kit Security
+- **Bối cảnh:** Cần phân tách 100% nhận diện thương hiệu giữa Lotus (Hoa Sen cũ) và Lilypad (Lá Súng mới), đồng thời bảo mật bộ công cụ AI Kit (`.agent/`) khi đẩy mã nguồn công khai lên GitHub.
+- **Quyết định:**
+  1. Thay thế bộ icon SVG vector hoa sen cũ bằng bộ **Lá Súng xanh (Lilypad Leaf)** tươi mát trong `fcitx5-lilypad/data/icons/` (`fcitx-lilypad.svg`, `fcitx-lilypad-default.svg`, `fcitx-lilypad-off.svg`, `fcitx-lilypad-emoji.svg`).
+  2. Đặt `useLilypadIcons = true` mặc định trong `lilypad-config.h` để Fcitx5 luôn hiển thị icon Lá Súng xanh trên Popup switcher và Status Bar.
+  3. Cập nhật trang About (`about.py`) hiển thị chính xác phiên bản `2.2.0 (Stable)` cùng định dạng HTML chống xén chữ.
+  4. Loại bỏ 100% mật khẩu cá nhân hardcoded trong `.agent/` và `.fcitx5-lilypad-ai/`, thay bằng cú pháp tổng quát `echo <SUDO_PASSWORD> | sudo -S <command>` để sẵn sàng cho Contributor dùng AI khi phát triển dự án công khai.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/data/icons/`, [fcitx5-lilypad/src/lilypad-config.h:L231](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/src/lilypad-config.h#L231), [settings-gui/ui/pages/about.py](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/settings-gui/ui/pages/about.py), `.agent/`.
+
 ### [2026-08-04] Quyết định 007: Thương Hiệu Độc Lập `fcitx5-lilypad` & Systemd Template Service
 - **Bối cảnh:** Tách độc lập bộ gõ thành gói `fcitx5-lilypad` (`liblilypad.so`), bảo tồn `fcitx5-lotus-main` làm reference backup.
 - **Quyết định:**
