@@ -19,7 +19,10 @@
    - Định dạng văn bản mô tả bằng thẻ HTML `<div style="line-height: 1.4;">` giải quyết dứt điểm 100% lỗi xén mất viền chữ trên/dưới.
    - Cập nhật thông tin tác giả chính: `chiconcota (Creator & Maintainer)` (`https://github.com/chiconcota`).
    - Cập nhật các liên kết repository chuẩn: `https://github.com/chiconcota/fcitx5-lilypad`.
-   - Cập nhật thông tin bản quyền chuẩn GPLv3.
+3. **Chuẩn Hóa Trang GitHub Repo & README:**
+   - Cập nhật file ảnh logo hiển thị trên GitHub README [fcitx5-lilypad/data/fcitx-lilypad-README.svg](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/data/fcitx-lilypad-README.svg) thành logo **Lá Súng xanh (Lilypad Leaf)** mới.
+   - Cập nhật tiêu đề README từ `🪷` sang `🍃`.
+   - Đồng bộ file `LICENSE` ở Root dự án sang GPLv3 (GitHub tự động nhận diện License badge GPLv3).
 
 ---
 
