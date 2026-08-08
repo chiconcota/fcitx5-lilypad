@@ -1,4 +1,4 @@
-# 🪷 fcitx5-lilypad
+# 🍃 fcitx5-lilypad
 
 > **Bộ gõ Tiếng Việt thế hệ mới cho Linux Wayland & X11** dựa trên kiến trúc Hybrid: **Fcitx5 C++ Addon + Modular IAckSensor + Pure Kernel Uinput Server Daemon**.
 
