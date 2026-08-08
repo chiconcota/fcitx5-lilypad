@@ -88,10 +88,10 @@ If you are running **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixOS, Void...*
 ```bash
 # 1. Clone repository
 git clone https://github.com/chiconcota/fcitx5-lilypad.git
-cd fcitx5-lilypad
+cd fcitx5-lilypad/fcitx5-lilypad
 
 # 2. Build C++ Addon
-mkdir build && cd build
+mkdir -p build && cd build
 cmake -DCMAKE_INSTALL_PREFIX=/usr ..
 make -j$(nproc)
 sudo make install
