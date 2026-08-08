@@ -2,7 +2,7 @@ option(INSTALL_OPENRC "Install OpenRC script" OFF)
 option(INSTALL_RUNIT "Install Runit script" OFF)
 
 install(FILES fcitx5-lilypad-server@.service
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system)
+    DESTINATION /lib/systemd/system)
 
 install(FILES 99-lilypad.rules
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/udev/rules.d)
