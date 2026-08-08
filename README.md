@@ -67,7 +67,7 @@ Nếu bạn đang sử dụng **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixO
 ```bash
 # 0. Cài đặt Fcitx5 và các gói phụ thuộc biên dịch (Dependencies)
 # Ubuntu / Debian:
-sudo apt update && sudo apt install -y git fcitx5 fcitx5-config-qt libfcitx5core-dev libfcitx5utils-dev libfcitx5config-dev extra-cmake-modules build-essential cmake gettext golang libx11-dev
+sudo apt update && sudo apt install -y git fcitx5 fcitx5-config-qt libfcitx5core-dev libfcitx5utils-dev libfcitx5config-dev fcitx5-modules-dev libinput-dev libudev-dev extra-cmake-modules build-essential cmake gettext golang libx11-dev
 
 # Arch Linux:
 # sudo pacman -S --needed git base-devel cmake extra-cmake-modules fcitx5 fcitx5-configtool fcitx5-qt fcitx5-gtk gettext fmt go

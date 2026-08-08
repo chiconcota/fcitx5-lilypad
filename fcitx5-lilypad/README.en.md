@@ -88,7 +88,7 @@ If you are running **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixOS, Void...*
 ```bash
 # 0. Install Fcitx5 and build dependencies
 # Ubuntu / Debian:
-sudo apt update && sudo apt install -y git fcitx5 fcitx5-config-qt libfcitx5core-dev libfcitx5utils-dev libfcitx5config-dev extra-cmake-modules build-essential cmake gettext golang libx11-dev
+sudo apt update && sudo apt install -y git fcitx5 fcitx5-config-qt libfcitx5core-dev libfcitx5utils-dev libfcitx5config-dev fcitx5-modules-dev libinput-dev libudev-dev extra-cmake-modules build-essential cmake gettext golang libx11-dev
 
 # Arch Linux:
 # sudo pacman -S --needed git base-devel cmake extra-cmake-modules fcitx5 fcitx5-configtool fcitx5-qt fcitx5-gtk gettext fmt go
