@@ -65,6 +65,16 @@ Nếu bạn đang sử dụng **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixO
 ### 1. Biên dịch và Cài đặt từ Mã Nguồn (Build from Source)
 
 ```bash
+# 0. Cài đặt Fcitx5 và các gói phụ thuộc biên dịch (Dependencies)
+# Ubuntu / Debian:
+sudo apt update && sudo apt install -y fcitx5 fcitx5-config-qt libfcitx5core-dev libfcitx5utils-dev libfcitx5config-dev extra-cmake-modules build-essential cmake gettext golang libx11-dev
+
+# Arch Linux:
+# sudo pacman -S --needed base-devel cmake extra-cmake-modules fcitx5 fcitx5-configtool fcitx5-qt fcitx5-gtk gettext fmt go
+
+# Fedora:
+# sudo dnf install -y gcc-c++ cmake extra-cmake-modules fcitx5-devel gettext-devel golang libX11-devel
+
 # 1. Clone repository
 git clone https://github.com/chiconcota/fcitx5-lilypad.git
 cd fcitx5-lilypad/fcitx5-lilypad
