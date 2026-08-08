@@ -43,16 +43,21 @@ class AboutPage(QWidget):
 
         # Logo/Icon 
         try:
-            pixmap = QIcon.fromTheme("fcitx-lilypad").pixmap(80, 80)
+            icon_path = "/usr/share/icons/hicolor/scalable/apps/fcitx-lilypad.svg"
+            if os.path.exists(icon_path):
+                pixmap = QIcon(icon_path).pixmap(80, 80)
+            else:
+                pixmap = QIcon.fromTheme("fcitx-lilypad").pixmap(80, 80)
+
             if pixmap.isNull():
-                logo = QLabel("🪷")
+                logo = QLabel("🍃")
                 logo.setStyleSheet("font-size: 64px; margin-bottom: 5px;")
             else:
                 logo = QLabel()
                 logo.setPixmap(pixmap)
                 logo.setStyleSheet("margin-bottom: 5px;")
         except Exception:
-            logo = QLabel("🪷")
+            logo = QLabel("🍃")
             logo.setStyleSheet("font-size: 64px; margin-bottom: 5px;")
             
         layout.addWidget(logo, alignment=Qt.AlignCenter)
@@ -76,15 +81,17 @@ class AboutPage(QWidget):
         """)
         layout.addWidget(version, alignment=Qt.AlignCenter)
 
-        desc = QLabel(_("Modern, fast, and stable Vietnamese input method for Linux."))
+        desc = QLabel(_('<div style="text-align: center; line-height: 1.4; padding: 6px 0;">'
+                        'Next-Gen Native Wayland Vietnamese IME for Linux.<br>'
+                        'Powered by Kernel Uinput Micro-Backspace &amp; Modular Adaptive ACK Sensor.'
+                        '</div>'))
         desc.setWordWrap(True)
         desc.setAlignment(Qt.AlignCenter)
         desc.setObjectName("AboutDescription")
-        desc.setMinimumHeight(60)
         layout.addWidget(desc, alignment=Qt.AlignCenter)
 
         # GitHub Project Link
-        github_link = QLabel('<a href="https://github.com/LilypadInputMethod/fcitx5-lilypad" style="text-decoration: none;">https://github.com/LilypadInputMethod/fcitx5-lilypad</a>')
+        github_link = QLabel('<a href="https://github.com/chiconcota/fcitx5-lilypad" style="text-decoration: none;">https://github.com/chiconcota/fcitx5-lilypad</a>')
         github_link.setOpenExternalLinks(True)
         layout.addWidget(github_link, alignment=Qt.AlignCenter)
 
@@ -96,12 +103,12 @@ class AboutPage(QWidget):
         btn_bug = QPushButton(_("Report Bug"))
         btn_bug.setObjectName("BugReport")
         btn_bug.setFixedWidth(200)
-        btn_bug.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/LilypadInputMethod/fcitx5-lilypad/issues/new?template=bug_report.yml")))
+        btn_bug.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/chiconcota/fcitx5-lilypad/issues/new?template=bug_report.yml")))
         
         btn_feature = QPushButton(_("Request Feature"))
         btn_feature.setObjectName("FeatureRequest")
         btn_feature.setFixedWidth(200)
-        btn_feature.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/LilypadInputMethod/fcitx5-lilypad/issues/new?template=feature_request.yml")))
+        btn_feature.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/chiconcota/fcitx5-lilypad/issues/new?template=feature_request.yml")))
 
         support_layout.addWidget(btn_bug)
         support_layout.addWidget(btn_feature)
@@ -120,7 +127,7 @@ class AboutPage(QWidget):
         layout.addWidget(line)
 
         # Credits Section
-        credits_title = QLabel(_("Developed by"))
+        credits_title = QLabel(_("Developed & Maintained by"))
         credits_title.setObjectName("CreditsTitle")
         layout.addWidget(credits_title, alignment=Qt.AlignCenter)
 
@@ -129,11 +136,9 @@ class AboutPage(QWidget):
         authors_layout.setSpacing(12)
         
         authors_data = [
-            ("Nguyễn Hoàng Kỳ", "https://github.com/nhktmdzhg"),
-            ("Nguyễn Hồng Hiệp", "https://github.com/justanoobcoder"),
-            ("Đặng Quang Hiển", "https://github.com/Miho1254"),
-            ("Zebra2711", "https://github.com/Zebra2711"),
-            ("Huỳnh Thiện Lộc", "https://github.com/hthienloc"),
+            ("chiconcota (Creator & Maintainer)", "https://github.com/chiconcota"),
+            ("Fcitx5 Input Method Framework", "https://github.com/fcitx/fcitx5"),
+            ("Bamboo Engine (Go C-FFI Core)", "https://github.com/BambooEngine/bamboo-core"),
         ]
         
         for name, profile_url in authors_data:

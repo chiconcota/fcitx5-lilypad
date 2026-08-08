@@ -5,9 +5,7 @@ description: cuutui
 # 🛡️ WORKFLOW SỐNG CÒN: AN TOÀN BÀN PHÍM & BẢO VỆ OS KHI DEBUG WAYLAND IME
 
 > 🤖 **QUYỀN TỰ ĐỘNG CHO AI AGENT (AUTOMATED SUDO PRIVILEGE):**
-> - Mật khẩu root / sudo của hệ thống: `thanh123`
-
-> - Khi AI Agent thực thi các lệnh Terminal (`run_command`) mà cần quyền elevated / superuser / root (kill process, chmod, systemctl, uinput permissions...), **AI Agent ĐƯỢC PHÉP tự động dùng `echo thanh123 | sudo -S <command>`** để tự thực hiện công việc mà không cần chờ người dùng nhập bàn phím.
+> - Khi AI Agent thực thi các lệnh Terminal (`run_command`) mà cần quyền elevated / superuser / root (kill process, chmod, systemctl, uinput permissions...), **AI Agent ĐƯỢC PHÉP dùng `echo <SUDO_PASSWORD> | sudo -S <command>`** với mật khẩu sudo được cung cấp từ môi trường của người dùng.
 
 ---
 
@@ -48,10 +46,10 @@ cargo run --bin recover_keyboard
 ./scripts/emergency_unbind.sh
 ```
 
-### 🔹 Phương án 3: AI Agent tự dùng Sudo Sạch với Mật khẩu `thanh123`
+### 🔹 Phương án 3: AI Agent tự dùng Sudo Sạch với Mật khẩu Sudo Hệ Thống
 Nếu cần quyền Super User / Sudo:
 ```bash
-echo thanh123 | sudo -S killall -9 vnlilypad || true
+echo <SUDO_PASSWORD> | sudo -S killall -9 vnlilypad || true
 xdotool keyup Return 2>/dev/null || true
 fcitx5 -d || true
 ```

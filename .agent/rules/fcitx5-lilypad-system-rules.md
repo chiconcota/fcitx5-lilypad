@@ -11,7 +11,7 @@ trigger: always_on
 3. **Word Boundary Strictness:** Tất cả các ký tự đặc biệt `() [] {} "" '' < > = + - / \ , . ; :`, phím điều hướng `← → ↑ ↓`, Space, Enter, Tab, Esc... BẮT BUỘC phải lập tức XÓA RỖNG (RESET) Virtual Caret Buffer.
 4. **Race Condition Prevention:** Khi phát lại chuỗi phím qua uinput (Backspace + phím mới), áp dụng Batch Replay Protocol ($0.1\text{ms}$ phím chữ, $3\text{ms}$ Space) để tránh lặp từ trên các ứng dụng nặng (VS Code, Chrome, Electron).
 5. **Decoupled Architecture (IPC Only):** Tiến trình Fcitx5 Addon và Pure Uinput Server Daemon cách ly hoàn toàn. Giao tiếp độc quyền qua Unix Domain Socket (`/run/user/$UID/fcitx5-lilypad.sock`) có xác thực `SO_PEERCRED`.
-6. **Automated Sudo Execution for AI Agent:** Mật khẩu root/sudo của hệ thống là `thanh123`. Khi thực thi lệnh terminal qua `run_command` cần quyền root/sudo, AI Agent tự động sử dụng `echo thanh123 | sudo -S <command>` để tự hoàn thành tác vụ.
+6. **Automated Sudo Execution for AI Agent:** Khi thực thi các lệnh terminal qua `run_command` cần quyền elevated/root (như `make install`, `systemctl`), AI Agent sử dụng `echo <SUDO_PASSWORD> | sudo -S <command>` với mật khẩu được xác nhận an toàn từ môi trường hệ thống.
 
 ## 1. PHÂN CÁCH TRÁCH NHIỆM (MODULE ISOLATION)
 - **Kernel Layer:** Quản lý mở/khóa thiết bị `/dev/uinput` ảo, server daemon `fcitx5-lilypad-server`.

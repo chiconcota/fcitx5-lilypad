@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="16" height="16" version="1.1" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="8" cy="8" r="6.25" fill="none" stroke="#fff" stroke-width="1.5"/>
-  <circle cx="5.6" cy="6.6" r="1.15" fill="#fff" stroke-width=".8"/>
-  <circle cx="10.4" cy="6.6" r="1.15" fill="#fff" stroke-width=".8"/>
-  <path d="m5.2 9.9q2.8 2.5 5.6 0" fill="none" stroke="#fff" stroke-linecap="round" stroke-width=".8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <linearGradient id="lilyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="60%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <path d="M 12 11.2 L 17.5 5.5 A 9 9 0 1 1 6.5 5.5 Z" fill="url(#lilyGrad)" stroke="#047857" stroke-width="1.2" stroke-linejoin="round"/>
+  <!-- Small Flower Accent on top right -->
+  <circle cx="17.5" cy="5.5" r="2.5" fill="#f472b6"/>
+  <circle cx="17.5" cy="5.5" r="1" fill="#fef08a"/>
 </svg>

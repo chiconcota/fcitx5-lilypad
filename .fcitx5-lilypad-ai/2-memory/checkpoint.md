@@ -7,6 +7,22 @@
 - **Nhánh Git làm việc:** `main` (Remote `origin`: `git@github.com:chiconcota/fcitx5-lilypad.git`)
 - **Tình trạng:** **ĐÃ MERGE THÀNH CÔNG V2.2.0 (MODULAR ACKSENSOR & BATCH REPLAY) LÊN MAIN & PUSH GITHUB.**
 
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-08 - Định Vị Thương Hiệu & Tái Cấu Trúc Trang About / Icon SVG Lilypad):
+
+1. **Tái Cấu Trúc Bộ Icon SVG Lá Súng (Lilypad Brand Icon):**
+   - Thiết kế bộ icon SVG vector mới chuẩn **Lá Súng xanh (Lilypad Leaf)** tươi mát trong `fcitx5-lilypad/data/icons/` (`fcitx-lilypad.svg`, `fcitx-lilypad-default.svg`, `fcitx-lilypad-off.svg`, `fcitx-lilypad-emoji.svg`).
+   - Khôi phục bộ icon Hoa Sen gốc cho `fcitx-lotus` từ `fcitx5-lotus-main/data/icons/`, phân tách rõ ràng 100% giữa Lotus (Hoa Sen) và Lilypad (Lá Súng).
+
+2. **Cập Nhật Giao Diện Cài Đặt Trang About (`about.py` & `CMakeLists.txt`):**
+   - Đặt số phiên bản chuẩn **`2.2.0 (Stable)`** trong `CMakeLists.txt` (`project(fcitx5-lilypad VERSION 2.2.0)`).
+   - Nạp icon Lá Súng xanh trực tiếp từ file SVG hệ thống (`/usr/share/icons/hicolor/scalable/apps/fcitx-lilypad.svg`).
+   - Định dạng văn bản mô tả bằng thẻ HTML `<div style="line-height: 1.4;">` giải quyết dứt điểm 100% lỗi xén mất viền chữ trên/dưới.
+   - Cập nhật thông tin tác giả chính: `chiconcota (Creator & Maintainer)` (`https://github.com/chiconcota`).
+   - Cập nhật các liên kết repository chuẩn: `https://github.com/chiconcota/fcitx5-lilypad`.
+   - Cập nhật thông tin bản quyền chuẩn GPLv3.
+
+---
+
 ## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-08 - Chuẩn Hóa Toàn Diện Hệ Thống Document Trước Khi Publish/Push App):
 
 1. **Thực Hiện Luật Không Rác (Zero-Trash Directive):**
@@ -137,7 +153,7 @@
 
 ```bash
 # Biên dịch & Cài đặt Lilypad chuẩn /usr:
-cd fcitx5-lilypad/build && cmake -DCMAKE_INSTALL_PREFIX=/usr .. && make -j$(nproc) && echo thanh123 | sudo -S make install
+cd fcitx5-lilypad/build && cmake -DCMAKE_INSTALL_PREFIX=/usr .. && make -j$(nproc) && sudo make install
 
 # Khởi động lại Fcitx5:
 fcitx5 -r -d

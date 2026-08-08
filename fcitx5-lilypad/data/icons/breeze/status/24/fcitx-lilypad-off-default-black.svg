@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="22" height="22" version="1.1" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient>
-      <stop offset="0"/>
-    </linearGradient>
-  </defs>
-  <path d="m5 3h12v2h-10v5h8v2h-8v5h10v2h-12z" stroke-opacity="0"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <path d="M 12 11.2 L 17.5 5.5 A 9 9 0 1 1 6.5 5.5 Z" fill="none" stroke="#9e9e9e" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="3,2.5" opacity="0.7"/>
+  <circle cx="12" cy="11.2" r="1.2" fill="#9e9e9e" opacity="0.7"/>
 </svg>

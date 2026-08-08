@@ -1135,7 +1135,7 @@ namespace fcitx {
         switch (realMode) {
             case LilypadMode::Off: return _("Lilypad - Off");
             case LilypadMode::Emoji: return "😄";
-            default: return isGnome_ ? "vi" : "🪷";
+            default: return isGnome_ ? "vi" : "🍃";
         }
     }
 

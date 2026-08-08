@@ -1,10 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="16" height="16" version="1.1" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-  <g transform="matrix(.39273518 0 0 .38998149 -1.4256443 -1.3796492)" fill="#fff" stroke="#ec407a" stroke-linecap="round" stroke-linejoin="round" stroke-width=".976262">
-    <path transform="rotate(-52,24,35)" d="m24 35c-5-5-7-15 0-22 7 7 5 17 0 22"/>
-    <path transform="rotate(52,24,35)" d="m24 35c-5-5-7-15 0-22 7 7 5 17 0 22"/>
-    <path transform="rotate(-26,24,35)" d="m24 35c-5-5-7-15 0-22 7 7 5 17 0 22"/>
-    <path transform="rotate(26,24,35)" d="m24 35c-5-5-7-15 0-22 7 7 5 17 0 22"/>
-    <path d="m24 35c-5-5-7-15 0-22 7 7 5 17 0 22"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <linearGradient id="lilyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="60%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="leafHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6ee7b7" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="12" cy="19.5" rx="8" ry="1.8" fill="#047857" opacity="0.25"/>
+  <path d="M 12 11.2 L 17.5 5.5 A 9 9 0 1 1 6.5 5.5 Z" fill="url(#lilyGrad)" stroke="#047857" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M 12 11.2 L 17.5 5.5 A 9 9 0 0 1 18.5 15.5" fill="none" stroke="url(#leafHighlight)" stroke-width="1" stroke-linecap="round"/>
+  <g fill="none" stroke="#a7f3d0" stroke-width="0.9" stroke-linecap="round" opacity="0.75">
+    <path d="M 12 11.2 L 12 20.8"/>
+    <path d="M 12 11.2 L 18.2 16.5"/>
+    <path d="M 12 11.2 L 5.8 16.5"/>
+    <path d="M 12 11.2 L 3.2 11.2"/>
+    <path d="M 12 11.2 L 20.8 11.2"/>
+    <path d="M 12 11.2 L 5.2 6.8"/>
   </g>
+  <circle cx="12" cy="11.2" r="1.1" fill="#ecfdf5" stroke="#047857" stroke-width="0.6"/>
 </svg>

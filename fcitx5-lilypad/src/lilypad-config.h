@@ -228,7 +228,7 @@ namespace fcitx {
         Option<bool>        freeMarking{this, "FreeMarking", _("Allow Type With More Freedom"), true};
         Option<bool>        ddFreeStyle{this, "DdFreeStyle", _("Allow dd To Produce đ When Auto Restore Invalid Words Is On"), true};
         Option<bool>        fixUinputWithAck{this, "FixUinputWithAck", _("Fix Uinput Mode With Ack"), false};
-        Option<bool>        useLilypadIcons{this, "UseLilypadIcons", _("Use Lilypad Status Icons"), false};
+        Option<bool>        useLilypadIcons{this, "UseLilypadIcons", _("Use Lilypad Status Icons"), true};
 
         Option<bool>        enableDictionary{this, "EnableDictionary", _("Custom Dictionary"), false};
         Option<bool>        enableCustomKeymap{this, "EnableCustomKeymap", _("Custom Keymap"), false};
