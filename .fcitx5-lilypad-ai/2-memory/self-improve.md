@@ -8,7 +8,7 @@
 
 ### 2. Không làm rác thư mục dự án
 - **Lỗi:** Tạo file `.md` hoặc file tạm ở gốc dự án.
-- **Quy tắc:** Chỉ ghi tài liệu vào đúng 4 ngăn kéo trong `.vnlilypadlotus-ai/`.
+- **Quy tắc:** Chỉ ghi tài liệu vào đúng 4 ngăn kéo trong `.fcitx5-lilypad-ai/`.
 
 ### 3. Đảm bảo an toàn Panic / Freeze Bàn phím
 - **Lỗi:** Quên giải phóng `EVIOCGRAB` khi code bị panic.

@@ -2,7 +2,7 @@
 
 @status: STABLE (v2.2.0-modular-sensor) | @last_update: 2026-08-06
 
-> **Ghi chú Kiến trúc:** AT-SPI2 DOM ACK Engine đã được thử nghiệm và **GỠ BỎ HOÀN TOÀN** (xem chi tiết tại [archive/deprecated-decisions.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.vnlilypadlotus-ai/2-memory/archive/deprecated-decisions.md)). Hệ thống hiện sử dụng **Modular IAckSensor Architecture** (`NiriAckSensor` với EMA Adaptive Control & `GenericAckSensor` Fallback) kết hợp **Pure Kernel Uinput Backspace Sequencer**.
+> **Ghi chú Kiến trúc:** AT-SPI2 DOM ACK Engine đã được thử nghiệm và **GỠ BỎ HOÀN TOÀN** (xem chi tiết tại [archive/deprecated-decisions.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/2-memory/archive/deprecated-decisions.md)). Hệ thống hiện sử dụng **Modular IAckSensor Architecture** (`NiriAckSensor` với EMA Adaptive Control & `GenericAckSensor` Fallback) kết hợp **Pure Kernel Uinput Backspace Sequencer**.
 
 ---
 
@@ -34,7 +34,7 @@ stateDiagram-v2
 
 ## 3. CHIẾN LƯỢC ĐIỀU PHỐI ADAPTIVE (MODULAR ACK SENSOR ARCHITECTURE)
 
-> **Tài liệu Kỹ thuật Chi tiết:** Xem giải thích toán học EMA và Hướng dẫn đóng góp Sensor mới tại [niri-ack-sensor-architecture.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.vnlilypadlotus-ai/3-modules/sequencer-layer/niri-ack-sensor-architecture.md).
+> **Tài liệu Kỹ thuật Chi tiết:** Xem giải thích toán học EMA và Hướng dẫn đóng góp Sensor mới tại [niri-ack-sensor-architecture.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/3-modules/sequencer-layer/niri-ack-sensor-architecture.md).
 
 | Môi trường Compositor / App | Giao thức Cảm biến (`IAckSensor`) | Cơ chế Điều phối Sequencer | Đặc tính Hiệu năng |
 | :--- | :--- | :--- | :--- |

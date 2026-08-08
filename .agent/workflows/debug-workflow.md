@@ -1,9 +1,9 @@
 ---
-description: Quy trình sửa lỗi kỹ thuật vknetd (Debugging & Root-cause tracing)
+description: Quy trình sửa lỗi kỹ thuật fcitx5-lilypad (Debugging & Root-cause tracing)
 ---
 
-1. **Đọc Log Thực tế:**
-   - Thu thập log trực tiếp từ stdout/stderr của `vknetd` hoặc từ `journalctl -u vknetd`.
+1. **Thu thập Log Bằng chứng (Log Extraction):**
+   - Thu thập log trực tiếp từ stdout/stderr của `fcitx5` / `fcitx5-lilypad-server` hoặc từ `journalctl`.
    - Tuyệt đối KHÔNG đưa ra giả thuyết sửa lỗi khi chưa xem un-truncated error log.
 
 2. **Cô lập Nguyên nhân Root Cause:**
@@ -17,4 +17,4 @@ description: Quy trình sửa lỗi kỹ thuật vknetd (Debugging & Root-cause 
    - Thử nghiệm runtime hoặc chạy unit test để đảm bảo fix thành công.
 
 4. **Cập nhật Self-Improve:**
-   - Ghi lại bài học kinh nghiệm vào `.vknetd-ai/2-memory/self-improve.md`.
+   - Ghi lại bài học kinh nghiệm vào `.fcitx5-lilypad-ai/2-memory/self-improve.md`.

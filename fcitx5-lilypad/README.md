@@ -7,7 +7,7 @@
     <img src="data/fcitx-lilypad-README.svg" alt="Logo" width="80" height="80">
   </a>
 
-<h2 align="center">Fcitx5 Lilypad (vnlilypad-lotus)</h2>
+<h2 align="center">Fcitx5 Lilypad</h2>
 
 <p align="center">
     <b>Bộ gõ tiếng Việt thế hệ mới cho Linux Wayland & X11</b>
@@ -96,11 +96,16 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr ..
 make -j$(nproc)
 sudo make install
 
-# 3. Kích hoạt Server Daemon qua Systemd
+# 3. Kiểm tra uinput module, khởi tạo user proxy & reload udev rules (/dev/uinput)
+ls /dev/uinput || sudo modprobe uinput
+sudo systemd-sysusers
+sudo udevadm control --reload-rules && sudo udevadm trigger
+
+# 4. Kích hoạt Server Daemon qua Systemd
 sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
 
-# 4. Khởi động lại Fcitx5
-fcitx5 -r &
+# 5. Khởi động lại Fcitx5
+fcitx5 -r -d
 ```
 
 ---

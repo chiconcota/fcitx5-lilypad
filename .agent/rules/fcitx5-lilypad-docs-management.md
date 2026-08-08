@@ -2,14 +2,14 @@
 trigger: always_on
 ---
 
-# VKNETD DOCUMENTATION MANAGEMENT RULE (NO-MESS POLICY)
+# FCITX5 LILYPAD DOCUMENTATION MANAGEMENT RULE (NO-MESS POLICY)
 @target: All AI Agents | @trigger: /end_session or any documentation update
 
 ## 1. THIẾT QUÂN LUẬT KHÔNG RÁC (ZERO-TRASH DIRECTIVE)
-- Mọi tài liệu bắt buộc phải nằm gọn bên trong 4 ngăn kéo của `.vknetd-ai/`:
+- Mọi tài liệu bắt buộc phải nằm gọn bên trong 4 ngăn kéo của `.fcitx5-lilypad-ai/`:
 
 ```text
-.vknetd-ai/
+.fcitx5-lilypad-ai/
 ├── 1-overview/
 │   ├── system_map.md           (Bản đồ kiến trúc tổng thể, Trạng thái Module, Change Log)
 │   └── project-managers/       (Roadmap & Kế hoạch chi tiết theo các Phase)
@@ -28,7 +28,7 @@ trigger: always_on
 
 ## 2. QUY TRÌNH GHI ĐÈ CHỐNG LỖI (ANTI-DUPLICATION PROTOCOL)
 - Trước khi cập nhật bất kỳ tài liệu nào (`system_map.md`, `decision-log.md`...), AI BẮT BUỘC phải dùng `view_file` hoặc `list_dir` để kiểm tra nội dung hiện tại và sửa trực tiếp (Replace content).
-- Nghiêm cấm tự ý tạo file `.md` mới ở Root dự án hoặc thư mục gốc của `.vknetd-ai`.
+- Nghiêm cấm tự ý tạo file `.md` mới ở Root dự án hoặc thư mục gốc của `.fcitx5-lilypad-ai`.
 
 ## 3. LUẬT NGUYÊN TẮC /END_SESSION BẮT BUỘC
 - Khi gọi luồng `/end_session`, AI phải cập nhật tối đa 5 điểm chạm:

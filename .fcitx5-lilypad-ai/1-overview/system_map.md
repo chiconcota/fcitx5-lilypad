@@ -1,4 +1,4 @@
-# vnlilypadlotus SYSTEM MAP & MODULE STATUS MAP (DỰ ÁN FCITX5 LILYPAD SEQUENCER)
+# fcitx5-lilypad SYSTEM MAP & MODULE STATUS MAP (DỰ ÁN FCITX5 LILYPAD SEQUENCER)
 
 > **Architectural Paradigm:** Hybrid Fcitx5 C++ Addon (`fcitx5-lilypad`) + Bamboo Telex Engine (Go C-FFI `bamboo-core`) + Sequencer Token Swallow Layer (`lilypad-state.cpp` + `lilypad-sequencer.cpp`).
 > **Current Version:** `v2.2.0-modular-sensor` (Modular IAckSensor Architecture, NiriAckSensor, EMA Machine Learning Control & Batch Replay Protocol)
@@ -48,7 +48,8 @@
 | :--- | :--- | :--- | :--- |
 | **Lilypad C++ Addon Core** | `fcitx5-lilypad/src/` | Quản lý state context, uinput client, mode switching (Sequence, Smooth...), và điều phối sự kiện gõ. Biên dịch ra `liblilypad.so`. | 🟢 Ready |
 | **Modular ACK Sensors** | `fcitx5-lilypad/src/ack-sensors/` | Cảm biến đo thời gian `elapsed` thực tế của giao dịch, tự động điều chỉnh Dynamic Barrier thích ứng cho phím gõ tiếp theo. | 🟢 Ready |
-| **Lilypad Settings GUI** | `fcitx5-lilypad/settings-gui/` | Giao diện cấu hình PyQt (Mode Manager, App Rules, Keymap Editor). | 🟢 Ready |
+| **Native UI & System Tray** | `fcitx5-lilypad/src/` | Dùng chung 100% giao diện Fcitx5 Lotus (`fcitx5-configtool` UI + Fcitx5 Tray Actions). | 🟢 Ready |
+| **Pure Uinput Server Daemon** | `fcitx5-lilypad/server/` | Daemon phát phím xóa Backspace qua `/dev/uinput` với xác thực UID Unix Socket. | 🟢 Ready |
 | **Log Reader & Monitor** | `scripts/read_logs.sh` | Trình đọc log thời gian thực cho Fcitx5 và Lilypad. | 🟢 Ready |
 | **Lotus C++ Addon Backup** | `fcitx5-lotus-main/` | Mã nguồn Lotus gốc được bảo tồn 100% làm tài liệu tham chiếu/backup. | 🟢 Reference |
 
@@ -59,7 +60,7 @@
 1. **Hybrid Fcitx5 Integration Rule:** Tận dụng 100% hạ tầng Fcitx5 C++ cho Wayland/X11 IPC, Focus và UI. Tuyệt đối không viết daemon IPC độc lập gây tranh chấp tài nguyên Niri Compositor.
 2. **Pure Uinput Backspace Emission:** `/dev/uinput` chỉ phục vụ duy nhất mục đích bắn $N$ phím xóa `KEY_BACKSPACE` khi thực hiện thay thế ký tự thô cũ (`performReplacement`).
 3. **Zero deleteSurroundingText & Zero Preedit:** NGHIÊM CẤM dùng `ic_->deleteSurroundingText()` và `Preedit` trong luồng gõ Sequence. 100% thao tác thay thế từ đi qua `performReplacement()` sử dụng Kernel Uinput Sequencer Layer.
-4. **No-Trash Repository Standard:** Giữ repo gọn gàng, tài liệu tuân thủ nghiêm ngặt 4 ngăn kéo trong `.vnlilypadlotus-ai/`. Các thử nghiệm gỡ bỏ lưu tại `2-memory/archive/deprecated-decisions.md`.
+4. **No-Trash Repository Standard:** Giữ repo gọn gàng, tài liệu tuân thủ nghiêm ngặt 4 ngăn kéo trong `.fcitx5-lilypad-ai/`. Các thử nghiệm gỡ bỏ lưu tại `2-memory/archive/deprecated-decisions.md`.
 
 ---
 
@@ -67,8 +68,10 @@
 
 | Ngày | Mô tả nâng cấp cốt lõi | File ảnh hưởng |
 | :--- | :--- | :--- |
-| 2026-08-06 | Tối ưu hóa toàn bộ hệ thống tài liệu (`1-overview`, `2-memory`, `3-modules`). Lưu trữ các thử nghiệm gỡ bỏ vào `archive/deprecated-decisions.md` | `.vnlilypadlotus-ai/` |
-| 2026-08-06 | Viết tài liệu đặc tả kiến trúc kỹ thuật chi tiết **NiriAckSensor & Modular IAckSensor Architecture** kèm công thức EMA toán học, luồng 5 bước Linux Wayland Input Subsystem và Bằng chứng thực nghiệm log Messenger | `.vnlilypadlotus-ai/3-modules/sequencer-layer/niri-ack-sensor-architecture.md` |
+| 2026-08-08 | Chuẩn hóa toàn bộ hệ thống tài liệu sang `fcitx5-lilypad` & `.fcitx5-lilypad-ai/`, bổ sung bộ `.agent/README.md` cho AI Kit, dọn dẹp thư mục rác `src/` (code Rust cũ) và `fcitx5-lotus-main.zip` | `.fcitx5-lilypad-ai/`, `.agent/`, `README.md` |
+| 2026-08-07 | Chuẩn hóa hướng dẫn cài đặt trong 3 README (`ls /dev/uinput`, `systemd-sysusers`, `udevadm reload`, `fcitx5 -r -d`) và sửa dứt điểm lỗi mất tiếng Việt sau Logout/Login (`DefaultIM=lilypad`) | `README.md`, `fcitx5-lilypad/README.md`, `README.en.md`, `~/.config/fcitx5/profile` |
+| 2026-08-06 | Tối ưu hóa toàn bộ hệ thống tài liệu (`1-overview`, `2-memory`, `3-modules`). Lưu trữ các thử nghiệm gỡ bỏ vào `archive/deprecated-decisions.md` | `.fcitx5-lilypad-ai/` |
+| 2026-08-06 | Viết tài liệu đặc tả kiến trúc kỹ thuật chi tiết **NiriAckSensor & Modular IAckSensor Architecture** kèm công thức EMA toán học, luồng 5 bước Linux Wayland Input Subsystem và Bằng chứng thực nghiệm log Messenger | `.fcitx5-lilypad-ai/3-modules/sequencer-layer/niri-ack-sensor-architecture.md` |
 | 2026-08-06 | Chuẩn hóa trang GitHub (README.md, README.en.md), bổ sung Ma trận Tương thích Compositor (Niri 🟢, Hyprland/Sway/KDE/GNOME 🟡) và Kêu gọi Cộng đồng Đóng góp (Call for Testers) | `README.md`, `fcitx5-lilypad/README.md`, `README.en.md` |
 | 2026-08-05 | Áp dụng **Optimized Batch Replay Protocol** (0.1ms cho phím chữ, 3ms cho Space) triệt hạ hoàn toàn lỗi kẹt phím 4.5s khi gõ siêu tốc | `fcitx5-lilypad/src/lilypad-state.cpp` |
 | 2026-08-05 | Áp dụng **Modular IAckSensor Architecture** (`IAckSensor`, `NiriAckSensor`, `GenericAckSensor`, `AckSensorFactory`) tự động nạp theo môi trường `$XDG_CURRENT_DESKTOP` | `fcitx5-lilypad/src/ack-sensors/` |

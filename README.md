@@ -1,4 +1,4 @@
-# 🪷 fcitx5-lilypad (vnlilypad-lotus)
+# 🪷 fcitx5-lilypad
 
 > **Bộ gõ Tiếng Việt thế hệ mới cho Linux Wayland & X11** dựa trên kiến trúc Hybrid: **Fcitx5 C++ Addon + Modular IAckSensor + Pure Kernel Uinput Server Daemon**.
 
@@ -75,11 +75,16 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr ..
 make -j$(nproc)
 sudo make install
 
-# 3. Kích hoạt Server Daemon qua Systemd
+# 3. Kiểm tra uinput module, khởi tạo user proxy & reload udev rules (/dev/uinput)
+ls /dev/uinput || sudo modprobe uinput
+sudo systemd-sysusers
+sudo udevadm control --reload-rules && sudo udevadm trigger
+
+# 4. Kích hoạt Server Daemon qua Systemd
 sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
 
-# 4. Khởi động lại Fcitx5
-fcitx5 -r &
+# 5. Khởi động lại Fcitx5
+fcitx5 -r -d
 ```
 
 ---
@@ -87,5 +92,5 @@ fcitx5 -r &
 ## 📄 Thư Mục Dự Án Chi Tiết
 
 - Mã nguồn C++ Fcitx5 Addon: [fcitx5-lilypad/](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/)
-- Tài liệu Kiến trúc Hệ thống: [.vnlilypadlotus-ai/](file:///home/chiconcota/Documents/vnlilypad-lotus/.vnlilypadlotus-ai/)
+- Tài liệu Kiến trúc Hệ thống: [.fcitx5-lilypad-ai/](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/)
 - Script đọc Log thời gian thực: [scripts/read_logs.sh](file:///home/chiconcota/Documents/vnlilypad-lotus/scripts/read_logs.sh)
