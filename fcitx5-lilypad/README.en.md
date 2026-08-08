@@ -106,10 +106,11 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr ..
 make -j$(nproc)
 sudo make install
 
-# 3. Check uinput module, create proxy user & reload udev rules (/dev/uinput)
+# 3. Check uinput module, reload systemd, user proxy & udev rules (/dev/uinput)
 ls /dev/uinput || sudo modprobe uinput
 sudo systemd-sysusers
 sudo udevadm control --reload-rules && sudo udevadm trigger
+sudo systemctl daemon-reload
 
 # 4. Enable Server Daemon via Systemd
 sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
