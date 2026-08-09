@@ -1,6 +1,6 @@
 # MODULE: ENGINE LAYER (`fcitx5-lilypad/src/lilypad-engine.h/.cpp` & `lilypad-state.h/.cpp`)
 
-@status: STABLE (v2.2.0-modular-sensor) | @last_update: 2026-08-07
+@status: STABLE (v2.2.0-modular-sensor) | @last_update: 2026-08-09
 
 ---
 

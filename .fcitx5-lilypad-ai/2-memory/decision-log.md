@@ -29,6 +29,15 @@
 
 ## ⚡ 2. BỘ NÃO ĐIỀU PHỐI SEQUENCER LAYER & QUẢN LÝ HÀNG ĐỢI
 
+### [2026-08-09] Quyết định 016: Replay Micro-delay Fine Tuning (`isSpace ? 3000 : 300`) & Embedded Bamboo-Core
+- **Bối cảnh:** Khi gõ siêu tốc phím chữ không bấm Space, khoảng hoãn $0.1\text{ms}$ cũ quá ngắn so với tốc độ render của App, gây lỗi đè rác chữ `cháau1kh`. Đồng thời, submodule pointer làm `git clone` thiếu file `go.mod`.
+- **Quyết định:**
+  1. Tích hợp trực tiếp 100% 19 file mã nguồn Go của `bamboo-core` vào repository (`fcitx5-lilypad/bamboo/bamboo-core/`), gỡ bỏ hoàn toàn Submodule pointer rỗng.
+  2. Điều chỉnh `replay_delay_us` trong `lilypad-state.cpp` thành `isSpace ? 3000 : 300` (3ms cho Space, 0.3ms cho phím chữ).
+  3. Cấu hình `LILYPAD_INFO` và `LILYPAD_DEBUG` thành `((void)0)` khi `NDEBUG` được bật (bản Release `-bin` công khai trên AUR/PPA tự động sạch 100% log, 0% overhead).
+  4. Sửa `Library=liblilypad` và `[Dependencies]` trong `lilypad-addon.conf.in.in` và đặt `DESTINATION /lib/systemd/system` trong `misc/CMakeLists.txt`.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/bamboo/bamboo-core/`, `lilypad-state.cpp:L465`, `lilypad-utils.h:L31-L35`, `lilypad-addon.conf.in.in`, `misc/CMakeLists.txt`.
+
 ### [2026-08-05] Quyết định 014: Optimized Batch Replay Protocol (0.1ms Character vs 3ms Space Micro-gap)
 - **Bối cảnh:** Khi tay gõ siêu tốc trong lúc rào chắn đang bật, các phím đệm `buffered_keys_` bị hoãn $15\text{ms}$ cho từng phím con trong vòng lặp đệ quy, gây dồn tích độ trễ lên tới 4.5 giây (`Typing so fast, add key to queue`).
 - **Quyết định:**

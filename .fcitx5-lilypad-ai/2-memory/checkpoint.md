@@ -5,9 +5,32 @@
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
 - **Nhánh Git làm việc:** `main` (Remote `origin`: `git@github.com:chiconcota/fcitx5-lilypad.git`)
-- **Tình trạng:** **ĐÃ MERGE THÀNH CÔNG V2.2.0 (MODULAR ACKSENSOR & BATCH REPLAY) LÊN MAIN & PUSH GITHUB.**
+- **Tình trạng:** **ĐÃ HOÀN THÀNH & PUSH TRỰC TIẾP LÊN MAIN GITHUB.**
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-08 - Định Vị Thương Hiệu & Tái Cấu Trúc Trang About / Icon SVG Lilypad):
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-09 - Tích Hợp Embedded Bamboo-Core, Fix Addon Config, Tối Ưu Nhịp Replay 3000:300 & Release Zero-Log Overhead):
+
+1. **Tích Hợp Trực Tiếp Mã Nguồn Go `bamboo-core` Vào Git Main:**
+   - Khắc phục triệt để lỗi `open .../bamboo-core/go.mod: no such file or directory` bằng cách gỡ bỏ submodule pointer rỗng và nhúng 100% 19 file mã nguồn Go của `bamboo-core` trực tiếp vào cây thư mục Git chính của dự án (`fcitx5-lilypad/bamboo/bamboo-core/`).
+   - Người dùng `git clone` bình thường sẽ có ngay 100% mã nguồn biên dịch mượt mà không cần lệnh submodule.
+
+2. **Sửa Lỗi Addon Config Fcitx5 (`lilypad-addon.conf.in.in`):**
+   - Sửa `Library=liblilypad` (khớp với tên file nhị phân `liblilypad.so`) và `[Dependencies]` chuẩn syntax Fcitx5.
+   - Giải quyết dứt điểm 100% lỗi ngầm `Found 0 input method(s) in addon lilypad`, hiển thị ngay lập tức bộ gõ `Lilypad` trong `fcitx5-configtool`.
+
+3. **Sửa Lỗi Systemd Unit & Cập Nhật Hướng Dẫn Cài Đặt Systemd:**
+   - Sửa đường dẫn cài đặt service unit trong `misc/CMakeLists.txt` thành `DESTINATION /lib/systemd/system`.
+   - Bổ sung `sudo systemctl daemon-reload` vào tất cả file README, khắc phục lỗi `Unit does not exist` trên Ubuntu/Debian.
+
+4. **Tối Ưu Nhịp Xả Phím Đệm (`replay_delay_us` = `isSpace ? 3000 : 300`):**
+   - Tối ưu `replay_delay_us` trong `lilypad-state.cpp` thành `isSpace ? 3000 : 300` (3ms cho Space, 0.3ms cho phím chữ).
+   - Loại bỏ hoàn toàn lỗi đè rác chữ `cháau1kh` khi gõ siêu tốc không cách từ, trong khi vẫn giữ nguyên tốc độ nổ phím chữ siêu tức thì $0.3\text{ms}$.
+
+5. **Lập Trình Cờ Tự Động Release Zero-Log Overhead (`lilypad-utils.h`):**
+   - Cấu hình macro `LILYPAD_INFO` và `LILYPAD_DEBUG` thành `((void)0)` khi build `-DCMAKE_BUILD_TYPE=Release` (`NDEBUG`).
+   - Giữ nguyên Log cho bản Dev/GitHub, và tự động xóa sạch 100% log trong file nhị phân `-bin` công khai trên các kho ứng dụng OS (AUR, Fedora COPR, Flatpak, PPA).
+
+6. **Chuẩn Hóa Đầy Đủ Phụ Thuộc (Dependencies) Cho 3 Distro Linux:**
+   - Cập nhật lệnh cài đặt dependencies đầy đủ cho **Ubuntu/Debian** (`apt`), **Arch Linux** (`pacman`), và **Fedora** (`dnf`) trong cả 3 file README (`README.md`, `fcitx5-lilypad/README.md`, `fcitx5-lilypad/README.en.md`).
 
 1. **Tái Cấu Trúc Bộ Icon SVG Lá Súng (Lilypad Brand Icon):**
    - Thiết kế bộ icon SVG vector mới chuẩn **Lá Súng xanh (Lilypad Leaf)** tươi mát trong `fcitx5-lilypad/data/icons/` (`fcitx-lilypad.svg`, `fcitx-lilypad-default.svg`, `fcitx-lilypad-off.svg`, `fcitx-lilypad-emoji.svg`).
