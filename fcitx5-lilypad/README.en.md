@@ -91,10 +91,10 @@ If you are running **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixOS, Void...*
 sudo apt update && sudo apt install -y git fcitx5 fcitx5-config-qt libfcitx5core-dev libfcitx5utils-dev libfcitx5config-dev fcitx5-modules-dev libinput-dev libudev-dev extra-cmake-modules build-essential cmake gettext golang libx11-dev
 
 # Arch Linux:
-# sudo pacman -S --needed git base-devel cmake extra-cmake-modules fcitx5 fcitx5-configtool fcitx5-qt fcitx5-gtk gettext fmt go
+sudo pacman -S --needed git base-devel cmake extra-cmake-modules fcitx5 fcitx5-configtool fcitx5-qt fcitx5-gtk gettext fmt go libx11 libinput systemd
 
 # Fedora:
-# sudo dnf install -y git gcc-c++ cmake extra-cmake-modules fcitx5-devel gettext-devel golang libX11-devel
+sudo dnf install -y git gcc-c++ cmake extra-cmake-modules fcitx5-devel gettext-devel golang libX11-devel libinput-devel systemd-devel fcitx5-configtool
 
 # 1. Clone repository
 git clone https://github.com/chiconcota/fcitx5-lilypad.git
