@@ -28,10 +28,17 @@
 
 FCITX_DECLARE_LOG_CATEGORY(lilypad);
 
+#if defined(NDEBUG) || defined(DISABLE_LILYPAD_LOGS)
+#define LILYPAD_DEBUG(msg) ((void)0)
+#define LILYPAD_INFO(msg)  ((void)0)
+#define LILYPAD_WARN(msg)  FCITX_LOGC(lilypad, Warn) << "[WARN] " << msg
+#define LILYPAD_ERROR(msg) FCITX_LOGC(lilypad, Error) << "[ERROR] " << msg
+#else
 #define LILYPAD_DEBUG(msg) FCITX_LOGC(lilypad, Debug) << "[DEBUG] " << msg
 #define LILYPAD_INFO(msg)  FCITX_LOGC(lilypad, Info) << "[INFO] " << msg
 #define LILYPAD_WARN(msg)  FCITX_LOGC(lilypad, Warn) << "[WARN] " << msg
 #define LILYPAD_ERROR(msg) FCITX_LOGC(lilypad, Error) << "[ERROR] " << msg
+#endif
 
 // Forward declaration for fcitx types
 using KeySym = uint32_t;
