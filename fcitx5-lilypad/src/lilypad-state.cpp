@@ -462,7 +462,7 @@ namespace fcitx {
                                 is_deleting_.store(false, std::memory_order_release);
                                 if (!buffered_keys_.empty()) {
                                      bool isSpace = (buffered_keys_.front().sym == ' ' || Key::keySymToUTF8(static_cast<KeySym>(buffered_keys_.front().sym)) == " ");
-                                     uint64_t replay_delay_us = 5000; // 5ms (5000us) hoãn rào chắn an toàn chống race condition dồn chữ
+                                     uint64_t replay_delay_us = isSpace ? 5000 : 100;
                                      LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys (isSpace: " + std::to_string(isSpace) + ") after " + std::to_string(replay_delay_us) + "us");
                                      auto& loop = engine_->instance()->eventLoop();
                                      auto  t    = ::fcitx::now(CLOCK_MONOTONIC) + replay_delay_us;
