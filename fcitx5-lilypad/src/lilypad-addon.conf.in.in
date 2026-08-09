@@ -1,12 +1,12 @@
 [Addon]
-Name=lilypad
-Comment=Lilypad Wrapper For Fcitx
+Name=Lilypad Wrapper For Fcitx
 Category=InputMethod
 Version=@PROJECT_VERSION@
 Enabled=True
-Library=lilypad
+Library=liblilypad
 Type=SharedLibrary
-OnDemand=False
+OnDemand=True
 Configurable=True
-[Addon/Dependencies]
+[Dependencies]
 0=core:@REQUIRED_FCITX_VERSION@
+
