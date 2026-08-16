@@ -68,6 +68,7 @@
 
 | Ngày | Mô tả nâng cấp cốt lõi | File ảnh hưởng |
 | :--- | :--- | :--- |
+| 2026-08-11 | Xây dựng hoàn chỉnh hạ tầng đóng gói AUR (`fcitx5-lilypad-git`, `fcitx5-lilypad-bin`, `fcitx5-lilypad`), tạo scriptlet `fcitx5-lilypad.install`, tự động sinh `.SRCINFO`, kiểm thử `makepkg` thành công và bổ sung hướng dẫn cài đặt AUR vào 3 README | `fcitx5-lilypad/packaging/aur/`, `README.md`, `fcitx5-lilypad/README.md`, `README.en.md` |
 | 2026-08-09 | Nhúng 100% mã nguồn Go `bamboo-core` vào Git main, sửa `Library=liblilypad` & `[Dependencies]` trong addon config, sửa đường dẫn systemd service `/lib/systemd/system`, tối ưu nhịp replay `3000:300` và lập trình cờ Release Zero-Log Overhead | `fcitx5-lilypad/bamboo/bamboo-core/`, `lilypad-addon.conf.in.in`, `misc/CMakeLists.txt`, `lilypad-state.cpp`, `lilypad-utils.h` |
 | 2026-08-08 | Chuẩn hóa toàn bộ hệ thống tài liệu sang `fcitx5-lilypad` & `.fcitx5-lilypad-ai/`, bổ sung bộ `.agent/README.md` cho AI Kit, dọn dẹp thư mục rác `src/` (code Rust cũ) và `fcitx5-lotus-main.zip` | `.fcitx5-lilypad-ai/`, `.agent/`, `README.md` |
 | 2026-08-07 | Chuẩn hóa hướng dẫn cài đặt trong 3 README (`ls /dev/uinput`, `systemd-sysusers`, `udevadm reload`, `fcitx5 -r -d`) và sửa dứt điểm lỗi mất tiếng Việt sau Logout/Login (`DefaultIM=lilypad`) | `README.md`, `fcitx5-lilypad/README.md`, `README.en.md`, `~/.config/fcitx5/profile` |

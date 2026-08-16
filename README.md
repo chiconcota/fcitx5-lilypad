@@ -62,7 +62,19 @@ Nếu bạn đang sử dụng **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixO
 
 ## 📦 Phát Hành & Cài Đặt (Installation Guide)
 
-### 1. Biên dịch và Cài đặt từ Mã Nguồn (Build from Source)
+### 1. Cài đặt từ AUR (Arch Linux / Manjaro / EndeavourOS)
+
+Người dùng Arch Linux có thể cài đặt dễ dàng qua các helper AUR (`yay` hoặc `paru`):
+
+```bash
+# Bản cài nhanh từ Binary pre-compiled phát hành trên GitHub Releases (Khuyên dùng):
+yay -S fcitx5-lilypad-bin
+
+# Hoặc Bản biên dịch từ mã nguồn Git mới nhất (Development Branch):
+yay -S fcitx5-lilypad-git
+```
+
+### 2. Biên dịch và Cài đặt từ Mã Nguồn (Build from Source)
 
 ```bash
 # 0. Cài đặt Fcitx5 và các gói phụ thuộc biên dịch (Dependencies)

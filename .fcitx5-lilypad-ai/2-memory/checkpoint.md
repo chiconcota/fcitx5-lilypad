@@ -7,6 +7,25 @@
 - **Nhánh Git làm việc:** `main` (Remote `origin`: `git@github.com:chiconcota/fcitx5-lilypad.git`)
 - **Tình trạng:** **ĐÃ HOÀN THÀNH & PUSH TRỰC TIẾP LÊN MAIN GITHUB.**
 
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-11 - Thiết Lập Đầy Đủ Hạ Tầng Đóng Gói AUR: fcitx5-lilypad-git, fcitx5-lilypad-bin & fcitx5-lilypad):
+
+1. **Xây Dựng Hạ Tầng Đóng Gói AUR Cho 3 Phiên Bản (`fcitx5-lilypad/packaging/aur/`):**
+   - **`fcitx5-lilypad-git/`**: PKGBUILD biên dịch tự động từ nhánh `main` mới nhất trên GitHub (`git+https://github.com/chiconcota/fcitx5-lilypad.git`). Tối ưu hàm `pkgver()` linh hoạt tự động tính số commit và git hash (`2.2.0.r49.g104b0a4`).
+   - **`fcitx5-lilypad-bin/`**: PKGBUILD tải nhị phân pre-compiled (`.tar.zst`) phát hành từ GitHub Releases, giúp người dùng Arch cài đặt tức thì trong 1 giây mà không cần biên dịch C++/Go.
+   - **`fcitx5-lilypad/`**: PKGBUILD biên dịch từ source tarball release tag chính thức (`v2.2.0.tar.gz`).
+
+2. **Viết Scriptlet `fcitx5-lilypad.install` Chuẩn Arch Linux:**
+   - Tự động hướng dẫn người dùng nạp uinput module (`sudo modprobe uinput`), kích hoạt user proxy & systemd daemon (`systemctl --user daemon-reload`), và nạp lại Fcitx5 (`fcitx5 -r -d`).
+
+3. **Tự Động Sinh Metadata `.SRCINFO` & Kiểm Thử Thành Công Qua `makepkg`:**
+   - Đã sinh file `.SRCINFO` chuẩn cho cả 3 gói AUR bằng `makepkg --printsrcinfo`.
+   - Đã đóng gói kiểm thử thực tế `makepkg -fc --nodeps` tạo thành công file package `fcitx5-lilypad-git-2.2.0.r49.g104b0a4-1-x86_64.pkg.tar.zst` không một lỗi lầm.
+
+4. **Cập Nhật Hướng Dẫn Cài Đặt AUR Trong Tất Cả README:**
+   - Đã bổ sung phần hướng dẫn `yay -S fcitx5-lilypad-bin` và `yay -S fcitx5-lilypad-git` vào cả 3 file: `README.md`, `fcitx5-lilypad/README.md`, và `fcitx5-lilypad/README.en.md`.
+
+---
+
 ## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-09 - Tích Hợp Embedded Bamboo-Core, Fix Addon Config, Tối Ưu Nhịp Replay 3000:300 & Release Zero-Log Overhead):
 
 1. **Tích Hợp Trực Tiếp Mã Nguồn Go `bamboo-core` Vào Git Main:**

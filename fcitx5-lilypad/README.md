@@ -83,6 +83,16 @@ Nếu bạn đang sử dụng **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixO
 
 ## 📦 Cài Đặt & Hướng Dẫn Sử Dụng
 
+### Cài đặt qua AUR (Arch Linux / Manjaro / EndeavourOS)
+
+```bash
+# Bản cài nhanh từ Binary pre-compiled phát hành trên GitHub Releases (Khuyên dùng):
+yay -S fcitx5-lilypad-bin
+
+# Hoặc Bản biên dịch từ mã nguồn Git mới nhất (Development Branch):
+yay -S fcitx5-lilypad-git
+```
+
 ### Biên dịch từ Mã Nguồn (Build from Source)
 
 ```bash

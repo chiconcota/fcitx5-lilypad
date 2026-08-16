@@ -83,6 +83,16 @@ If you are running **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixOS, Void...*
 
 ## 📦 Installation
 
+### AUR (Arch Linux / Manjaro / EndeavourOS)
+
+```bash
+# Fast installation using pre-compiled binary from GitHub Releases (Recommended):
+yay -S fcitx5-lilypad-bin
+
+# Or build from latest Git main branch (Development Branch):
+yay -S fcitx5-lilypad-git
+```
+
 ### Build from Source
 
 ```bash
