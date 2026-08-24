@@ -48,6 +48,7 @@
 | :--- | :--- | :--- | :--- |
 | **Lilypad C++ Addon Core** | `fcitx5-lilypad/src/` | Quản lý state context, uinput client, mode switching (Sequence, Smooth...), và điều phối sự kiện gõ. Biên dịch ra `liblilypad.so`. | 🟢 Ready |
 | **Modular ACK Sensors** | `fcitx5-lilypad/src/ack-sensors/` | Cảm biến đo thời gian `elapsed` thực tế của giao dịch, tự động điều chỉnh Dynamic Barrier thích ứng cho phím gõ tiếp theo. | 🟢 Ready |
+| **Modular IKI Sensors** | `fcitx5-lilypad/src/iki-sensors/` | Cảm biến đo nhịp gõ thời gian thực ($\Delta t$), làm mịn EMA và phát hiện Burst Typing ngón tay người dùng. | 🟢 Ready |
 | **Native UI & System Tray** | `fcitx5-lilypad/src/` | Dùng chung 100% giao diện Fcitx5 Lotus (`fcitx5-configtool` UI + Fcitx5 Tray Actions). | 🟢 Ready |
 | **Pure Uinput Server Daemon** | `fcitx5-lilypad/server/` | Daemon phát phím xóa Backspace qua `/dev/uinput` với xác thực UID Unix Socket. | 🟢 Ready |
 | **Log Reader & Monitor** | `scripts/read_logs.sh` | Trình đọc log thời gian thực cho Fcitx5 và Lilypad. | 🟢 Ready |
