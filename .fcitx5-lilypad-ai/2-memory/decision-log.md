@@ -6,7 +6,16 @@
 
 ---
 
-## 🎯 1. HỆ THỐNG CẢM BIẾN ADAPTIVE ACK & DYNAMIC LATENCY CONTROL
+## 🎯 1. HỆ THỐNG CẢM BIẾN ADAPTIVE ACK, IKI & DYNAMIC LATENCY CONTROL
+
+### [2026-08-25] Quyết định 017: Modular IIkiSensor Architecture & Passive Finger Speed Tracking
+- **Bối cảnh:** Để tiến tới chuẩn Zero-Latency khi máy mượt và Zero-Corruption khi máy lag, bộ gõ cần biết tốc độ gõ ngón tay thực tế (Inter-Keystroke Interval - IKI) của người dùng để đóng vai trò ngòi nổ điều khiển (Gatekeeper), thay vì chỉ biết độ trễ đường truyền của Compositor/App (`IAckSensor`).
+- **Quyết định:**
+  1. Xây dựng Module cảm biến ngón tay độc lập `IIkiSensor`, `StandardIkiSensor` và `IkiSensorFactory` tại `fcitx5-lilypad/src/iki-sensors/`.
+  2. Đo thụ động (Passive Listening 100%) $\Delta t = T_n - T_{n-1}$ giữa 2 lần nhấn phím vật lý liên tiếp trong `keyEvent()`, loại trừ phím Backspace giả lập uinput.
+  3. Áp dụng thuật toán làm mịn EMA: $\text{IKI}_{\text{new}} = 0.35 \times \Delta t + 0.65 \times \text{prev\_EMA}$, lọc bỏ khoảng nghỉ dài $> 1000\text{ms}$ và micro-glitch $< 5\text{ms}$.
+  4. Bổ sung cờ cấu hình an toàn `enableIkiAdaptive`, `ikiMinMs` (10ms), `ikiMaxMs` (500ms) trong `lilypad-config.h`.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/iki-sensors/` (`iki-sensor.h`, `standard-iki-sensor.h`, `iki-sensor-factory.h`), `lilypad-state.h/.cpp`, `lilypad-config.h`.
 
 ### [2026-08-05] Quyết định 013: Modular IAckSensor Architecture & Universal Wayland Protocol
 - **Bối cảnh:** Các Compositor (Niri, Sway, Hyprland, KWin, Mutter) phát tín hiệu Wayland Frame ACK khác nhau, việc viết gộp vào Sequencer Core làm mã nguồn bị phình to và không đo được độ trễ thực tế.

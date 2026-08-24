@@ -81,9 +81,9 @@
 | Task ID | Nội dung công việc | Phụ trách | Trạng thái |
 | :--- | :--- | :--- | :--- |
 | **TASK-401** | Tạo Git Branch `feat/iki-adaptive-engine` & cập nhật Project Manager | AI / User | 🟢 **ĐÃ XONG** |
-| **TASK-402** | Phase 4.1: Viết mã nguồn Passive IKI Measurement & Feature Flag | AI / User | 🟢 **ĐÃ XONG** |
-| **TASK-403** | Phase 4.1: Build, cài đặt và kiểm thử log chỉ số IKI thực tế | User / AI | 🟡 Sẵn sàng test |
-| **TASK-404** | Phase 4.2: Tích hợp Dynamic Micro-Pacing theo nhịp IKI | AI / User | ⚪ Chờ thực hiện |
+| **TASK-402** | Phase 4.1: Viết mã nguồn Modular IIkiSensor Layer & Feature Flag | AI / User | 🟢 **ĐÃ XONG** |
+| **TASK-403** | Phase 4.1: Build, cài đặt và kiểm thử log chỉ số IKI thực tế | User / AI | 🟢 **ĐÃ XONG (Chính xác 100%)** |
+| **TASK-404** | Phase 4.2: Tích hợp Dynamic Micro-Pacing theo nhịp IKI | AI / User | 🟡 Sẵn sàng cho phiên sau |
 | **TASK-405** | Phase 4.2: Kiểm thử tốc độ Zero-Latency trên Terminal / Chrome | User | ⚪ Chờ thực hiện |
 | **TASK-406** | Phase 4.3: Xây dựng Two-Tier Timeout (Soft/Hard) & Context Invalidation | AI / User | ⚪ Chờ thực hiện |
 | **TASK-407** | Phase 4.3: Kiểm thử tải nặng và chống sai chữ khi App lag | User | ⚪ Chờ thực hiện |

@@ -69,6 +69,7 @@
 
 | Ngày | Mô tả nâng cấp cốt lõi | File ảnh hưởng |
 | :--- | :--- | :--- |
+| 2026-08-25 | Khởi tạo nhánh `feat/iki-adaptive-engine`, thiết lập Project Manager Phase 4 (IKI Adaptive Engine), xây dựng module cảm biến độc lập `IIkiSensor` & `StandardIkiSensor` (`iki-sensors/`) đo nhịp gõ thời gian thực ($\Delta t$) qua EMA, kiểm thử log IKI thành công 100% | `fcitx5-lilypad/src/iki-sensors/`, `lilypad-state.h/.cpp`, `lilypad-config.h`, `CMakeLists.txt`, `.fcitx5-lilypad-ai/` |
 | 2026-08-11 | Xây dựng hoàn chỉnh hạ tầng đóng gói AUR (`fcitx5-lilypad-git`, `fcitx5-lilypad-bin`, `fcitx5-lilypad`), tạo scriptlet `fcitx5-lilypad.install`, tự động sinh `.SRCINFO`, kiểm thử `makepkg` thành công và bổ sung hướng dẫn cài đặt AUR vào 3 README | `fcitx5-lilypad/packaging/aur/`, `README.md`, `fcitx5-lilypad/README.md`, `README.en.md` |
 | 2026-08-09 | Nhúng 100% mã nguồn Go `bamboo-core` vào Git main, sửa `Library=liblilypad` & `[Dependencies]` trong addon config, sửa đường dẫn systemd service `/lib/systemd/system`, tối ưu nhịp replay `3000:300` và lập trình cờ Release Zero-Log Overhead | `fcitx5-lilypad/bamboo/bamboo-core/`, `lilypad-addon.conf.in.in`, `misc/CMakeLists.txt`, `lilypad-state.cpp`, `lilypad-utils.h` |
 | 2026-08-08 | Chuẩn hóa toàn bộ hệ thống tài liệu sang `fcitx5-lilypad` & `.fcitx5-lilypad-ai/`, bổ sung bộ `.agent/README.md` cho AI Kit, dọn dẹp thư mục rác `src/` (code Rust cũ) và `fcitx5-lotus-main.zip` | `.fcitx5-lilypad-ai/`, `.agent/`, `README.md` |

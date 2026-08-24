@@ -4,10 +4,38 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `main` (Remote `origin`: `git@github.com:chiconcota/fcitx5-lilypad.git`)
-- **Tình trạng:** **ĐÃ HOÀN THÀNH & PUSH TRỰC TIẾP LÊN MAIN GITHUB.**
+- **Nhánh Git làm việc:** `feat/iki-adaptive-engine` (tách từ `main`)
+- **Tình trạng:** **ĐÃ HOÀN THÀNH PHASE 4.1 (MODULAR IIkiSensor & PASSIVE IKI MEASUREMENT). BUILD & TEST THỰC TẾ CHÍNH XÁC 100%.**
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-11 - Thiết Lập Đầy Đủ Hạ Tầng Đóng Gói AUR: fcitx5-lilypad-git, fcitx5-lilypad-bin & fcitx5-lilypad):
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-25 - Khởi Tạo Nhánh `feat/iki-adaptive-engine`, Xây Dựng Modular IIkiSensor & Passive IKI Measurement):
+
+1. **Khởi Tạo Nhánh & Thiết Lập Project Manager:**
+   - Tạo nhánh Git độc lập `feat/iki-adaptive-engine`.
+   - Cập nhật Roadmap dự án và lập file kế hoạch chi tiết 3 Phase: [.fcitx5-lilypad-ai/1-overview/project-managers/iki-adaptive-engine-plan.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/1-overview/project-managers/iki-adaptive-engine-plan.md).
+
+2. **Xây Dựng Hạ Tầng Modular `IIkiSensor` Độc Lập (`fcitx5-lilypad/src/iki-sensors/`):**
+   - **`iki-sensor.h`**: Interface trừu tượng `IIkiSensor` định nghĩa các phương thức `on_key_event`, `reset`, `get_current_iki_ms`, `get_ema_iki_ms`, `is_burst_typing`.
+   - **`standard-iki-sensor.h/.cpp`**: Triển khai thuật toán EMA ($0.35 \times \Delta t + 0.65 \times \text{prev\_EMA}$), tự động lọc khoảng nghỉ $> 1000\text{ms}$ và xung nảy phím $< 5\text{ms}$.
+   - **`iki-sensor-factory.h/.cpp`**: `IkiSensorFactory::create_sensor()` nạp Sensor động.
+
+3. **Tích Hợp Vào `LilypadState` & Bảo Đảm 100% Passive Listening:**
+   - `LilypadState` chỉ nắm giữ `std::unique_ptr<IIkiSensor> iki_sensor_`, giữ cho State hoàn toàn sạch sẽ (Separation of Concerns).
+   - Tiếp nhận sự kiện phím vật lý trong `keyEvent()` và loại trừ các phím Backspace giả lập uinput (`isAutomatedBackspace`).
+   - Tuyệt đối không can thiệp, không chặn, không nuốt phím, không delay trên Main Thread.
+
+4. **Kiểm Thử Thực Tế Thành Công Tuyệt Đối:**
+   - Người dùng đã biên dịch, nạp và test log: Số đo `Key delta` (123ms, 180ms) và `EMA IKI` (130ms, 147ms) khớp chính xác 100% đến từng millisecond với mốc timestamp thực tế.
+
+---
+
+## 🎯 Kế Hoạch Bàn Giao Phiên Tiếp Theo (Handover Plan for Next Session - Phase 4.2):
+
+1. **Triển khai Phase 4.2: Dynamic Micro-Pacing Optimization:**
+   - Cập nhật `IAckSensor::get_micro_delay_us(int bsCount, uint64_t iki_ms)` hoặc tính toán nhịp ngắt vi mô động dựa trên $\min(IKI, D_{app})$.
+   - Khi $\text{IKI} < 30\text{ms}$ (gõ lướt cực nhanh) và App đang mượt: Ép `micro_delay_us` từ $6\text{ms} + N \times 4\text{ms}$ xuống thẳng $1\text{ms} \sim 2\text{ms}$ (Zero-Latency feel).
+2. **Kiểm thử trên Terminal & Trình duyệt Chrome.**
+
+---
 
 1. **Xây Dựng Hạ Tầng Đóng Gói AUR Cho 3 Phiên Bản (`fcitx5-lilypad/packaging/aur/`):**
    - **`fcitx5-lilypad-git/`**: PKGBUILD biên dịch tự động từ nhánh `main` mới nhất trên GitHub (`git+https://github.com/chiconcota/fcitx5-lilypad.git`). Tối ưu hàm `pkgver()` linh hoạt tự động tính số commit và git hash (`2.2.0.r49.g104b0a4`).

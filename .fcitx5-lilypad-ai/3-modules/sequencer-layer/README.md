@@ -2,7 +2,9 @@
 
 @status: STABLE (v2.2.0-modular-sensor) | @last_update: 2026-08-06
 
-> **Ghi chú Kiến trúc:** AT-SPI2 DOM ACK Engine đã được thử nghiệm và **GỠ BỎ HOÀN TOÀN** (xem chi tiết tại [archive/deprecated-decisions.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/2-memory/archive/deprecated-decisions.md)). Hệ thống hiện sử dụng **Modular IAckSensor Architecture** (`NiriAckSensor` với EMA Adaptive Control & `GenericAckSensor` Fallback) kết hợp **Pure Kernel Uinput Backspace Sequencer**.
+> **Ghi chú Kiến trúc:** Hệ thống sử dụng **Kiến trúc Cảm biến Vòng lặp Kép (Dual-Sensor Control Loop)**:
+> 1. **`IAckSensor` (Cảm biến Đường truyền):** Đo độ trễ vòng lặp Compositor/App roundtrip qua `fcitx5-lilypad/src/ack-sensors/`.
+> 2. **`IIkiSensor` (Cảm biến Ngón tay):** Đo nhịp gõ thời gian thực ($\Delta t$) ngón tay người dùng và tính EMA IKI qua `fcitx5-lilypad/src/iki-sensors/`.
 
 ---
 
@@ -10,7 +12,7 @@
 
 **Sequencer Layer** (`lilypad-sequencer.h/.cpp` / `ImeEventQueue`) là Trái tim Điều phối Sự kiện của dự án **`fcitx5-lilypad`** (`vnlilypad-lotus`). Module này chịu trách nhiệm quản lý luồng sự kiện gõ giữa Compositor (Niri / Wayland / X11), Ứng dụng (Chrome, AFFiNE, VS Code, Terminal) và Engine xử lý Tiếng Việt (Bamboo Telex/VNI).
 
-> **Nhiệm vụ cốt lõi:** Triệt tiêu $100\%$ hiện tượng đè phím, lặp từ `mminimln`, đảo chữ `choa` và trôi con trỏ bằng cách duy trì Hàng đợi Tuần tự Vi bước **Micro-Step State Machine**, kết hợp **Serial ID Tagging**, **Modular IAckSensor Barrier**, và **Universal ReplayBufferedKeys Protocol**.
+> **Nhiệm vụ cốt lõi:** Triệt tiêu $100\%$ hiện tượng đè phím, lặp từ `mminimln`, đảo chữ `choa` và trôi con trỏ bằng cách duy trì Hàng đợi Tuần tự Vi bước **Micro-Step State Machine**, kết hợp **Serial ID Tagging**, **Modular IAckSensor & IIkiSensor Dual-Loop Barrier**, và **Optimized Batch Replay Protocol**.
 
 ---
 
