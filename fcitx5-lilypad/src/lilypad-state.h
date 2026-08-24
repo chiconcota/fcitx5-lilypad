@@ -230,6 +230,23 @@ namespace fcitx {
          * replacement completes.
          */
         void replayBufferedKeys();
+
+        // IKI (Inter-Keystroke Interval) Passive Measurement Engine
+        std::chrono::steady_clock::time_point last_physical_key_time_{};
+        std::atomic<uint64_t>                 current_iki_ms_{150}; ///< Raw delta of last keystroke
+        std::atomic<uint64_t>                 iki_ema_ms_{150};     ///< Smoothed EMA IKI
+
+        /**
+         * @brief Updates passive IKI tracking based on physical keydown timestamp.
+         * @param now Current monotonic timestamp.
+         */
+        void updateIki(std::chrono::steady_clock::time_point now);
+
+        /**
+         * @brief Gets the current smoothed IKI estimate in milliseconds.
+         * @return Smoothed IKI in ms.
+         */
+        uint64_t getIkiMs() const { return iki_ema_ms_.load(std::memory_order_acquire); }
     };
 
 } // namespace fcitx
