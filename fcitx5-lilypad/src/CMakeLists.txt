@@ -10,6 +10,8 @@ set(fcitx_lilypad_sources
   ack-sensors/niri-sensor.cpp
   ack-sensors/generic-sensor.cpp
   ack-sensors/sensor-factory.cpp
+  iki-sensors/standard-iki-sensor.cpp
+  iki-sensors/iki-sensor-factory.cpp
 )
 
 add_library(lilypad MODULE ${fcitx_lilypad_sources})

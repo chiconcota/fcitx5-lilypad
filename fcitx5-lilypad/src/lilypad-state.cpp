@@ -39,6 +39,11 @@ namespace fcitx {
 
     LilypadState::LilypadState(LilypadEngine* engine, InputContext* ic) : engine_(engine), ic_(ic) {
         sequencer_.set_sensor(AckSensorFactory::create_sensor());
+        iki_sensor_ = IkiSensorFactory::create_sensor(
+            *engine_->config().enableIkiAdaptive,
+            *engine_->config().ikiMinMs,
+            *engine_->config().ikiMaxMs
+        );
         setEngine();
     }
 
@@ -1081,8 +1086,8 @@ namespace fcitx {
         KeySym currentSym = keyEvent.rawKey().sym();
         bool isAutomatedBackspace = is_deleting_.load(std::memory_order_acquire) && isBackspace(currentSym);
 
-        if (!isAutomatedBackspace) {
-            updateIki(std::chrono::steady_clock::now());
+        if (iki_sensor_) {
+            iki_sensor_->on_key_event(std::chrono::steady_clock::now(), isAutomatedBackspace);
         }
 
         if (*engine_->config().autoCapitalizeAfterPunctuation && realMode != LilypadMode::Off) {
@@ -1231,7 +1236,9 @@ namespace fcitx {
                 ResetEngine(lilypadEngine_.handle());
                 oldPreBuffer_.clear();
                 hasHistory_ = false;
-                last_physical_key_time_ = {};
+                if (iki_sensor_) {
+                    iki_sensor_->reset();
+                }
             }
         }
 
@@ -1313,7 +1320,9 @@ namespace fcitx {
         isPrevSpace_       = false;
         isPrevHyphen_      = false;
         isPrevPunctuation_ = false;
-        last_physical_key_time_ = {};
+        if (iki_sensor_) {
+            iki_sensor_->reset();
+        }
         if (lilypadEngine_)
             ResetEngine(lilypadEngine_.handle());
     }
@@ -1414,32 +1423,6 @@ namespace fcitx {
             }
         }
         LILYPAD_INFO("Replay buffered keys done");
-    }
-
-    void LilypadState::updateIki(std::chrono::steady_clock::time_point now) {
-        if (!*engine_->config().enableIkiAdaptive) {
-            return;
-        }
-        if (last_physical_key_time_.time_since_epoch().count() > 0) {
-            auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_physical_key_time_).count();
-            int min_ms = *engine_->config().ikiMinMs;
-            int max_ms = *engine_->config().ikiMaxMs;
-            // Ignore idle pauses between words/sentences (> 1000ms) or micro-glitches (< 5ms)
-            if (delta >= 5 && delta <= 1000) {
-                uint64_t clamped_delta = static_cast<uint64_t>(std::clamp<int64_t>(delta, min_ms, max_ms));
-                current_iki_ms_.store(clamped_delta, std::memory_order_release);
-
-                // EMA: 35% new sample + 65% previous history
-                uint64_t prev_ema = iki_ema_ms_.load(std::memory_order_relaxed);
-                uint64_t new_ema = static_cast<uint64_t>(0.35 * static_cast<double>(clamped_delta) + 0.65 * static_cast<double>(prev_ema));
-                new_ema = static_cast<uint64_t>(std::clamp<int64_t>(new_ema, min_ms, max_ms));
-                iki_ema_ms_.store(new_ema, std::memory_order_release);
-
-                LILYPAD_INFO("⌨️ [IKI MEASURED] Physical delta: " + std::to_string(delta) + "ms (Clamped: " +
-                             std::to_string(clamped_delta) + "ms) | EMA IKI: " + std::to_string(new_ema) + "ms");
-            }
-        }
-        last_physical_key_time_ = now;
     }
 
 } // namespace fcitx

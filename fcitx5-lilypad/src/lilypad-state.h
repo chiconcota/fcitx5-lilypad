@@ -17,8 +17,10 @@
 
 #include "lilypad.h"
 #include "emoji-entry.h"
-#include "lilypad-utils.h"
+#include "lilypad-config.h"
 #include "lilypad-sequencer.h"
+#include "iki-sensors/iki-sensor.h"
+#include "iki-sensors/iki-sensor-factory.h"
 
 #include <cstddef>
 #include <fcitx-utils/misc.h>
@@ -231,22 +233,19 @@ namespace fcitx {
          */
         void replayBufferedKeys();
 
-        // IKI (Inter-Keystroke Interval) Passive Measurement Engine
-        std::chrono::steady_clock::time_point last_physical_key_time_{};
-        std::atomic<uint64_t>                 current_iki_ms_{150}; ///< Raw delta of last keystroke
-        std::atomic<uint64_t>                 iki_ema_ms_{150};     ///< Smoothed EMA IKI
+        // IKI (Inter-Keystroke Interval) Modular Sensor
+        std::unique_ptr<IIkiSensor> iki_sensor_; ///< Dedicated IKI Sensor Module
 
         /**
-         * @brief Updates passive IKI tracking based on physical keydown timestamp.
-         * @param now Current monotonic timestamp.
+         * @brief Gets the current IKI sensor instance.
          */
-        void updateIki(std::chrono::steady_clock::time_point now);
+        IIkiSensor* ikiSensor() const { return iki_sensor_.get(); }
 
         /**
          * @brief Gets the current smoothed IKI estimate in milliseconds.
          * @return Smoothed IKI in ms.
          */
-        uint64_t getIkiMs() const { return iki_ema_ms_.load(std::memory_order_acquire); }
+        uint64_t getIkiMs() const { return iki_sensor_ ? iki_sensor_->get_ema_iki_ms() : 150; }
     };
 
 } // namespace fcitx
