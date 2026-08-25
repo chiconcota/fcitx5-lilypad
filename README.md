@@ -48,7 +48,7 @@
 ```
 
 ### 1. Dynamic Micro-Pacing via Normalized Lerp & App ACK Consumption
-- **Nội suy tuyến tính (Lerp):** Thay vì áp đặt thời gian trễ cố định, bộ gõ liên tục đo nhịp gõ ngón tay ($\text{EMA\_IKI}$) qua module `IIkiSensor` kết hợp thời gian phản hồi của ứng dụng ($T_{\text{app\_ack}}$) để điều chỉnh vi trễ $\Delta t(N)$:
+- **Nội suy tuyến tính (Lerp):** Thay vì áp đặt thời gian trễ cố định, bộ gõ liên tục đo nhịp gõ ngón tay ($\mathrm{EMA}_{\mathrm{IKI}}$) qua module `IIkiSensor` kết hợp thời gian phản hồi của ứng dụng ($T_{\text{ack}}$) để điều chỉnh vi trễ $\Delta t(N)$:
   - **Terminal / App nhẹ:** Vi trễ nén về mức sàn vật lý **$1.5\text{ms} \sim 2.5\text{ms}$** (Zero-Latency tức thì, gõ siêu nhạy không cảm nhận độ trễ).
   - **Facebook / Web DOM / Electron:** Vi trễ tự động giãn nở an toàn theo thời gian tiêu thụ DOM ($45\text{ms} \sim 60\text{ms}$), đảm bảo React DOM tiêu hóa sạch phím xóa trước khi chèn chữ mới.
 - **Cold Start Safe Baseline ($>50\text{ms}$):** Khi vừa mở ứng dụng hoặc gõ từ đầu tiên ($\text{IKI} = 0$), hệ thống áp dụng mức trần an toàn $50\text{ms} \sim 80\text{ms}$ loại bỏ $100\%$ nguy cơ nuốt chữ ở ký tự đầu, sau đó chuyển giao sang thuật toán Lerp từ từ thứ 2.

@@ -55,8 +55,8 @@ Dự án này là bản nâng cấp tối ưu hóa kiến trúc dựa trên [VMK
 `fcitx5-lilypad` v2.3.0 là giải pháp toàn diện loại bỏ triệt để các hạn chế cố hữu của bộ gõ Tiếng Việt trên Wayland/X11:
 
 ### 1. Dynamic Micro-Pacing via Normalized Lerp & App ACK Consumption
-- **Module Cảm Biến Nhịp Tay (`IIkiSensor`):** Đo liên tục khoảng cách thời gian giữa các lần gõ phím vật lý ($\text{EMA\_IKI}$).
-- **Nội Suy Tuyến Tính (Lerp) Theo Tốc Độ Tiêu Thụ Của Ứng Dụng ($N \times T_{\text{app\_ack}}$):**
+- **Module Cảm Biến Nhịp Tay (`IIkiSensor`):** Đo liên tục khoảng cách thời gian giữa các lần gõ phím vật lý ($\mathrm{EMA}_{\mathrm{IKI}}$).
+- **Nội Suy Tuyến Tính (Lerp) Theo Tốc Độ Tiêu Thụ Của Ứng Dụng ($N \times T_{\text{ack}}$):**
   - **Trên Terminal / App nhẹ:** Vi trễ nén về mức sàn vật lý **$1.5\text{ms} \sim 2.5\text{ms}$** (Zero-Latency tức thì, gõ siêu nhạy).
   - **Trên Facebook / Web DOM:** Vi trễ tự động dãn nở an toàn theo thời gian tiêu thụ DOM ($45\text{ms} \sim 60\text{ms}$), chống đè rác chữ và nuốt chữ.
 - **Cold Start Safe Baseline ($>50\text{ms}$):** Khi gõ từ đầu tiên lúc chưa có dữ liệu nhịp tay, hệ thống áp dụng ngưỡng an toàn $50\text{ms} \sim 80\text{ms}$ bảo đảm 100% không nuốt chữ.
