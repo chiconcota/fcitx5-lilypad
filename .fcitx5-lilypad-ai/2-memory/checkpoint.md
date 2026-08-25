@@ -4,30 +4,61 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `feat/iki-adaptive-engine` (tách từ `main`)
-- **Tình trạng:** **ĐÃ HOÀN THÀNH VÀ KIỂM THỬ XUẤT SẮC PHASE 4.2 (DYNAMIC MICRO-PACING & DEPTH-AWARE FAST-PATH). ĐẠT CHUẨN ZERO-LATENCY SIÊU NHẠY. SẴN SÀNG CHO PHASE 4.3.**
+- **Nhánh Git làm việc:** `feat/iki-adaptive-engine`
+- **Tình trạng:** **ĐÃ HOÀN THÀNH TRIỂN KHAI PHASE 4.3 & ĐỒNG BỘ HÓA KÊNH COMMIT KẾT TỪ (FIX TRIỆT ĐỂ LỖI ĐẢO DẤU CÁCH GTK4). BIÊN DỊCH 100% THÀNH CÔNG.**
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-25 - Hoàn Thành & Kiểm Thử Thành Công Rực Rỡ Phase 4.2):
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-25 - Cold Start Safe Baseline & Full Lerp ACK):
 
-1. **Nâng Cấp Interface Cảm Biến `IAckSensor` (`fcitx5-lilypad/src/ack-sensors/`):**
-   - `IAckSensor::get_micro_delay_us(int bsCount, uint64_t iki_ms = 0)`: Nhận thêm chỉ số nhịp gõ thời gian thực `iki_ms`.
-   - `NiriAckSensor`: Triển khai thuật toán co giãn trơn liên tục $\alpha = \text{clamp}(\text{EMA\_IKI} / 150.0, 0.15, 1.0)$, kết hợp Fast-Path $1.0\text{ms} \sim 1.5\text{ms}$ cho thao tác xóa 1 phím ($N=1$) và Dynamic Scaling $1.0\text{ms} + N \times 0.5\text{ms}$ sàn tối thiểu khi gõ lướt Burst Typing.
-   - `GenericAckSensor`: Triển khai co giãn an toàn cho các môi trường Compositor khác ($\alpha \in [0.20, 1.0]$).
+1. **Thiết Lập Cold Start Safe Baseline ($>50\text{ms}$ Cho Chữ Đầu Tiên - Quyết định 024):**
+   - Ấn định vi trễ khi `iki_ms == 0` đạt mức an toàn: $1\text{bs}=50\text{ms}, 2\text{bs}=65\text{ms}, 3\text{bs}=80\text{ms}$ bảo đảm 100% không bao giờ nuốt chữ ở từ đầu tiên.
+   - Từ từ thứ 2 trở đi, chuyển giao 100% cho thuật toán Lerp động theo $\text{IKI}$ và thời gian tiêu thụ App ACK $N \times T_{\text{ack}}$ (Quyết định 023).
+   - Kết hợp hoàn hảo với Giao thức Sentinel Barrier $N+1$ phím (Quyết định 022).
 
-2. **Tích Hợp Vào `LilypadState` & Điều Phối Sự Kiện:**
-   - Trong `LilypadState::handleUInputKeyPress()`, nạp trực tiếp `iki_sensor_->get_ema_iki_ms()` vào `get_micro_delay_us()`.
-   - Ghi nhận log đầy đủ `⚡ [DYNAMIC MICRO-PACING] Delay: ...us (bsCount=..., EMA IKI=...ms)`.
+2. **Xây Dựng Cơ Chế Dynamic Soft Timeout Trong `Sequencer` (`lilypad-sequencer.h/.cpp`):**
+   - Bổ sung trạng thái `BarrierState::AppLagHolding`.
+   - Triển khai công thức tính ngưỡng Soft Timeout kết hợp nhịp tay và độ trễ App:
+     $$T_{\text{soft}} = \text{clamp}\Big(\max(T_{\text{expected}} \times 2.0, \; \min(\text{IKI}, \; T_{\text{expected}} + 30)), \; 35\text{ms}, \; 120\text{ms}\Big)$$
+   - Thêm các phương thức `calculate_soft_timeout_ms(iki_ms)`, `is_soft_timeout(iki_ms)`, `is_hard_timeout()`, `elapsed_since_barrier_start_ms()`.
 
-3. **Kiểm Thử Thực Tế Xuất Sắc (User Verified):**
-   - Người dùng cài đặt, khởi động lại và kiểm thử trực tiếp trên Niri Wayland: Cảm giác gõ siêu nhạy, tức thì 100% (Zero-Latency feel), không trễ, chất lượng đỉnh cao.
+3. **Cài Đặt Watchdog Hard Timeout 250ms & Cắt Lỗ Khẩn Cấp `purgeContextEmergency()` (`lilypad-state.h/.cpp`):**
+   - Main Event Loop cài đặt timer giám sát $250\text{ms}$ độc lập khi bắt đầu `performReplacement()`, tự động hủy khi commit thành công.
+   - Thêm hàm `purgeContextEmergency()`: Tự động kích hoạt khi chạm trần 250ms, reset Bamboo Engine, xóa word buffer, và xả toàn bộ phím đệm trong RAM dạng raw phím thô (`ic_->forwardKey()`), đảm bảo không bao giờ bị đơ bàn phím.
+   - Xử lý Soft Timeout trong `keyEvent()`: Chuyển `BarrierState::AppLagHolding`, ghi log và gom phím an toàn vào RAM để chống rách chữ.
+   - Dọn dẹp an toàn timers và sequencer trong `checkForwardSpecialKey()`.
+
+4. **Biên Dịch Thành Công 100% C++ (`liblilypad.so`):**
+   - Đã biên dịch sạch sẽ không warning/error qua `make -j$(nproc)`.
 
 ---
 
-## 🎯 Kế Hoạch Bàn Giao Phiên Tiếp Theo (Handover Plan for Next Session - Phase 4.3):
+## 🎯 Kế Hoạch Bàn Giao Phiên Tiếp Theo (Handover Plan for Next Session):
 
-1. **Triển khai Phase 4.3: Two-Tier Timeout & State Protection:**
-   - Soft Timeout ($2.0 \times \text{IKI}$): Giữ phím RAM, tạm hoãn uinput khi app lag.
-   - Hard Timeout ($200\text{ms}$): Khẩn cấp cắt lỗ Context, xả thô bảo vệ text.
+1. **Chuẩn Bị Merge Nhánh `feat/iki-adaptive-engine` Vào `main`:**
+   - Phiên làm việc đã hoàn thành 100% Phase 4 (IKI Adaptive Engine, Two-Tier Timeout, Sentinel Barrier N+1, Dynamic Lerp App ACK Consumption, và Safe Cold Start).
+   - Kiểm thử thực tế của User: **THÀNH CÔNG TỐT ĐẸP**.
+   - Merge nhánh `feat/iki-adaptive-engine` vào `main`.
+   - Nâng số phiên bản Semantic Versioning lên **`v2.3.0`** trong `CMakeLists.txt`, `about.py` và các file cấu hình liên quan.
+
+---
+
+## 📁 Các File Thay Đổi Trong Phiên:
+
+| File | Thay đổi |
+| :--- | :--- |
+| `fcitx5-lilypad/src/ack-sensors/niri-sensor.h` | Tích hợp công thức Lerp động, App ACK Consumption $N \times T_{\text{ack}}$, và Cold Start Safe Baseline $>50\text{ms}$ |
+| `fcitx5-lilypad/src/ack-sensors/generic-sensor.h` | Tích hợp công thức Lerp động và Cold Start Safe Baseline cho Generic sensor |
+| `fcitx5-lilypad/src/lilypad-sequencer.h/.cpp` | Triển khai `AppLagHolding`, Two-Tier Timeout (Soft/Hard), `calculate_soft_timeout_ms`, `is_soft_timeout` |
+| `fcitx5-lilypad/src/lilypad-state.h/.cpp` | Triển khai Giao thức Sentinel Barrier $N+1$ phím, Watchdog 250ms, `purgeContextEmergency()`, `accuracy = 1µs`, phân luồng Chrome/GTK4 |
+| `fcitx5-lilypad/src/lilypad-engine.cpp` | Cập nhật routing `wa_chromium_flag` |
+| `.fcitx5-lilypad-ai/3-modules/sequencer-layer/README.md` | Cập nhật tài liệu kiến trúc Sentinel Barrier & Lerp ACK formula |
+| `.fcitx5-lilypad-ai/2-memory/decision-log.md` | Ghi Quyết định 020, 021, 022, 023, 024 |
+| `.fcitx5-lilypad-ai/1-overview/system_map.md` | Cập nhật Recent Change Log Phase 4.3 |
+| `.fcitx5-lilypad-ai/1-overview/project-managers/iki-adaptive-engine-plan.md` | Cập nhật tiến độ TASK-406 hoàn thành |
+| `.fcitx5-lilypad-ai/1-overview/project-managers/roadmap.md` | Đánh dấu hoàn thành Phase 4.1, 4.2, 4.3 |
+| `.fcitx5-lilypad-ai/2-memory/self-improve.md` | Thêm bài học kinh nghiệm tính toán Soft Timeout & App Lag |
+| `.fcitx5-lilypad-ai/2-memory/checkpoint.md` | Niêm phong bộ nhớ phiên làm việc |
+
+---
 
 1. **Xây Dựng Hạ Tầng Đóng Gói AUR Cho 3 Phiên Bản (`fcitx5-lilypad/packaging/aur/`):**
    - **`fcitx5-lilypad-git/`**: PKGBUILD biên dịch tự động từ nhánh `main` mới nhất trên GitHub (`git+https://github.com/chiconcota/fcitx5-lilypad.git`). Tối ưu hàm `pkgver()` linh hoạt tự động tính số commit và git hash (`2.2.0.r49.g104b0a4`).

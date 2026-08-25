@@ -32,7 +32,8 @@ namespace fcitx {
     enum class BarrierState : std::uint8_t {
         Ready,
         WaitingMicroDelay,
-        WaitingForAck
+        WaitingForAck,
+        AppLagHolding ///< App lag detected, holding keys in RAM
     };
 
     struct SequencerConfig {
@@ -69,8 +70,12 @@ namespace fcitx {
         }
 
         void set_waiting_ack();
+        void set_app_lag_holding();
         void clear_barrier() {
             barrier_ = BarrierState::Ready;
+        }
+        BarrierState barrier_state() const {
+            return barrier_;
         }
 
         size_t queue_size() const {
@@ -82,6 +87,12 @@ namespace fcitx {
 
         /// Calculates dynamic adaptive delay based on app ACK response time
         uint64_t calculate_adaptive_delay_ms(uint64_t measured_ack_ms);
+
+        /// Two-Tier Timeout calculations
+        uint64_t calculate_soft_timeout_ms(uint64_t iki_ms) const;
+        int64_t  elapsed_since_barrier_start_ms() const;
+        bool     is_soft_timeout(uint64_t iki_ms) const;
+        bool     is_hard_timeout() const;
 
       private:
         std::deque<MicroStep>                 queue_;

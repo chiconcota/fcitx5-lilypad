@@ -85,6 +85,6 @@
 | **TASK-403** | Phase 4.1: Build, cài đặt và kiểm thử log chỉ số IKI thực tế | User / AI | 🟢 **ĐÃ XONG (Chính xác 100%)** |
 | **TASK-404** | Phase 4.2: Tích hợp Dynamic Micro-Pacing theo nhịp IKI | AI / User | 🟢 **ĐÃ XONG** |
 | **TASK-405** | Phase 4.2: Kiểm thử tốc độ Zero-Latency trên Terminal / Chrome | User | 🟢 **ĐÃ XONG (User verified: Siêu nhạy, Zero-Latency)** |
-| **TASK-406** | Phase 4.3: Xây dựng Two-Tier Timeout (Soft/Hard) & Context Invalidation | AI / User | 🟡 **Sẵn sàng triển khai** |
-| **TASK-407** | Phase 4.3: Kiểm thử tải nặng và chống sai chữ khi App lag | User | ⚪ Chờ thực hiện |
-| **TASK-408** | Merge nhánh `feat/iki-adaptive-engine` vào `main`, bump `v2.3.0` | AI / User | ⚪ Chờ thực hiện |
+| **TASK-406** | Phase 4.3: Xây dựng Two-Tier Timeout (Soft/Hard) & Sentinel Barrier Protocol | AI / User | 🟢 **ĐÃ XONG (Code & Build C++ hoàn tất)** |
+| **TASK-407** | Phase 4.3: Kiểm thử tải nặng, App ACK Backspace Consumption & Safe Cold Start | User / AI | 🟢 **ĐÃ XONG (User verified: Thành công tốt đẹp)** |
+| **TASK-408** | Merge nhánh `feat/iki-adaptive-engine` vào `main`, bump `v2.3.0` | AI / User | 🟡 **Sẵn sàng thực hiện** |

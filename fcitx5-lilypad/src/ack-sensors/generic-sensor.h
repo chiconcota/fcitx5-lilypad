@@ -43,20 +43,23 @@
         uint64_t get_micro_delay_us(int bsCount, uint64_t iki_ms = 0) const override {
             int count = std::max(1, bsCount);
             if (iki_ms == 0) {
-                return 8000 + static_cast<uint64_t>(count * 5000); // Fallback: 1bs=13ms, 2bs=18ms, 3bs=23ms
+                // Cold Start Baseline: Mức trần an toàn >50ms bảo đảm 100% chữ đầu tiên không bao giờ lỗi
+                return 35000 + static_cast<uint64_t>(count * 15000); // 1bs=50ms, 2bs=65ms, 3bs=80ms
             }
 
-            // Co giãn liên tục an toàn cho môi trường Fallback Generic:
-            double alpha = std::clamp(static_cast<double>(iki_ms) / 150.0, 0.20, 1.0);
+            // Chuẩn hóa Min-Max (Feature Scaling): IKI in [35ms, 150ms] -> t in [0.0, 1.0]
+            double t = std::clamp((static_cast<double>(iki_ms) - 35.0) / (150.0 - 35.0), 0.0, 1.0);
 
-            if (count == 1) {
-                return std::max<uint64_t>(1500, static_cast<uint64_t>(13000 * alpha));
-            }
+            // Base settling delay: 1.5ms (Burst) -> 15.0ms (Safe Web DOM)
+            double base_us = 1500.0 + t * (15000.0 - 1500.0);
 
-            uint64_t raw_delay = 8000 + static_cast<uint64_t>(count * 5000);
-            uint64_t scaled_delay = static_cast<uint64_t>(raw_delay * alpha);
-            uint64_t min_floor = 1500 + static_cast<uint64_t>(count * 800);
-            return std::max<uint64_t>(min_floor, scaled_delay);
+            // Thời gian tiêu thụ mỗi phím xóa kết hợp Cảm biến App ACK đo thực tế:
+            uint64_t app_ack_us = last_measured_ack_ms_.load(std::memory_order_acquire) * 1000;
+            double min_per_bs_us = 800.0 + t * (18000.0 - 800.0);
+            double per_bs_us = std::max(min_per_bs_us, static_cast<double>(app_ack_us));
+
+            uint64_t total_us = static_cast<uint64_t>(base_us + static_cast<double>(count) * per_bs_us);
+            return std::max<uint64_t>(1500, total_us);
         }
 
         uint64_t get_last_measured_ack_ms() const override {

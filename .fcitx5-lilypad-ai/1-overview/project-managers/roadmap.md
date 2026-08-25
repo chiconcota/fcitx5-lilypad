@@ -36,15 +36,16 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
 ### 🚀 Kế Hoạch Đang Triển Khai (Phase 4 — IKI Adaptive Engine & Two-Tier Timeout Architecture):
 > **Nhánh Git:** `feat/iki-adaptive-engine` | **Chi tiết:** Xem [iki-adaptive-engine-plan.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/1-overview/project-managers/iki-adaptive-engine-plan.md)
 
-- [ ] **Phase 4.1: Passive IKI Measurement (Đo IKI ngầm 0% Overhead)**
-  - [ ] Thêm biến đo $\Delta t = T_n - T_{n-1}$ trong `LilypadState::keyEvent()`.
-  - [ ] Tính `current_iki_ms_` qua thuật toán EMA smoothing.
-  - [ ] Thêm cờ cấu hình `enableIkiAdaptive` trong `lilypad-config.h`.
-- [ ] **Phase 4.2: Dynamic Micro-Pacing Optimization**
-  - [ ] Điều chỉnh động `micro_delay_us` theo $\min(IKI, D_{app})$ khi App mượt ($T_{roundtrip} \le IKI$).
-  - [ ] Ép nhịp micro-pacing về $1\text{ms} \sim 2\text{ms}$ khi gõ lướt siêu tốc (Zero-Latency feel).
-- [ ] **Phase 4.3: Two-Tier Timeout & Context Invalidation (State Protection)**
-  - [ ] Thiết lập **Soft Timeout** ($IKI \times 2.0 \approx 40\text{ms} - 80\text{ms}$): Giữ phím trong RAM (`buffered_keys_`), tạm dừng phát uinput mới.
-  - [ ] Thiết lập **Hard Timeout** ($150\text{ms} - 200\text{ms}$): Cắt lỗ trạng thái khẩn cấp, purge word buffer và xả phím thô an toàn khi app bị freeze.
-  - [ ] Kiểm thử toàn diện trên Web / Electron (Chrome, VS Code, Discord, Slack, Messenger, Terminal).
+- [x] **Phase 4.1: Passive IKI Measurement (Đo IKI ngầm 0% Overhead)**
+  - [x] Thêm biến đo $\Delta t = T_n - T_{n-1}$ trong `LilypadState::keyEvent()` qua `IIkiSensor`.
+  - [x] Tính `current_iki_ms_` qua thuật toán EMA smoothing.
+  - [x] Thêm cờ cấu hình `enableIkiAdaptive` trong `lilypad-config.h`.
+- [x] **Phase 4.2: Dynamic Micro-Pacing Optimization**
+  - [x] Điều chỉnh động `micro_delay_us` theo $\alpha = \text{clamp}(\text{EMA\_IKI} / 150.0, 0.15, 1.0)$.
+  - [x] Ép nhịp micro-pacing về $1\text{ms} \sim 2.5\text{ms}$ khi gõ lướt siêu tốc (Zero-Latency feel).
+- [x] **Phase 4.3: Two-Tier Timeout & Context Invalidation (State Protection)**
+  - [x] Thiết lập **Soft Timeout** ($T_{\text{soft}} = 35\text{ms} \sim 120\text{ms}$): Giữ phím trong RAM (`buffered_keys_`), chuyển `BarrierState::AppLagHolding`.
+  - [x] Thiết lập **Hard Timeout** ($250\text{ms}$): Watchdog timer trên EventLoop, cắt lỗ khẩn cấp `purgeContextEmergency()`, purge word buffer và xả phím thô an toàn khi app bị freeze.
+- [x] **Kiểm thử thực tế & Hoàn thành Phase 4.3** (User verified: Thành công tốt đẹp trên cả Terminal lẫn Facebook/Chrome).
+- [ ] **Phase 5: Merge nhánh `feat/iki-adaptive-engine` vào `main` & Phát hành `v2.3.0`**.
 

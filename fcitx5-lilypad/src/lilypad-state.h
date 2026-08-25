@@ -111,6 +111,7 @@ namespace fcitx {
         bool                    wa_chromium_flag    = false;
         Sequencer               sequencer_;
         std::unique_ptr<EventSourceTime> commit_timer_;
+        std::unique_ptr<EventSourceTime> watchdog_timer_; ///< Hard timeout (250ms) emergency watchdog timer
 
         /**
          * @brief Connects to the uinput server.
@@ -232,6 +233,13 @@ namespace fcitx {
          * replacement completes.
          */
         void replayBufferedKeys();
+
+        /**
+         * @brief Emergency recovery when hard timeout (250ms) expires during replacement.
+         *
+         * Resets internal word buffers and forwards all queued keystrokes as raw input.
+         */
+        void purgeContextEmergency();
 
         // IKI (Inter-Keystroke Interval) Modular Sensor
         std::unique_ptr<IIkiSensor> iki_sensor_; ///< Dedicated IKI Sensor Module

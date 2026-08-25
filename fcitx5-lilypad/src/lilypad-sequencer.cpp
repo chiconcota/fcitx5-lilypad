@@ -58,8 +58,46 @@ namespace fcitx {
         LILYPAD_INFO("🛡️ [SEQUENCER BARRIER] Set WaitingForAck (Sensor: " + (sensor_ ? sensor_->get_name() : "Native") + ") for Serial #" + std::to_string(active_serial_.load()));
     }
 
+    void Sequencer::set_app_lag_holding() {
+        barrier_ = BarrierState::AppLagHolding;
+        LILYPAD_INFO("🛡️ [SEQUENCER BARRIER] Set AppLagHolding for Serial #" + std::to_string(active_serial_.load()));
+    }
+
+    int64_t Sequencer::elapsed_since_barrier_start_ms() const {
+        if (barrier_ == BarrierState::Ready) {
+            return 0;
+        }
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - barrier_start_time_).count();
+    }
+
+    uint64_t Sequencer::calculate_soft_timeout_ms(uint64_t iki_ms) const {
+        uint64_t app_ack = sensor_ ? sensor_->get_last_measured_ack_ms() : last_measured_ack_ms_;
+        uint64_t expected = app_ack + 5; // Expected roundtrip with micro delay
+        uint64_t iki_ref = (iki_ms > 0) ? iki_ms : 150;
+        uint64_t soft = std::clamp<uint64_t>(
+            std::max(expected * 2, std::min(iki_ref, expected + 30)),
+            35,
+            120
+        );
+        return soft;
+    }
+
+    bool Sequencer::is_soft_timeout(uint64_t iki_ms) const {
+        if (barrier_ == BarrierState::Ready) {
+            return false;
+        }
+        return elapsed_since_barrier_start_ms() >= static_cast<int64_t>(calculate_soft_timeout_ms(iki_ms));
+    }
+
+    bool Sequencer::is_hard_timeout() const {
+        if (barrier_ == BarrierState::Ready) {
+            return false;
+        }
+        return elapsed_since_barrier_start_ms() >= static_cast<int64_t>(config_.max_ack_timeout_ms);
+    }
+
     void Sequencer::receive_ack(uint32_t serial) {
-        if (barrier_ == BarrierState::WaitingForAck) {
+        if (barrier_ == BarrierState::WaitingForAck || barrier_ == BarrierState::AppLagHolding) {
             if (serial >= active_serial_.load(std::memory_order_acquire)) {
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - barrier_start_time_).count();
                 LILYPAD_INFO("✅ [SERIAL ACK RELEASED] Compositor responded for Serial #" + std::to_string(serial) + " elapsed=" + std::to_string(elapsed) + "ms");
@@ -85,7 +123,7 @@ namespace fcitx {
             } else {
                 return false;
             }
-        } else if (barrier_ == BarrierState::WaitingForAck) {
+        } else if (barrier_ == BarrierState::WaitingForAck || barrier_ == BarrierState::AppLagHolding) {
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - barrier_start_time_).count();
             if (elapsed >= static_cast<int64_t>(config_.max_ack_timeout_ms)) {
                 LILYPAD_INFO("⏱️ [SAFETY TIMEOUT] " + std::to_string(config_.max_ack_timeout_ms) + "ms limit reached without ACK signal. Unblocking Serial #" +

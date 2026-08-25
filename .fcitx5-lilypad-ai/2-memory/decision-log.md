@@ -8,6 +8,63 @@
 
 ## 🎯 1. HỆ THỐNG CẢM BIẾN ADAPTIVE ACK, IKI & DYNAMIC LATENCY CONTROL
 
+### [2026-08-25] Quyết định 024: Cold Start Safe Baseline ($>50\text{ms}$ cho chữ đầu tiên)
+- **Bối cảnh:** Khi khởi động hoặc vừa chuyển focus sang cửa sổ mới, hệ thống chưa có dữ liệu quá khứ ($\text{IKI} = 0$, $\text{ACK}$ chưa đo). Nếu dùng giá trị giả định quá nhanh, chữ đầu tiên có nguy cơ bị lỗi trên các trình soạn thảo web nặng.
+- **Quyết định:**
+  1. **Thiết lập mức trần an toàn tuyệt đối cho chữ đầu tiên (`iki_ms == 0`):**
+     $$\Delta t(N) = 35\text{ms} + N \times 15\text{ms}$$
+     - $N=1 \implies \mathbf{50\text{ms}}$
+     - $N=2 \implies \mathbf{65\text{ms}}$
+     - $N=3 \implies \mathbf{80\text{ms}}$
+  2. **Chuyển giao thích ứng tức thì:** Ngay từ chữ thứ 2 trở đi khi $\text{IKI} > 0$, thuật toán Lerp và App ACK tự động tiếp quản và co giãn theo tốc độ thực tế (xuống tới $2.5\text{ms}$ trên Terminal).
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/ack-sensors/niri-sensor.h`, `generic-sensor.h`.
+
+### [2026-08-25] Quyết định 023: App ACK Backspace Consumption Dynamic Integration ($N \times T_{\text{ack}}$)
+- **Bối cảnh:** Trong các công thức trước, thời gian vi trễ $\Delta t$ chỉ phụ thuộc vào nhịp tay $\text{IKI}$ và số phím $N$ với hệ số hằng số, thiếu mất biến số thời gian App tiêu thụ xong $N$ phím xóa trong JavaScript/DOM Engine. Điều này khiến Facebook/Chrome (vốn cần $>45\text{ms} \sim 50\text{ms}$ cho $N \ge 2$) bị thiếu thời gian và nuốt chữ.
+- **Quyết định:**
+  1. **Tích hợp biến số thời gian tiêu thụ App ACK:**
+     $$T_{\text{per\_bs}} = \max\Big(\text{lerp}(500\mu\text{s}, 18000\mu\text{s}, t), \; T_{\text{app\_ack}}\Big)$$
+     $$\Delta t(N) = \text{lerp}(1000\mu\text{s}, 15000\mu\text{s}, t) + N \cdot T_{\text{per\_bs}}$$
+  2. **Hiệu quả thực tế:**
+     - Trên Terminal / App nhẹ: $T_{\text{app\_ack}} \approx 1\text{ms}, N=2 \implies \mathbf{3.0\text{ms}}$ (Zero-Latency tức thì).
+     - Trên Facebook / Web DOM: $T_{\text{app\_ack}} \approx 18\text{ms} \sim 20\text{ms}, N=2 \implies \mathbf{51.0\text{ms}}$ (Bảo đảm React DOM tiêu thụ hết phím xóa trước khi commit `"áu"`).
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/ack-sensors/niri-sensor.h`, `generic-sensor.h`.
+
+### [2026-08-25] Quyết định 022: Uinput N+1 Sentinel Barrier Protocol (Triệt tiêu Race Condition Backspace xóa nhầm Commit)
+- **Bối cảnh:** Khi xóa $N$ ký tự cũ và commit chuỗi mới, nếu chỉ phát đúng $N$ phím Backspace từ uinput thì phím thứ $N$ khi tới Fcitx5 sẽ được chuyển tiếp xuống App cùng lúc với lệnh `commitString`. Trên các app phức tạp (Chrome/React DOM), lệnh Commit chen lên trước và phím Backspace thứ $N$ nổ sau xóa mất chuỗi vừa commit (`cháu` thành `ch`).
+- **Quyết định:**
+  1. **Phát $N + 1$ phím Backspace qua `/dev/uinput`:**
+     - $N$ phím đầu được chuyển tiếp nguyên vẹn (`return false;`) xuống App để xóa sạch $N$ ký tự cũ.
+     - Phím thứ $N + 1$ đóng vai trò **Phím Rào Chắn Sentinel**: Fcitx5 nuốt trọn phím này (`event.filterAndAccept(); return true;`) và không cho gửi xuống App.
+  2. **Bảo đảm trật tự vật lý FIFO:** Sự xuất hiện của phím $N+1$ tại Fcitx5 là bằng chứng phần cứng chứng minh $N$ phím trước đã đi vào App an toàn. Khi commit nổ, App đã xóa xong và không còn bất kỳ phím Backspace nào bám sau để xóa nhầm ký tự mới.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-state.cpp:L452-L488, L542-L585`.
+
+### [2026-08-25] Quyết định 021: Normalized Linear Interpolation (Lerp) for Micro-Pacing & Uniform Web IME Routing
+- **Bối cảnh:** Việc quy định cứng các con số thời gian gây ra hai hệ quả tiêu cực: hoặc bóp nghẹt các ứng dụng cực nhẹ (như Terminal/Alacritty khi gõ nhanh), hoặc làm lệch nhịp DOM reconciler trên các trình soạn thảo web phức tạp (React/Draft.js trên Facebook).
+- **Quyết định:**
+  1. **Áp dụng Mô hình Chuẩn hóa Min-Max & Nội suy Tuyến tính (Lerp):**
+     $$t = \text{clamp}\left(\frac{\text{EMA\_IKI} - 35}{150 - 35}, \; 0.0, \; 1.0\right)$$
+     $$\Delta t(N) = \text{lerp}(1000\mu\text{s}, 6000\mu\text{s}, t) + N \cdot \text{lerp}(500\mu\text{s}, 4000\mu\text{s}, t)$$
+     - Khi gõ siêu tốc (Burst Typing $\le 35\text{ms}$): $\Delta t$ nén xuống sàn vật lý **$1.5\text{ms} \sim 2.5\text{ms}$** (Zero-Latency tức thì cho Terminal).
+     - Khi gõ bình thường: $\Delta t$ điều hòa mượt mà theo nhịp ngón tay ($5\text{ms} \sim 10\text{ms}$).
+     - Khi gõ thong thả: $\Delta t$ đạt mức an toàn ($13\text{ms} \sim 18\text{ms}$).
+  2. **Đồng bộ hóa kênh phát cho Chromium (`wa_chromium_flag == true`):** Mọi ký tự gõ thường, chuỗi xóa vi mô và phím chốt Space đều được phát đồng nhất qua `ic_->commitString()`, ngăn ngừa xung đột Virtual DOM trên Facebook / Google Docs.
+  3. **Bảo tồn kênh Native Key cho GTK4 (`wa_chromium_flag == false`):** Phím Space tiếp tục dùng `keyEvent.forward()` kết hợp `accuracy = 1µs`, triệt tiêu 100% hiện tượng đảo dấu cách trên Gnome Text Editor.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/ack-sensors/niri-sensor.h`, `generic-sensor.h`, `lilypad-engine.cpp:L429`, `lilypad-state.cpp:L718-L735`.
+
+### [2026-08-25] Quyết định 020: High-Precision Timer Accuracy (`accuracy = 1µs`)
+- **Bối cảnh:** Tham số `accuracy = 0` trong `EventLoop::addTimeEvent` bị systemd `sd-event` mặc định áp mức trễ 250ms (coalescing), khiến `commit_timer_` bị dồn cục không nổ đúng lúc và va chạm với phím Space mới (`"c òngi"`, `"l àcười"`).
+- **Quyết định:** Đặt tham số `accuracy = 1` ($1\,\mu\text{s}$) cho `commit_timer_` và replay timers, buộc Kernel Linux phải đánh thức Event Loop chính xác tức thì ở mốc micro-delay mà không bị hoãn lười 250ms.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-state.cpp:L465,L479,L573`.
+
+### [2026-08-25] Quyết định 019: Two-Tier Timeout (Dynamic Soft Timeout & Watchdog Hard Timeout 250ms) & State Protection (Phase 4.3)
+- **Bối cảnh:** Khi ứng dụng bị nghẽn (DOM render lag, Garbage Collection stall) hoặc đóng băng, các phím gõ tiếp theo có thể bị rơi vào tình trạng xung đột hoặc kẹt bàn phím.
+- **Quyết định:**
+  1. **Dynamic Soft Timeout ($T_{\text{soft}}$):** Kết hợp nhịp ngón tay $\text{EMA\_IKI}$ và độ trễ phản hồi $T_{\text{expected}}$ của App qua công thức $T_{\text{soft}} = \text{clamp}(\max(T_{\text{expected}} \times 2.0, \min(\text{IKI}, T_{\text{expected}} + 30)), 35\text{ms}, 120\text{ms})$. Khi $T_{\text{elapsed}} \ge T_{\text{soft}}$, Sequencer chuyển sang `BarrierState::AppLagHolding`, tạm hoãn phát uinput tiếp theo và gom phím an toàn vào RAM `buffered_keys_` để chống rách chữ.
+  2. **Watchdog Hard Timeout (250ms):** Main Event Loop cài đặt timer 250ms độc lập mỗi khi bắt đầu `performReplacement()`. Tự động hủy khi commit thành công.
+  3. **Cắt lỗ Khẩn cấp (`purgeContextEmergency`):** Nếu App bị treo cứng quá 250ms, hệ thống lập tức reset Bamboo Engine, xóa word buffer và xả toàn bộ phím đệm trong RAM ra màn hình dưới dạng phím thô (`ic_->forwardKey()`), bảo đảm bàn phím không bao giờ bị đơ hay mất ký tự.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-sequencer.h/.cpp`, `fcitx5-lilypad/src/lilypad-state.h/.cpp`.
+
 ### [2026-08-25] Quyết định 018: Dynamic Micro-Pacing Optimization & Depth-Aware Fast-Path (Phase 4.2)
 - **Bối cảnh:** Trước đây `micro_delay_us` bị cố định mù ($6\text{ms} + N \times 4\text{ms} = 10\text{ms} \sim 18\text{ms}$) sau khi bắn phím Backspace, gây dồn ứ phím vào hàng đợi `buffered_keys_` không cần thiết khi người dùng gõ siêu tốc trên app mượt.
 - **Quyết định:**

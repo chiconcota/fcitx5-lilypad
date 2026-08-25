@@ -48,25 +48,23 @@ namespace fcitx {
         uint64_t get_micro_delay_us(int bsCount, uint64_t iki_ms = 0) const override {
             int count = std::max(1, bsCount);
             if (iki_ms == 0) {
-                return 6000 + static_cast<uint64_t>(count * 4000); // Fallback: 1bs=10ms, 2bs=14ms, 3bs=18ms
+                // Cold Start Baseline: Mức trần an toàn >50ms bảo đảm 100% chữ đầu tiên không bao giờ lỗi
+                return 35000 + static_cast<uint64_t>(count * 15000); // 1bs=50ms, 2bs=65ms, 3bs=80ms
             }
 
-            // Co giãn trơn liên tục (Continuous Scale Factor) theo EMA IKI:
-            // IKI = 25ms -> alpha = 0.16 -> 1bs: 1.6ms, 2bs: 2.2ms
-            // IKI = 80ms -> alpha = 0.53 -> 1bs: 5.3ms, 2bs: 7.4ms
-            // IKI >= 150ms -> alpha = 1.0 -> 1bs: 10ms, 2bs: 14ms
-            double alpha = std::clamp(static_cast<double>(iki_ms) / 150.0, 0.15, 1.0);
+            // Chuẩn hóa Min-Max (Feature Scaling): IKI in [35ms, 150ms] -> t in [0.0, 1.0]
+            double t = std::clamp((static_cast<double>(iki_ms) - 35.0) / (150.0 - 35.0), 0.0, 1.0);
 
-            if (count == 1) {
-                // Fast-Path cho thao tác xóa 1 phím (thay đổi dấu thanh/nguyên âm: a -> á, e -> ê)
-                return std::max<uint64_t>(1000, static_cast<uint64_t>(10000 * alpha));
-            }
+            // Base settling delay: 1.0ms (Burst) -> 15.0ms (Safe Web DOM)
+            double base_us = 1000.0 + t * (15000.0 - 1000.0);
 
-            // Multi-char suffix replacement (hoang -> hoàng: 3bs, nghieng -> nghiêng: 4bs)
-            uint64_t raw_delay = 6000 + static_cast<uint64_t>(count * 4000);
-            uint64_t scaled_delay = static_cast<uint64_t>(raw_delay * alpha);
-            uint64_t min_floor = 1000 + static_cast<uint64_t>(count * 500); // 2bs=2.0ms, 3bs=2.5ms floor
-            return std::max<uint64_t>(min_floor, scaled_delay);
+            // Thời gian tiêu thụ mỗi phím xóa kết hợp Cảm biến App ACK đo thực tế:
+            uint64_t app_ack_us = last_measured_ack_ms_.load(std::memory_order_acquire) * 1000;
+            double min_per_bs_us = 500.0 + t * (18000.0 - 500.0);
+            double per_bs_us = std::max(min_per_bs_us, static_cast<double>(app_ack_us));
+
+            uint64_t total_us = static_cast<uint64_t>(base_us + static_cast<double>(count) * per_bs_us);
+            return std::max<uint64_t>(1000, total_us);
         }
 
         uint64_t get_last_measured_ack_ms() const override {

@@ -450,6 +450,7 @@ namespace fcitx {
             if (isBackspace(currentSym)) {
                 if (sequencer_.should_swallow_backspace()) {
                     if (sequencer_.expected_swallow_backspaces() == 0) {
+                        event.filterAndAccept(); // Filter and swallow the final sentinel trigger backspace!
                         sequencer_.clear_barrier();
                         MicroStep step;
                         if (sequencer_.poll_next_step(step) && step.type == MicroStepType::CommitString) {
@@ -462,7 +463,10 @@ namespace fcitx {
                             auto  timeout_time = now_time + micro_delay_us;
                             std::string commitStr = step.text;
                             uint32_t serial = step.serial;
-                            commit_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, timeout_time, 0, [this, commitStr, serial](EventSourceTime*, uint64_t) {
+                            commit_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, timeout_time, 1, [this, commitStr, serial](EventSourceTime*, uint64_t) {
+                                if (watchdog_timer_) {
+                                    watchdog_timer_.reset();
+                                }
                                 ic_->commitString(commitStr);
                                 LILYPAD_INFO("Commit (Sequence Mode): " + commitStr);
                                 sequencer_.receive_ack(serial);
@@ -473,7 +477,7 @@ namespace fcitx {
                                      LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys (isSpace: " + std::to_string(isSpace) + ") after " + std::to_string(replay_delay_us) + "us");
                                      auto& loop = engine_->instance()->eventLoop();
                                      auto  t    = ::fcitx::now(CLOCK_MONOTONIC) + replay_delay_us;
-                                    commit_timer_ = loop.addTimeEvent(CLOCK_MONOTONIC, t, 0, [this](EventSourceTime*, uint64_t) {
+                                    commit_timer_ = loop.addTimeEvent(CLOCK_MONOTONIC, t, 1, [this](EventSourceTime*, uint64_t) {
                                         replayBufferedKeys();
                                         return false;
                                     });
@@ -481,8 +485,9 @@ namespace fcitx {
                                 return false;
                             });
                         }
+                        return true;
                     }
-                    return false; // Passthrough backspace to App so old raw text gets erased!
+                    return false; // Passthrough intermediate backspaces (1..N) to App so old raw text gets erased!
                 }
             }
             return false;
@@ -538,11 +543,12 @@ namespace fcitx {
                 }
             }
 
+            int totalBsToSend = bsCount + 1; // N + 1 Backspaces (N for deletion, +1 Sentinel trigger)
             uint32_t serial = sequencer_.next_serial();
-            if (bsCount > 0) {
+            if (totalBsToSend > 0) {
                 MicroStep bsStep;
                 bsStep.type = MicroStepType::EmitBackspace;
-                bsStep.count = bsCount;
+                bsStep.count = totalBsToSend;
                 bsStep.serial = serial;
                 sequencer_.push_action(bsStep);
             }
@@ -553,7 +559,7 @@ namespace fcitx {
             sequencer_.push_action(commitStep);
 
             // Pop EmitBackspace step so barrier is active and CommitString step is at front of queue
-            if (bsCount > 0) {
+            if (totalBsToSend > 0) {
                 MicroStep dummyBs;
                 sequencer_.poll_next_step(dummyBs);
             }
@@ -562,8 +568,21 @@ namespace fcitx {
             expected_backspaces_ = bsCount;
             current_backspace_count_ = 0;
             is_deleting_.store(true, std::memory_order_release);
-            send_backspace_uinput(bsCount);
-            LILYPAD_INFO("Send " + std::to_string(bsCount) + " backspaces (Sequence Mode - Micro replacement)");
+
+            // Arm Hard Timeout Watchdog (250ms Safety Cap)
+            auto& eventLoop = engine_->instance()->eventLoop();
+            auto  now_time  = ::fcitx::now(CLOCK_MONOTONIC);
+            auto  hard_timeout_time = now_time + 250000; // 250ms in microseconds
+            watchdog_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, hard_timeout_time, 1000, [this](EventSourceTime*, uint64_t) {
+                if (is_deleting_.load(std::memory_order_acquire)) {
+                    LILYPAD_WARN("⏱️ [WATCHDOG TIMEOUT] 250ms elapsed with is_deleting_ still active. Triggering emergency purge!");
+                    purgeContextEmergency();
+                }
+                return false;
+            });
+
+            send_backspace_uinput(totalBsToSend);
+            LILYPAD_INFO("Send " + std::to_string(totalBsToSend) + " backspaces (Sequence Mode - Micro replacement N=" + std::to_string(bsCount) + " + 1 Sentinel)");
             return;
         }
 
@@ -591,6 +610,13 @@ namespace fcitx {
     bool LilypadState::checkForwardSpecialKey(KeyEvent& keyEvent, KeySym& currentSym) {
         if (keyEvent.key().isCursorMove() || currentSym == FcitxKey_Tab || currentSym == FcitxKey_KP_Tab || currentSym == FcitxKey_ISO_Left_Tab || currentSym == FcitxKey_Escape ||
             keyEvent.key().hasModifier()) {
+            if (watchdog_timer_) {
+                watchdog_timer_.reset();
+            }
+            if (commit_timer_) {
+                commit_timer_.reset();
+            }
+            sequencer_.clear();
             is_deleting_.store(false, std::memory_order_release);
             expected_backspaces_     = 0;
             current_backspace_count_ = 0;
@@ -692,22 +718,28 @@ namespace fcitx {
                 performReplacement(deletedPart, addedPart);
                 keyEvent.filterAndAccept();
             } else {
-                bool wasAutoCapitalized = (currentSym != keyEvent.rawKey().sym());
-                if (!addedPart.empty() && (keyUtf8 != addedPart || wasAutoCapitalized)) {
-                    // Prevent auto-capitalized character replacement from stripping out Vietnamese chars
-                    if (addedPart.size() > 1 && addedPart.back() == ' ') {
-                        // Stripping the trigger key (space) from addedPart
-#if __cplusplus >= 202002L
-                        addedPart.resize(addedPart.size() - 1);
-#else
-                        addedPart = addedPart.substr(0, addedPart.size() - 1);
-#endif
-                    }
+                if (wa_chromium_flag) {
                     ic_->commitString(addedPart);
-                    LILYPAD_INFO("Commit: " + addedPart);
+                    LILYPAD_INFO("Commit (WA Chromium): " + addedPart);
                     keyEvent.filterAndAccept();
                 } else {
-                    keyEvent.forward();
+                    bool wasAutoCapitalized = (currentSym != keyEvent.rawKey().sym());
+                    if (!addedPart.empty() && (keyUtf8 != addedPart || wasAutoCapitalized)) {
+                        // Prevent auto-capitalized character replacement from stripping out Vietnamese chars
+                        if (addedPart.size() > 1 && addedPart.back() == ' ') {
+                            // Stripping the trigger key (space) from addedPart
+#if __cplusplus >= 202002L
+                            addedPart.resize(addedPart.size() - 1);
+#else
+                            addedPart = addedPart.substr(0, addedPart.size() - 1);
+#endif
+                        }
+                        ic_->commitString(addedPart);
+                        LILYPAD_INFO("Commit: " + addedPart);
+                        keyEvent.filterAndAccept();
+                    } else {
+                        keyEvent.forward();
+                    }
                 }
             }
 
@@ -1130,6 +1162,22 @@ namespace fcitx {
         }
 
         if (is_deleting_.load(std::memory_order_acquire)) {
+            if (realMode == LilypadMode::Sequence) {
+                if (sequencer_.is_hard_timeout()) {
+                    LILYPAD_WARN("⚠️ [HARD TIMEOUT TRIGGERED] Elapsed time exceeded 250ms during keyEvent. Purging emergency!");
+                    purgeContextEmergency();
+                    processNormalKey(keyEvent, currentSym);
+                    return;
+                }
+                if (sequencer_.is_soft_timeout(getIkiMs())) {
+                    if (sequencer_.barrier_state() != BarrierState::AppLagHolding) {
+                        sequencer_.set_app_lag_holding();
+                        LILYPAD_INFO("🛡️ [SOFT TIMEOUT] App latency spike detected (elapsed=" + std::to_string(sequencer_.elapsed_since_barrier_start_ms()) +
+                                     "ms >= soft=" + std::to_string(sequencer_.calculate_soft_timeout_ms(getIkiMs())) + "ms), holding keys in RAM buffer");
+                    }
+                }
+            }
+
             if (isBackspace(currentSym)) {
                 if (realtextLen.load(std::memory_order_acquire) > 0)
                     realtextLen.fetch_sub(1, std::memory_order_acq_rel);
@@ -1425,6 +1473,32 @@ namespace fcitx {
             }
         }
         LILYPAD_INFO("Replay buffered keys done");
+    }
+
+    void LilypadState::purgeContextEmergency() {
+        LILYPAD_WARN("⚠️ [HARD TIMEOUT EMERGENCY] App freeze / Timeout (>250ms). Purging state & flushing buffered keys.");
+        if (watchdog_timer_) {
+            watchdog_timer_.reset();
+        }
+        if (commit_timer_) {
+            commit_timer_.reset();
+        }
+        is_deleting_.store(false, std::memory_order_release);
+        expected_backspaces_     = 0;
+        current_backspace_count_ = 0;
+        pending_commit_string_.clear();
+        hasHistory_ = false;
+        ResetEngine(lilypadEngine_.handle());
+        oldPreBuffer_.clear();
+        sequencer_.clear();
+
+        if (!buffered_keys_.empty()) {
+            LILYPAD_INFO("Flushing " + std::to_string(buffered_keys_.size()) + " buffered keys as raw input");
+            for (const auto& k : buffered_keys_) {
+                ic_->forwardKey(Key(static_cast<KeySym>(k.sym), KeyStates(k.state)));
+            }
+            buffered_keys_.clear();
+        }
     }
 
 } // namespace fcitx
