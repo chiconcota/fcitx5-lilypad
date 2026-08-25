@@ -8,6 +8,15 @@
 
 ## 🎯 1. HỆ THỐNG CẢM BIẾN ADAPTIVE ACK, IKI & DYNAMIC LATENCY CONTROL
 
+### [2026-08-25] Quyết định 018: Dynamic Micro-Pacing Optimization & Depth-Aware Fast-Path (Phase 4.2)
+- **Bối cảnh:** Trước đây `micro_delay_us` bị cố định mù ($6\text{ms} + N \times 4\text{ms} = 10\text{ms} \sim 18\text{ms}$) sau khi bắn phím Backspace, gây dồn ứ phím vào hàng đợi `buffered_keys_` không cần thiết khi người dùng gõ siêu tốc trên app mượt.
+- **Quyết định:**
+  1. Cập nhật `IAckSensor::get_micro_delay_us(int bsCount, uint64_t iki_ms = 0)`.
+  2. Áp dụng hệ số co giãn liên tục $\alpha = \text{clamp}(\text{EMA\_IKI} / 150.0, 0.15, 1.0)$.
+  3. Kích hoạt Fast-Path $1.0\text{ms} \sim 1.5\text{ms}$ khi $N=1$ (đổi dấu thanh/nguyên âm như `a` $\to$ `á`).
+  4. Đặt sàn an toàn $1.0\text{ms} + N \times 0.5\text{ms}$ cho thao tác xóa đa ký tự $N \ge 2$ khi gõ lướt Burst Typing ($\text{EMA\_IKI} \le 35\text{ms}$), tự động dãn về $10\text{ms} \sim 18\text{ms}$ khi gõ chậm.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/ack-sensors/` (`ack-sensor.h`, `niri-sensor.h`, `generic-sensor.h`), `fcitx5-lilypad/src/lilypad-state.cpp`.
+
 ### [2026-08-25] Quyết định 017: Modular IIkiSensor Architecture & Passive Finger Speed Tracking
 - **Bối cảnh:** Để tiến tới chuẩn Zero-Latency khi máy mượt và Zero-Corruption khi máy lag, bộ gõ cần biết tốc độ gõ ngón tay thực tế (Inter-Keystroke Interval - IKI) của người dùng để đóng vai trò ngòi nổ điều khiển (Gatekeeper), thay vì chỉ biết độ trễ đường truyền của Compositor/App (`IAckSensor`).
 - **Quyết định:**

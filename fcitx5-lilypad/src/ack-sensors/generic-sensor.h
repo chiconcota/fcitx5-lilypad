@@ -40,9 +40,23 @@
             }
         }
 
-        uint64_t get_micro_delay_us(int bsCount) const override {
+        uint64_t get_micro_delay_us(int bsCount, uint64_t iki_ms = 0) const override {
             int count = std::max(1, bsCount);
-            return 8000 + static_cast<uint64_t>(count * 5000); // Fallback: 1bs=13ms, 2bs=18ms, 3bs=23ms
+            if (iki_ms == 0) {
+                return 8000 + static_cast<uint64_t>(count * 5000); // Fallback: 1bs=13ms, 2bs=18ms, 3bs=23ms
+            }
+
+            // Co giãn liên tục an toàn cho môi trường Fallback Generic:
+            double alpha = std::clamp(static_cast<double>(iki_ms) / 150.0, 0.20, 1.0);
+
+            if (count == 1) {
+                return std::max<uint64_t>(1500, static_cast<uint64_t>(13000 * alpha));
+            }
+
+            uint64_t raw_delay = 8000 + static_cast<uint64_t>(count * 5000);
+            uint64_t scaled_delay = static_cast<uint64_t>(raw_delay * alpha);
+            uint64_t min_floor = 1500 + static_cast<uint64_t>(count * 800);
+            return std::max<uint64_t>(min_floor, scaled_delay);
         }
 
         uint64_t get_last_measured_ack_ms() const override {

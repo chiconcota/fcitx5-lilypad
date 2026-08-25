@@ -1,10 +1,10 @@
 # MODULE: SEQUENCER LAYER (`src/sequencer/` & `fcitx5-lilypad/src/`)
 
-@status: STABLE (v2.2.0-modular-sensor) | @last_update: 2026-08-06
+@status: STABLE (v2.3.0-iki-adaptive) | @last_update: 2026-08-25
 
 > **Ghi chú Kiến trúc:** Hệ thống sử dụng **Kiến trúc Cảm biến Vòng lặp Kép (Dual-Sensor Control Loop)**:
-> 1. **`IAckSensor` (Cảm biến Đường truyền):** Đo độ trễ vòng lặp Compositor/App roundtrip qua `fcitx5-lilypad/src/ack-sensors/`.
-> 2. **`IIkiSensor` (Cảm biến Ngón tay):** Đo nhịp gõ thời gian thực ($\Delta t$) ngón tay người dùng và tính EMA IKI qua `fcitx5-lilypad/src/iki-sensors/`.
+> 1. **`IAckSensor` (Cảm biến Đường truyền & Micro-Pacing):** Đo độ trễ vòng lặp Compositor/App roundtrip và tính toán độ trễ vi mô thích ứng `get_micro_delay_us(bsCount, iki_ms)` qua `fcitx5-lilypad/src/ack-sensors/`.
+> 2. **`IIkiSensor` (Cảm biến Ngón tay):** Đo nhịp gõ thời gian thực ($\Delta t$) ngón tay người dùng và tính EMA IKI qua `fcitx5-lilypad/src/iki-sensors/`. Nén độ trễ ngắt nhịp xuống $1.0\text{ms} \sim 2.5\text{ms}$ khi gõ lướt Burst Typing.
 
 ---
 

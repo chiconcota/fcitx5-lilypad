@@ -45,9 +45,28 @@ namespace fcitx {
             }
         }
 
-        uint64_t get_micro_delay_us(int bsCount) const override {
+        uint64_t get_micro_delay_us(int bsCount, uint64_t iki_ms = 0) const override {
             int count = std::max(1, bsCount);
-            return 6000 + static_cast<uint64_t>(count * 4000); // 1bs=10ms, 2bs=14ms, 3bs=18ms
+            if (iki_ms == 0) {
+                return 6000 + static_cast<uint64_t>(count * 4000); // Fallback: 1bs=10ms, 2bs=14ms, 3bs=18ms
+            }
+
+            // Co giãn trơn liên tục (Continuous Scale Factor) theo EMA IKI:
+            // IKI = 25ms -> alpha = 0.16 -> 1bs: 1.6ms, 2bs: 2.2ms
+            // IKI = 80ms -> alpha = 0.53 -> 1bs: 5.3ms, 2bs: 7.4ms
+            // IKI >= 150ms -> alpha = 1.0 -> 1bs: 10ms, 2bs: 14ms
+            double alpha = std::clamp(static_cast<double>(iki_ms) / 150.0, 0.15, 1.0);
+
+            if (count == 1) {
+                // Fast-Path cho thao tác xóa 1 phím (thay đổi dấu thanh/nguyên âm: a -> á, e -> ê)
+                return std::max<uint64_t>(1000, static_cast<uint64_t>(10000 * alpha));
+            }
+
+            // Multi-char suffix replacement (hoang -> hoàng: 3bs, nghieng -> nghiêng: 4bs)
+            uint64_t raw_delay = 6000 + static_cast<uint64_t>(count * 4000);
+            uint64_t scaled_delay = static_cast<uint64_t>(raw_delay * alpha);
+            uint64_t min_floor = 1000 + static_cast<uint64_t>(count * 500); // 2bs=2.0ms, 3bs=2.5ms floor
+            return std::max<uint64_t>(min_floor, scaled_delay);
         }
 
         uint64_t get_last_measured_ack_ms() const override {

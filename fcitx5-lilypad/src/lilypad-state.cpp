@@ -456,7 +456,9 @@ namespace fcitx {
                             auto& eventLoop    = engine_->instance()->eventLoop();
                             auto  now_time     = ::fcitx::now(CLOCK_MONOTONIC);
                             int bsCount = std::max(1, expected_backspaces_);
-                            uint64_t micro_delay_us = sequencer_.sensor() ? sequencer_.sensor()->get_micro_delay_us(bsCount) : (6000 + static_cast<uint64_t>(bsCount * 4000));
+                            uint64_t current_iki = (iki_sensor_ && *engine_->config().enableIkiAdaptive) ? iki_sensor_->get_ema_iki_ms() : 0;
+                            uint64_t micro_delay_us = sequencer_.sensor() ? sequencer_.sensor()->get_micro_delay_us(bsCount, current_iki) : (6000 + static_cast<uint64_t>(bsCount * 4000));
+                            LILYPAD_INFO("⚡ [DYNAMIC MICRO-PACING] Delay: " + std::to_string(micro_delay_us) + "us (bsCount=" + std::to_string(bsCount) + ", EMA IKI=" + std::to_string(current_iki) + "ms)");
                             auto  timeout_time = now_time + micro_delay_us;
                             std::string commitStr = step.text;
                             uint32_t serial = step.serial;
