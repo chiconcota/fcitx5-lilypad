@@ -1,7 +1,7 @@
 # fcitx5-lilypad SYSTEM MAP & MODULE STATUS MAP (DỰ ÁN FCITX5 LILYPAD SEQUENCER)
 
 > **Architectural Paradigm:** Hybrid Fcitx5 C++ Addon (`fcitx5-lilypad`) + Bamboo Telex Engine (Go C-FFI `bamboo-core`) + Sequencer Token Swallow Layer (`lilypad-state.cpp` + `lilypad-sequencer.cpp`).
-> **Current Version:** `v2.2.0-modular-sensor` (Modular IAckSensor Architecture, NiriAckSensor, EMA Machine Learning Control & Batch Replay Protocol)
+> **Current Version:** `v2.3.0` (IKI Adaptive Engine, Dynamic Micro-Pacing Lerp, Sentinel Barrier N+1, Two-Tier Timeout & Emergency Purge)
 
 ---
 

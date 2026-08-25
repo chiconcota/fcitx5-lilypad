@@ -4,8 +4,8 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `feat/iki-adaptive-engine`
-- **Tình trạng:** **ĐÃ HOÀN THÀNH TRIỂN KHAI PHASE 4.3 & ĐỒNG BỘ HÓA KÊNH COMMIT KẾT TỪ (FIX TRIỆT ĐỂ LỖI ĐẢO DẤU CÁCH GTK4). BIÊN DỊCH 100% THÀNH CÔNG.**
+- **Nhánh Git làm việc:** `main`
+- **Tình trạng:** **ĐÃ MERGE THÀNH CÔNG NHÁNH FEAT/IKI-ADAPTIVE-ENGINE VÀO MAIN. NÂNG PHIÊN BẢN LÊN V2.3.0. CẬP NHẬT TOÀN DIỆN CẢ 3 FILE README VỚI ĐẦY ĐỦ KIẾN TRÚC IKI, SENTINEL BARRIER N+1, TWO-TIER TIMEOUT.**
 
 ## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-25 - Cold Start Safe Baseline & Full Lerp ACK):
 
