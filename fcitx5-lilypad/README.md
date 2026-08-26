@@ -59,7 +59,7 @@ Dự án này là bản nâng cấp tối ưu hóa kiến trúc dựa trên [VMK
 - **Nội Suy Tuyến Tính (Lerp) Theo Tốc Độ Tiêu Thụ Của Ứng Dụng ($N \times T_{\text{ack}}$):**
   - **Trên Terminal / App nhẹ:** Vi trễ nén về mức sàn vật lý **$1.5\text{ms} \sim 2.5\text{ms}$** (Zero-Latency tức thì, gõ siêu nhạy).
   - **Trên Facebook / Web DOM:** Vi trễ tự động dãn nở an toàn theo thời gian tiêu thụ DOM ($45\text{ms} \sim 60\text{ms}$), chống đè rác chữ và nuốt chữ.
-- **Cold Start Safe Baseline ($>50\text{ms}$):** Khi gõ từ đầu tiên lúc chưa có dữ liệu nhịp tay, hệ thống áp dụng ngưỡng an toàn $50\text{ms} \sim 80\text{ms}$ bảo đảm 100% không nuốt chữ.
+- **Cold Start Safe Baseline ($>50\text{ms}$):** Khi gõ từ đầu tiên lúc chưa có dữ liệu lịch sử $\text{IKI}$ và $\text{App ACK}$, hệ thống áp dụng ngưỡng an toàn $50\text{ms} \sim 80\text{ms}$ bảo đảm 100% không nuốt chữ.
 
 ### 2. Giao Thức Uinput Sentinel Barrier $N+1$
 - Khi xóa $N$ ký tự cũ, daemon bắn $N+1$ phím xóa `KEY_BACKSPACE` qua `/dev/uinput`:

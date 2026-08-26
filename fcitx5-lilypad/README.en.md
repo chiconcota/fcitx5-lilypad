@@ -90,7 +90,7 @@ This project is an architectural upgrade optimized from [VMK](https://github.com
 - **Normalized Linear Interpolation (Lerp):** Instead of blind static delays, the engine continuously tracks finger typing rhythm ($\mathrm{EMA}_{\mathrm{IKI}}$) via the `IIkiSensor` module combined with application response time ($T_{\text{ack}}$):
   - **Terminal / Lightweight Apps:** Micro-delay dynamically compresses to the physical floor of **$1.5\text{ms} \sim 2.5\text{ms}$** (Zero-Latency responsiveness).
   - **Facebook / Web DOM / Electron:** Micro-delay automatically scales up to safely match DOM consumption time ($45\text{ms} \sim 60\text{ms}$), ensuring React DOM finishes consuming deletions before new characters are committed.
-- **Cold Start Safe Baseline ($>50\text{ms}$):** On application start or when typing the first word ($\text{IKI} = 0$), a safe baseline ($50\text{ms} \sim 80\text{ms}$) guarantees 0% dropped characters on the very first character.
+- **Cold Start Safe Baseline ($>50\text{ms}$):** On application start or when typing the first word without prior $\text{IKI}$ and $\text{App ACK}$ history, a safe baseline ($50\text{ms} \sim 80\text{ms}$) guarantees 0% dropped characters on the very first character.
 
 ### 2. Uinput $N+1$ Sentinel Barrier Protocol
 - When replacing $N$ characters, the daemon emits **$N+1$ `KEY_BACKSPACE` events**:

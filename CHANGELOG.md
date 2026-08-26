@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cảm biến nhịp gõ IKI (`IIkiSensor` & `StandardIkiSensor`):** Đo liên tục nhịp gõ ngón tay thời gian thực qua thuật toán làm mịn EMA.
 - **Giao thức Sentinel Barrier $N+1$:** Phát $N+1$ phím xóa qua `/dev/uinput` và nuốt trọn phím thứ $N+1$ làm chốt chặn an toàn FIFO trước khi commit.
 - **Cơ chế Two-Tier Timeout:** Dynamic Soft Timeout (nhận diện app lag để gom phím vào RAM) kết hợp Watchdog Hard Timeout 250ms và Cắt lỗ khẩn cấp (`purgeContextEmergency`).
-- **Cold Start Safe Baseline:** Thiết lập ngưỡng an toàn $>50\text{ms}$ cho ký tự đầu tiên khi chưa có lịch sử IKI.
+- **Cold Start Safe Baseline:** Thiết lập ngưỡng an toàn $>50\text{ms}$ ($50\text{ms} \sim 80\text{ms}$) cho ký tự đầu tiên khi chưa có lịch sử dữ liệu IKI và App ACK, bảo đảm 100% không nuốt chữ ở từ đầu.
 - **Hạ tầng đóng gói AUR:** Bổ sung PKGBUILD chuẩn hóa cho `fcitx5-lilypad`, `fcitx5-lilypad-bin`, và `fcitx5-lilypad-git`.
 
 ### ⚡ Changed / Improved (Cải tiến & Tối ưu)
