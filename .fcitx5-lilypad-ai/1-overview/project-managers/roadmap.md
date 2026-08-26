@@ -47,5 +47,5 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
   - [x] Thiết lập **Soft Timeout** ($T_{\text{soft}} = 35\text{ms} \sim 120\text{ms}$): Giữ phím trong RAM (`buffered_keys_`), chuyển `BarrierState::AppLagHolding`.
   - [x] Thiết lập **Hard Timeout** ($250\text{ms}$): Watchdog timer trên EventLoop, cắt lỗ khẩn cấp `purgeContextEmergency()`, purge word buffer và xả phím thô an toàn khi app bị freeze.
 - [x] **Kiểm thử thực tế & Hoàn thành Phase 4.3** (User verified: Thành công tốt đẹp trên cả Terminal lẫn Facebook/Chrome).
-- [ ] **Phase 5: Merge nhánh `feat/iki-adaptive-engine` vào `main` & Phát hành `v2.3.0`**.
+- [x] **Phase 5: Merge nhánh `feat/iki-adaptive-engine` vào `main`, nâng Semantic Version `v2.3.0` & Phát hành chính thức lên GitHub Releases + AUR**.
 

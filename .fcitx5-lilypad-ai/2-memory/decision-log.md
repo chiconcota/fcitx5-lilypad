@@ -8,6 +8,20 @@
 
 ## 🎯 1. HỆ THỐNG CẢM BIẾN ADAPTIVE ACK, IKI & DYNAMIC LATENCY CONTROL
 
+### [2026-08-26] Quyết định 025: AUR Triple Packaging Strategy & Target-Oriented Logging Policy
+- **Bối cảnh:** Cần cung cấp giải pháp cài đặt linh hoạt trên Arch Linux / Manjaro / EndeavourOS đáp ứng 3 nhóm đối tượng: Người dùng phổ thông cần cài nhanh, người dùng thích biên dịch từ source tarball cố định, và lập trình viên / tester cần bắt log trực tiếp khi thử nghiệm.
+- **Quyết định:**
+  1. **`fcitx5-lilypad-bin` (Bản Binary Pre-compiled):**
+     - Đóng gói file `.tar.zst` được biên dịch sẵn với `-DCMAKE_BUILD_TYPE=Release` (`NDEBUG`).
+     - Tắt 100% log `LILYPAD_INFO` và `LILYPAD_DEBUG` để đạt 0% overhead CPU và không rác system journal. Cài đặt tức thì trong 1 giây.
+  2. **`fcitx5-lilypad` (Bản Source Release Chuẩn):**
+     - Biên dịch từ GitHub Release Source Tarball (`v2.3.0.tar.gz`) với mã băm bảo mật tĩnh `sha256sums`.
+     - Cấu hình `-DCMAKE_BUILD_TYPE=Release` tắt log cho người dùng cuối.
+  3. **`fcitx5-lilypad-git` (Bản Development Git):**
+     - Tự động đồng bộ theo commit mới nhất trên nhánh `main` qua `git+https://...` và hàm `pkgver()`.
+     - Cấu hình **`-DCMAKE_BUILD_TYPE=Debug`** (bật 100% full logs thời gian thực `[IKI SENSOR]`, `[ACK SENSOR]`, `[Perform replacement]`) để Dev & Tester dễ dàng chạy `scripts/read_logs.sh` gửi báo lỗi.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/packaging/aur/`, `README.md`, `fcitx5-lilypad/README.md`, `fcitx5-lilypad/README.en.md`.
+
 ### [2026-08-25] Quyết định 024: Cold Start Safe Baseline ($>50\text{ms}$ cho chữ đầu tiên)
 - **Bối cảnh:** Khi khởi động hoặc vừa chuyển focus sang cửa sổ mới, hệ thống chưa có dữ liệu quá khứ ($\text{IKI} = 0$, $\text{ACK}$ chưa đo). Nếu dùng giá trị giả định quá nhanh, chữ đầu tiên có nguy cơ bị lỗi trên các trình soạn thảo web nặng.
 - **Quyết định:**

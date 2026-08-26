@@ -5,39 +5,31 @@
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
 - **Nhánh Git làm việc:** `main`
-- **Tình trạng:** **ĐÃ MERGE THÀNH CÔNG NHÁNH FEAT/IKI-ADAPTIVE-ENGINE VÀO MAIN. NÂNG PHIÊN BẢN LÊN V2.3.0. CẬP NHẬT TOÀN DIỆN CẢ 3 FILE README VỚI ĐẦY ĐỦ KIẾN TRÚC IKI, SENTINEL BARRIER N+1, TWO-TIER TIMEOUT.**
+- **Tình trạng:** **ĐÃ HOÀN TẤT 100% PHÁT HÀNH RELEASE V2.3.0 TRÊN GITHUB & AUR. ĐỒNG BỘ 3 GÓI AUR (BIN, SOURCE, GIT) CÙNG TÀI LIỆU TOÀN DIỆN.**
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-25 - Cold Start Safe Baseline & Full Lerp ACK):
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-26 - Phát Hành Chính Thức Release v2.3.0 & Cập Nhật AUR):
 
-1. **Thiết Lập Cold Start Safe Baseline ($>50\text{ms}$ Cho Chữ Đầu Tiên - Quyết định 024):**
-   - Ấn định vi trễ khi `iki_ms == 0` đạt mức an toàn: $1\text{bs}=50\text{ms}, 2\text{bs}=65\text{ms}, 3\text{bs}=80\text{ms}$ bảo đảm 100% không bao giờ nuốt chữ ở từ đầu tiên.
-   - Từ từ thứ 2 trở đi, chuyển giao 100% cho thuật toán Lerp động theo $\text{IKI}$ và thời gian tiêu thụ App ACK $N \times T_{\text{ack}}$ (Quyết định 023).
-   - Kết hợp hoàn hảo với Giao thức Sentinel Barrier $N+1$ phím (Quyết định 022).
+1. **Phát Hành Nhị Phân `fcitx5-lilypad-bin` (v2.3.0):**
+   - Biên dịch Release sạch (`-DCMAKE_BUILD_TYPE=Release`, `NDEBUG`), đóng gói file `dist/fcitx5-lilypad-v2.3.0-x86_64-archlinux.tar.zst` (2.1MB).
+   - Tính toán và cập nhật chính xác mã băm `sha256sums` (`7b8f4758d6...`).
+   - Đẩy trực tiếp metadata `.SRCINFO` và `PKGBUILD` lên `aur@aur.archlinux.org/fcitx5-lilypad-bin.git`.
 
-2. **Xây Dựng Cơ Chế Dynamic Soft Timeout Trong `Sequencer` (`lilypad-sequencer.h/.cpp`):**
-   - Bổ sung trạng thái `BarrierState::AppLagHolding`.
-   - Triển khai công thức tính ngưỡng Soft Timeout kết hợp nhịp tay và độ trễ App:
-     $$T_{\text{soft}} = \text{clamp}\Big(\max(T_{\text{expected}} \times 2.0, \; \min(\text{IKI}, \; T_{\text{expected}} + 30)), \; 35\text{ms}, \; 120\text{ms}\Big)$$
-   - Thêm các phương thức `calculate_soft_timeout_ms(iki_ms)`, `is_soft_timeout(iki_ms)`, `is_hard_timeout()`, `elapsed_since_barrier_start_ms()`.
+2. **Cập Nhật Gói Source `fcitx5-lilypad` & Gói Git `fcitx5-lilypad-git` Lên AUR:**
+   - `fcitx5-lilypad`: Cập nhật `v2.3.0-1` với mã băm sha256 của GitHub source tarball (`f8c8c5411f...`).
+   - `fcitx5-lilypad-git`: Cấu hình `-DCMAKE_BUILD_TYPE=Debug` phục vụ nhà phát triển & tester bắt log lỗi.
+   - Đẩy thành công cả 2 repo lên máy chủ AUR chính thức (`aur.archlinux.org`).
 
-3. **Cài Đặt Watchdog Hard Timeout 250ms & Cắt Lỗ Khẩn Cấp `purgeContextEmergency()` (`lilypad-state.h/.cpp`):**
-   - Main Event Loop cài đặt timer giám sát $250\text{ms}$ độc lập khi bắt đầu `performReplacement()`, tự động hủy khi commit thành công.
-   - Thêm hàm `purgeContextEmergency()`: Tự động kích hoạt khi chạm trần 250ms, reset Bamboo Engine, xóa word buffer, và xả toàn bộ phím đệm trong RAM dạng raw phím thô (`ic_->forwardKey()`), đảm bảo không bao giờ bị đơ bàn phím.
-   - Xử lý Soft Timeout trong `keyEvent()`: Chuyển `BarrierState::AppLagHolding`, ghi log và gom phím an toàn vào RAM để chống rách chữ.
-   - Dọn dẹp an toàn timers và sequencer trong `checkForwardSpecialKey()`.
-
-4. **Biên Dịch Thành Công 100% C++ (`liblilypad.so`):**
-   - Đã biên dịch sạch sẽ không warning/error qua `make -j$(nproc)`.
+3. **Chuẩn Hóa Tài Liệu README & CHANGELOG.md:**
+   - Tạo file `CHANGELOG.md` chuẩn Keep a Changelog (`Added`, `Changed / Improved`, `Fixed`).
+   - Sửa toàn bộ công thức toán KaTeX trên GitHub (`\mathrm{EMA}_{\mathrm{IKI}}`, `$T_{\text{ack}}$`).
+   - Cập nhật mục cài đặt AUR trên cả 3 file README phân định rõ ràng 3 tùy chọn và chính sách log.
 
 ---
 
 ## 🎯 Kế Hoạch Bàn Giao Phiên Tiếp Theo (Handover Plan for Next Session):
 
-1. **Chuẩn Bị Merge Nhánh `feat/iki-adaptive-engine` Vào `main`:**
-   - Phiên làm việc đã hoàn thành 100% Phase 4 (IKI Adaptive Engine, Two-Tier Timeout, Sentinel Barrier N+1, Dynamic Lerp App ACK Consumption, và Safe Cold Start).
-   - Kiểm thử thực tế của User: **THÀNH CÔNG TỐT ĐẸP**.
-   - Merge nhánh `feat/iki-adaptive-engine` vào `main`.
-   - Nâng số phiên bản Semantic Versioning lên **`v2.3.0`** trong `CMakeLists.txt`, `about.py` và các file cấu hình liên quan.
+1. **Theo dõi phản hồi cộng đồng về phiên bản v2.3.0 trên AUR & GitHub.**
+2. **Nghiên cứu các cải tiến tiếp theo cho Phase 5 (Hỗ trợ mở rộng Wayland Compositors & GUI Settings enhancements).**
 
 ---
 
