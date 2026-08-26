@@ -95,10 +95,13 @@ Dự án này là bản nâng cấp tối ưu hóa kiến trúc dựa trên [VMK
 ### Cài đặt qua AUR (Arch Linux / Manjaro / EndeavourOS)
 
 ```bash
-# Bản cài nhanh từ Binary pre-compiled phát hành trên GitHub Releases (Khuyên dùng):
+# 1. Bản Binary phát hành chính thức - Cài tức thì 1s, TẮT LOG 100% (Khuyên dùng cho người dùng cuối):
 yay -S fcitx5-lilypad-bin
 
-# Hoặc Bản biên dịch từ mã nguồn Git mới nhất (Development Branch):
+# 2. Bản Source phát hành chính thức - Tự biên dịch từ Release Tarball, TẮT LOG:
+yay -S fcitx5-lilypad
+
+# 3. Bản Git mới nhất - Tự động cập nhật theo commit nhánh main, BẬT FULL LOG (Dành cho Dev & Tester):
 yay -S fcitx5-lilypad-git
 ```
 

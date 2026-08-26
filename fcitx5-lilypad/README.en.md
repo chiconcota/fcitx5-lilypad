@@ -130,10 +130,13 @@ This project is an architectural upgrade optimized from [VMK](https://github.com
 ### AUR (Arch Linux / Manjaro / EndeavourOS)
 
 ```bash
-# Fast installation using pre-compiled binary from GitHub Releases (Recommended):
+# 1. Official Pre-compiled Binary - Instant 1s install, ZERO LOGS (Recommended for end-users):
 yay -S fcitx5-lilypad-bin
 
-# Or build from latest Git main branch (Development Branch):
+# 2. Official Stable Source - Builds from official release tarball, ZERO LOGS:
+yay -S fcitx5-lilypad
+
+# 3. Latest Git Master - Auto-tracks latest main branch commits, FULL LOGGING ENABLED (For Devs & Testers):
 yay -S fcitx5-lilypad-git
 ```
 
