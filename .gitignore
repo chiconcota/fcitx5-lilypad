@@ -2,7 +2,9 @@
 /target
 /build
 fcitx5-lilypad/build/
+fcitx5-lilypad/build_release/
 fcitx5-lotus-main/build/
+dist/
 *.o
 *.so
 *.a
