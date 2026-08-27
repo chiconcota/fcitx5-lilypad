@@ -156,7 +156,7 @@ yay -S fcitx5-lilypad-git
 
 - **Fedora:**
   ```bash
-  sudo dnf install -y git gcc-c++ cmake extra-cmake-modules fcitx5-devel gettext-devel golang libX11-devel libinput-devel systemd-devel fcitx5-configtool python3 python3-qtpy python3-qt5
+  sudo dnf install -y git gcc-c++ cmake extra-cmake-modules fcitx5 fcitx5-devel fcitx5-configtool fcitx5-autostart fcitx5-gtk fcitx5-qt5 fcitx5-qt6 gettext-devel golang libX11-devel libinput-devel systemd-devel python3 python3-QtPy python3-qt5
   ```
 
 #### Step 1: Clone and Build
