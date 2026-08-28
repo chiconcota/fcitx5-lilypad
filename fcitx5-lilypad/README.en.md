@@ -19,7 +19,7 @@
       <img src="https://img.shields.io/github/v/release/chiconcota/fcitx5-lilypad?style=flat&color=success" alt="Release">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad">
-      <img src="https://img.shields.io/badge/version-2.3.0-blue.svg" alt="Version 2.3.0">
+      <img src="https://img.shields.io/badge/version-2.3.1-blue.svg" alt="Version 2.3.1">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/chiconcota/fcitx5-lilypad?style=flat&color=blue" alt="License">
@@ -129,6 +129,7 @@ This project is an architectural upgrade optimized from [VMK](https://github.com
 
 ### AUR (Arch Linux / Manjaro / EndeavourOS)
 
+**Step 1: Install via AUR helper (`yay` or `paru`):**
 ```bash
 # 1. Official Pre-compiled Binary - Instant 1s install, ZERO LOGS (Recommended for end-users):
 yay -S fcitx5-lilypad-bin
@@ -138,6 +139,15 @@ yay -S fcitx5-lilypad
 
 # 3. Latest Git Master - Auto-tracks latest main branch commits, FULL LOGGING ENABLED (For Devs & Testers):
 yay -S fcitx5-lilypad-git
+```
+
+**Step 2: Enable Uinput Daemon Service & Restart Fcitx5:**
+```bash
+# Enable and start the server daemon for your user (one-time setup):
+sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
+
+# Restart Fcitx5 to apply changes:
+fcitx5 -r -d
 ```
 
 ### Build from Source

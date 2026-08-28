@@ -19,7 +19,7 @@
       <img src="https://img.shields.io/github/v/release/chiconcota/fcitx5-lilypad?style=flat&color=success" alt="Release">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad">
-      <img src="https://img.shields.io/badge/version-2.3.0-blue.svg" alt="Version 2.3.0">
+      <img src="https://img.shields.io/badge/version-2.3.1-blue.svg" alt="Version 2.3.1">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/chiconcota/fcitx5-lilypad?style=flat&color=blue" alt="License">
@@ -94,6 +94,7 @@ Dự án này là bản nâng cấp tối ưu hóa kiến trúc dựa trên [VMK
 
 ### Cài đặt qua AUR (Arch Linux / Manjaro / EndeavourOS)
 
+**Bước 1: Cài đặt gói bộ gõ:**
 ```bash
 # 1. Bản Binary phát hành chính thức - Cài tức thì 1s, TẮT LOG 100% (Khuyên dùng cho người dùng cuối):
 yay -S fcitx5-lilypad-bin
@@ -103,6 +104,15 @@ yay -S fcitx5-lilypad
 
 # 3. Bản Git mới nhất - Tự động cập nhật theo commit nhánh main, BẬT FULL LOG (Dành cho Dev & Tester):
 yay -S fcitx5-lilypad-git
+```
+
+**Bước 2: Kích hoạt Uinput Daemon Service & Khởi động lại Fcitx5:**
+```bash
+# Kích hoạt daemon chạy ngầm theo user (chỉ cần thực hiện 1 lần duy nhất):
+sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
+
+# Khởi động lại Fcitx5 để nhận diện bộ gõ:
+fcitx5 -r -d
 ```
 
 ### Biên dịch từ Mã Nguồn (Build from Source)

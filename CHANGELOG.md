@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.1] - 2026-08-28
+
+### ⚡ Changed / Improved (Cải tiến & Tối ưu)
+- **Chuẩn hóa Hướng dẫn Cài đặt AUR:** Bổ sung hướng dẫn 2 bước chi tiết (Cài đặt gói & Kích hoạt Daemon qua Systemd) trong cả 3 tài liệu `README.md`, `fcitx5-lilypad/README.md`, và `fcitx5-lilypad/README.en.md`.
+- **Cải tiến Scriptlet `fcitx5-lilypad.install`:** Tự động đóng khung hướng dẫn bật `fcitx5-lilypad-server@$USER.service` và khởi động lại Fcitx5 (`fcitx5 -r -d`) ngay trên terminal khi cài đặt qua `pacman`/`yay`.
+- **Đồng bộ hóa Gói Đóng Gói AUR:** Cập nhật phiên bản và mã băm SHA256 cho 3 gói AUR (`fcitx5-lilypad`, `fcitx5-lilypad-bin`, `fcitx5-lilypad-git`).
+
+---
+
 ## [2.3.0] - 2026-08-26
 
 ### 🚀 Added (Mới)

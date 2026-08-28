@@ -1,7 +1,7 @@
 # fcitx5-lilypad SYSTEM MAP & MODULE STATUS MAP (DỰ ÁN FCITX5 LILYPAD SEQUENCER)
 
 > **Architectural Paradigm:** Hybrid Fcitx5 C++ Addon (`fcitx5-lilypad`) + Bamboo Telex Engine (Go C-FFI `bamboo-core`) + Sequencer Token Swallow Layer (`lilypad-state.cpp` + `lilypad-sequencer.cpp`).
-> **Current Version:** `v2.3.0` (IKI Adaptive Engine, Dynamic Micro-Pacing Lerp, Sentinel Barrier N+1, Two-Tier Timeout & Emergency Purge)
+> **Current Version:** `v2.3.1` (IKI Adaptive Engine, Sentinel Barrier N+1, AUR Dual-Step Activation Standard)
 
 ---
 
@@ -69,6 +69,7 @@
 
 | Ngày | Mô tả nâng cấp cốt lõi | File ảnh hưởng |
 | :--- | :--- | :--- |
+| 2026-08-28 | Phát hành **v2.3.1**: Chuẩn hóa quy trình cài đặt AUR 2 bước (`yay` + `systemctl enable --now fcitx5-lilypad-server@$USER.service`), nâng cấp scriptlet `fcitx5-lilypad.install`, cập nhật SHA256 và đồng bộ 3 gói AUR (`-bin`, source, `-git`). | `fcitx5-lilypad/packaging/aur/`, `README.md`, `CHANGELOG.md`, `CMakeLists.txt`, `dist/` |
 | 2026-08-26 | Hoàn tất phát hành chính thức **v2.3.0** lên GitHub Release & AUR: Đóng gói nhị phân `fcitx5-lilypad-bin` (`.tar.zst` 2.1MB), cập nhật SHA256 checksum, cấu hình Debug log cho bản `-git` và Release Zero-log cho bản `-bin` & bản Source, đồng bộ tài liệu 3 file README và CHANGELOG.md | `fcitx5-lilypad/packaging/aur/`, `README.md`, `CHANGELOG.md`, `dist/` |
 | 2026-08-25 | Tích hợp Cold Start Safe Baseline ($>50\text{ms}$ cho chữ đầu tiên): Ấn định mức trần an toàn $50\text{ms} \sim 80\text{ms}$ cho chữ đầu tiên khi chưa có dữ liệu IKI để bảo đảm 100% không nuốt chữ, sau đó chuyển giao sang thuật toán Lerp động từ chữ thứ 2 | `fcitx5-lilypad/src/ack-sensors/`, `.fcitx5-lilypad-ai/` |
 | 2026-08-25 | Hoàn thành Triển khai Phase 4.3: Tích hợp Two-Tier Timeout (Dynamic Soft Timeout theo App ACK & nhịp IKI, Watchdog Hard Timeout 250ms trên EventLoop) và cơ chế cắt lỗ khẩn cấp `purgeContextEmergency` bảo vệ tuyệt đối chuỗi phím khi App lag/freeze | `fcitx5-lilypad/src/lilypad-sequencer.h/.cpp`, `lilypad-state.h/.cpp`, `.fcitx5-lilypad-ai/` |

@@ -3,7 +3,7 @@
 > **Bộ gõ Tiếng Việt thế hệ mới cho Linux Wayland & X11** dựa trên kiến trúc Hybrid: **Fcitx5 C++ Addon + IKI Adaptive Engine + Modular IAckSensor + Sentinel Barrier Protocol + Pure Kernel Uinput Server Daemon**.
 
 [![Release](https://img.shields.io/github/v/release/chiconcota/fcitx5-lilypad?style=flat&color=success)](https://github.com/chiconcota/fcitx5-lilypad/releases)
-[![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)](https://github.com/chiconcota/fcitx5-lilypad)
+[![Version](https://img.shields.io/badge/version-2.3.1-blue.svg)](https://github.com/chiconcota/fcitx5-lilypad)
 [![License](https://img.shields.io/github/license/chiconcota/fcitx5-lilypad?style=flat&color=blue)](LICENSE)
 [![Tested Compositor](https://img.shields.io/badge/tested_compositor-Niri-purple.svg)](https://github.com/niri-wm/niri)
 [![Target Packaging](https://img.shields.io/badge/target_packaging-AUR_Arch_Linux-blue.svg)](#-phát-hành--cài-đặt)
@@ -92,6 +92,7 @@ Bộ gõ được tối ưu hóa chuyên sâu trên **Niri Compositor (Arch Linu
 
 Người dùng Arch Linux có thể cài đặt dễ dàng qua các helper AUR (`yay` hoặc `paru`):
 
+**Bước 1: Cài đặt gói bộ gõ:**
 ```bash
 # 1. Bản Binary phát hành chính thức - Cài tức thì 1s, TẮT LOG 100% (Khuyên dùng cho người dùng cuối):
 yay -S fcitx5-lilypad-bin
@@ -101,6 +102,15 @@ yay -S fcitx5-lilypad
 
 # 3. Bản Git mới nhất - Tự động cập nhật theo commit nhánh main, BẬT FULL LOG (Dành cho Dev & Tester):
 yay -S fcitx5-lilypad-git
+```
+
+**Bước 2: Kích hoạt Uinput Daemon Service & Khởi động lại Fcitx5:**
+```bash
+# Kích hoạt daemon chạy ngầm theo user (chỉ cần thực hiện 1 lần duy nhất):
+sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
+
+# Khởi động lại Fcitx5 để nhận diện bộ gõ:
+fcitx5 -r -d
 ```
 
 ### 2. Biên dịch và Cài đặt từ Mã Nguồn (Build from Source)

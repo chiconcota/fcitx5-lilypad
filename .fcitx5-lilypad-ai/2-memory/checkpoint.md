@@ -5,9 +5,19 @@
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
 - **Nhánh Git làm việc:** `main`
-- **Tình trạng:** **ĐÃ HOÀN TẤT 100% PHÁT HÀNH RELEASE V2.3.0 TRÊN GITHUB & AUR. ĐỒNG BỘ 3 GÓI AUR (BIN, SOURCE, GIT) CÙNG TÀI LIỆU TOÀN DIỆN.**
+- **Tình trạng:** **ĐÃ HOÀN TẤT ĐỒNG BỘ RELEASE V2.3.1 TRÊN GITHUB & AUR. CHUẨN HÓA HƯỚNG DẪN CÀI ĐẶT 2 BƯỚC VÀ SCRIPTLET INSTALL.**
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-26 - Phát Hành Chính Thức Release v2.3.0 & Cập Nhật AUR):
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-28 - Phát Hành Release v2.3.1 & Cập Nhật AUR):
+
+1. **Chuẩn Hóa Tài Liệu Hướng Dẫn Cài Đặt AUR 2 Bước:**
+   - Cập nhật cả 3 file README (`README.md`, `fcitx5-lilypad/README.md`, `fcitx5-lilypad/README.en.md`) bổ sung rõ ràng bước 2: kích hoạt daemon qua `sudo systemctl enable --now fcitx5-lilypad-server@$USER.service` và `fcitx5 -r -d`.
+
+2. **Cập Nhật Scriptlet `fcitx5-lilypad.install`:**
+   - Thiết lập khung hướng dẫn nổi bật kích hoạt systemd service và khởi động lại fcitx5 khi cài qua `yay`/`pacman`.
+
+3. **Nâng Phiên Bản & Đóng Gói Nhị Phân `fcitx5-lilypad-bin` (v2.3.1):**
+   - Nâng phiên bản `2.3.1` trong `CMakeLists.txt` và đóng gói `dist/fcitx5-lilypad-v2.3.1-x86_64-archlinux.tar.zst`.
+   - Cập nhật SHA256 checksum và PKGBUILD của 3 gói AUR.
 
 1. **Phát Hành Nhị Phân `fcitx5-lilypad-bin` (v2.3.0):**
    - Biên dịch Release sạch (`-DCMAKE_BUILD_TYPE=Release`, `NDEBUG`), đóng gói file `dist/fcitx5-lilypad-v2.3.0-x86_64-archlinux.tar.zst` (2.1MB).
