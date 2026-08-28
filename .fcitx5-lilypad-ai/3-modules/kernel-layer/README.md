@@ -1,6 +1,6 @@
 # MODULE: KERNEL LAYER (`fcitx5-lilypad/server/lilypad-server.cpp`)
 
-@status: STABLE (v2.2.0-modular-sensor) | @last_update: 2026-08-07
+@status: STABLE (v2.3.1-sentinel-barrier) | @last_update: 2026-08-28
 
 ---
 

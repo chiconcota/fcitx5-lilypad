@@ -8,6 +8,14 @@
 
 ## 🎯 1. HỆ THỐNG CẢM BIẾN ADAPTIVE ACK, IKI & DYNAMIC LATENCY CONTROL
 
+### [2026-08-28] Quyết định 026: Dual-Step AUR Activation Standard & Interactive Post-Install UX
+- **Bối cảnh:** Theo Arch Packaging Guidelines, trình quản lý gói `pacman`/`yay` không tự ý bật service systemd trong phiên người dùng. Nếu README và scriptlet không chỉ dẫn rõ, người dùng cài qua AUR sẽ không bật daemon `fcitx5-lilypad-server@$USER.service`, dẫn đến lỗi không kết nối được uinput socket.
+- **Quyết định:**
+  1. **Chuẩn hóa 2 bước cài đặt trong tất cả tài liệu:** Phân tách rõ ràng Bước 1 (`yay -S ...`) và Bước 2 kích hoạt (`sudo systemctl enable --now fcitx5-lilypad-server@$USER.service && fcitx5 -r -d`).
+  2. **Nâng cấp Scriptlet `fcitx5-lilypad.install`:** Thiết kế khung thông báo ASCII trực quan in lệnh kích hoạt trực tiếp ra terminal ngay khi `pacman`/`yay` cài xong.
+  3. **Phát hành `v2.3.1`:** Cập nhật SHA256 cho cả 3 gói AUR và đồng bộ lên GitHub & AUR.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/packaging/aur/fcitx5-lilypad.install`, `README.md`, `fcitx5-lilypad/README.md`, `fcitx5-lilypad/README.en.md`.
+
 ### [2026-08-26] Quyết định 025: AUR Triple Packaging Strategy & Target-Oriented Logging Policy
 - **Bối cảnh:** Cần cung cấp giải pháp cài đặt linh hoạt trên Arch Linux / Manjaro / EndeavourOS đáp ứng 3 nhóm đối tượng: Người dùng phổ thông cần cài nhanh, người dùng thích biên dịch từ source tarball cố định, và lập trình viên / tester cần bắt log trực tiếp khi thử nghiệm.
 - **Quyết định:**
