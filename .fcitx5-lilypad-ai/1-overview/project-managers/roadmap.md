@@ -49,4 +49,11 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
 - [x] **Kiểm thử thực tế & Hoàn thành Phase 4.3** (User verified: Thành công tốt đẹp trên cả Terminal lẫn Facebook/Chrome).
 - [x] **Phase 5: Merge nhánh `feat/iki-adaptive-engine` vào `main`, nâng Semantic Version `v2.3.0` & Phát hành chính thức lên GitHub Releases + AUR**.
 - [x] **Phase 5.1: Chuẩn hóa Hướng dẫn Cài đặt AUR 2 Bước, Cải tiến Scriptlet `.install` & Phát hành Bản vá v2.3.1**.
+- [x] **Phase 5.2: Tri-Layer Dynamic Micro-Pacing, Loại bỏ Nợ Kỹ thuật & Chuẩn hóa Phát hành v2.3.6**:
+  - [x] Tích hợp đo đạc thời gian nuốt phím thực tế ($\Delta T_{\text{swallow}}$), bảo vệ 3 tầng (Tri-Layer Protection).
+  - [x] Loại bỏ hoàn toàn cờ `is_antigravity_flag_` và logic mức sàn cứng riêng, chuyển về cơ chế chuẩn Chromium/Electron.
+  - [x] Chuẩn hóa ngưỡng Watchdog $250\text{ms}$ thống nhất toàn hệ thống.
+  - [x] Đóng gói nhị phân Release `dist/fcitx5-lilypad-v2.3.6-x86_64-archlinux.tar.zst`, cập nhật SHA256 checksum và phát hành tag Git `v2.3.6`.
+  - [x] Cập nhật đồng bộ 3 gói AUR: `fcitx5-lilypad`, `fcitx5-lilypad-bin`, `fcitx5-lilypad-git`.
+  - [x] Sửa triệt để tác giả commit sang `chiconcota <lytatthanh@gmail.com>` và cập nhật đầy đủ lời cảm ơn trong 3 file README.
 

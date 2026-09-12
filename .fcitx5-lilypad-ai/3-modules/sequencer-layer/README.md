@@ -1,6 +1,6 @@
 # MODULE: SEQUENCER LAYER (`src/sequencer/` & `fcitx5-lilypad/src/`)
 
-@status: STABLE (v2.3.0-iki-adaptive) | @last_update: 2026-08-25
+@status: STABLE (v2.3.6-adaptive-clean) | @last_update: 2026-09-12
 
 > **Ghi chú Kiến trúc:** Hệ thống sử dụng **Kiến trúc Cảm biến Vòng lặp Kép (Dual-Sensor Control Loop)**:
 > 1. **`IAckSensor` (Cảm biến Đường truyền & Micro-Pacing):** Đo độ trễ vòng lặp Compositor/App roundtrip và tính toán độ trễ vi mô thích ứng `get_micro_delay_us(bsCount, iki_ms)` qua `fcitx5-lilypad/src/ack-sensors/`.
@@ -73,8 +73,10 @@ stateDiagram-v2
 ---
 
 ## 5. BẢO VỆ AN TOÀN & APTOMAT KHẨN CẤP (WATCHDOG & POST-COMMIT SETTLING)
-- **Dynamic Watchdog Safety Cap (`set_max_ack_timeout_ms`):**
-  - Mặc định $250\text{ms}$ cho các ứng dụng thông thường.
-  - Tự động nâng lên $800\text{ms}$ khi phát hiện ứng dụng có DOM cực nặng (như Antigravity 2.0 với $>134\text{k}$ nodes DOM do context drawer ẩn), kiên nhẫn đợi React traversal hoàn tất mà không cắt lỗ nhầm.
-- **Hàm `purgeContextEmergency()`:** Nếu xảy ra freeze/lag quá ngưỡng Watchdog, hệ thống lập tức cắt lỗ trạng thái, reset Engine và xả phím thô trong RAM, đảm bảo bàn phím không bao giờ bị đơ.
-- **Post-Commit Settling Window (`settle_timer_`):** Giữ phím an toàn trong RAM ($70\text{ms} \sim 100\text{ms}$) sau khi gửi commit string vào Chromium/Electron Webview, chống xóa nhầm phụ âm khi gõ nhanh.
+- **Watchdog Hard Timeout (250ms toàn hệ thống):**
+  - Giữ ngưỡng an toàn chuẩn $250\text{ms}$ thống nhất cho toàn bộ hệ thống (`purgeContextEmergency()`), bảo đảm bàn phím không bao giờ bị đơ/freeze ngay cả khi ứng dụng gặp sự cố.
+  - Loại bỏ các cờ hack riêng biệt để triệt tiêu nợ kỹ thuật (Zero Technical Debt).
+- **Hàm `purgeContextEmergency()`:** Nếu xảy ra freeze/lag quá ngưỡng Watchdog, hệ thống lập tức cắt lỗ trạng thái, reset Engine và xả phím thô trong RAM, đảm bảo bàn phím an toàn tuyệt đối.
+- **Post-Commit Settling Window (`settle_timer_`):**
+  - Tự động kích hoạt khi phát hiện ứng dụng Chromium/Electron (`wa_chromium_flag == true` từ `ack-apps.h`), giữ khoảng đệm an toàn $70\text{ms}$ sau khi gửi `commitString()`, ngăn chặn hiện tượng rụng/nuốt ký tự do Single-Threaded DOM reconciliation.
+  - Với các ứng dụng không phải Chromium, mức trễ đệm tối thiểu là $300\mu\text{s}$ bảo đảm tốc độ phản hồi tức thì.

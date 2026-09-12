@@ -262,3 +262,19 @@
   1. Thực hiện **Zero-Regression Rollback**: Không viết bất kỳ dòng code hack C++ riêng nào cho AFFiNE bên trong bộ gõ, giữ mã nguồn C++ sạch 100%.
   2. Hướng dẫn người dùng cấu hình cờ Electron Wayland IME trong `~/.config/affine-flags.conf` (`--ozone-platform=wayland`, `--enable-wayland-ime`).
 - **Mã nguồn thực thi:** Quy tắc bảo vệ toàn cục `Safety-First & Reversion Protocol`.
+
+---
+
+## 🚀 6. KIẾN TRÚC VI MÔ THÍCH ỨNG & QUẢN TRỊ MÃ NGUỒN (v2.3.6)
+
+### [2026-09-12] Quyết định 045: Tri-Layer Protection, Technical Debt Cleanup & Chuẩn hóa Quyền Tác Giả (Ownership)
+- **Bối cảnh:**
+  1. Trên các ứng dụng Electron/Chromium có cây DOM nặng (như Antigravity 2.0 với $>134.000$ DOM nodes do drawer duyệt file ẩn), Single-threaded Chromium Renderer mất $45\text{ms} \sim 60\text{ms}$ để DOM reconciliation. Với $N=1$ Backspace, độ trễ $33\text{ms}$ gửi `commitString` quá sớm khiến Lexical nuốt mất ký tự (`thương` $\to$ `tương`, `cháu lê` $\to$ `cháu l`).
+  2. Việc duy trì cờ riêng `is_antigravity_flag_`, watchdog $800\text{ms}$ và mức sàn cứng $32\text{ms}$ tạo ra nợ kỹ thuật (technical debt) cho bộ gõ, trong khi Antigravity 2.0 chiếm dụng tới 5GB RAM và chỉ chạy đơn nhân. Người dùng quyết định gỡ bỏ ứng dụng Antigravity.
+  3. Kiểm tra repository phát hiện local `.git/config` còn sót cấu hình email của người khác (`thanhpy2009@gmail.com`), khiến commit metadata trên GitHub bị nhận nhầm quyền tác giả.
+- **Quyết định:**
+  1. **Triệt tiêu nợ kỹ thuật (Zero Technical Debt):** Loại bỏ hoàn toàn cờ `is_antigravity_flag_`, biến cờ liên quan và các logic mức trễ sàn riêng biệt trong `lilypad-state.h/.cpp` và `lilypad-engine.cpp`.
+  2. **Chuẩn hóa ứng dụng Chromium:** Giữ `"antigravity"` trong bảng nhận diện `ack-apps.h` để ứng dụng kế thừa cơ chế Chromium tiêu chuẩn (`wa_chromium_flag = true`, Post-Commit Settling Window $70\text{ms}$, và $300\mu\text{s}$ cho non-Chromium). Toàn bộ hệ thống quy về trần Watchdog $250\text{ms}$ thống nhất.
+  3. **Hệ thống Tri-Layer Dynamic Micro-Pacing:** Tích hợp đo đạc thời gian nuốt phím thực tế ($\Delta T_{\text{swallow}}$), bảo vệ 3 tầng (Cold Start Safe Baseline $>50\text{ms}$, Lerp theo nhịp gõ IKI, và mở rộng theo số lượng phím Backspace $N$).
+  4. **Chuẩn hóa quyền tác giả (Ownership Correction):** Cập nhật `.git/config` chính xác về `chiconcota <lytatthanh@gmail.com>`, viết lại commit history phiên bản v2.3.6 và cập nhật tài liệu README phân định rõ: **chiconcota** là tác giả chính của `fcitx5-lilypad`; ghi công cảm ơn **Luật Nguyễn** (Bamboo Engine), **thanhpy2009** (VMK), và nền tảng **fcitx5-lotus**.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-state.h/.cpp`, `lilypad-engine.cpp`, `ack-apps.h`, `.git/config`, `README.md`.

@@ -7,14 +7,30 @@
 - **Nhánh Git làm việc:** `main`
 - **Tình trạng:** **ĐÃ HOÀN TẤT NÂNG CẤP V2.3.6 (CLEAN CODE & TECHNICAL DEBT CLEANUP): LOẠI BỎ TRIỆT ĐỂ CỜ RIÊNG `is_antigravity_flag_` VÀ CÁC NGOẠI LỆ MỨC SÀN CỨNG 32MS. GIỮ NGUYÊN NHẬN DIỆN CHROMIUM TIÊU CHUẨN (`wa_chromium_flag = true`) CHO CÁC APP ELECTRON/CHROMIUM QUA `ack-apps.h`. TOÀN BỘ BỘ GÕ CHẠY THỐNG NHẤT TRÊN CƠ CHẾ ADAPTIVE DYNAMIC MICRO-PACING VÀ TRI-LAYER PROTECTION. ĐÃ BIÊN DỊCH DEBUG, CÀI ĐẶT THÀNH CÔNG VÀO HỆ THỐNG VÀ KHỞI ĐỘNG LẠI FCITX5.**
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-09-12 - Gỡ Bỏ Nợ Kỹ Thuật & Hoàn Thiện v2.3.6):
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-09-12 - Gỡ Bỏ Nợ Kỹ Thuật, Phát Hành v2.3.6 & AUR, Chuẩn Hóa Tác Giả):
 
-1. **Gỡ bỏ Nợ Kỹ thuật & Cờ `is_antigravity_flag_`:**
-   - Xóa bỏ `is_antigravity_flag_` trong `lilypad-state.h` và `lilypad-engine.cpp`.
-   - Xóa bỏ mức sàn cứng $32\text{ms}$ và logic settle riêng $100\text{ms}$ trong `lilypad-state.cpp`, đưa về chuẩn Chromium $70\text{ms}$.
+1. **Gỡ bỏ Nợ Kỹ thuật & Cờ `is_antigravity_flag_` (`v2.3.6`):**
+   - Xóa bỏ cờ `is_antigravity_flag_` trong `lilypad-state.h` và `lilypad-engine.cpp`.
+   - Xóa bỏ mức sàn cứng $32\text{ms}$ và logic settle riêng $100\text{ms}$ trong `lilypad-state.cpp`, đưa về chuẩn Chromium $70\text{ms}$ ($70,000\mu\text{s}$) và non-Chromium $300\mu\text{s}$.
    - Giữ `"antigravity"` trong `ack-apps.h` để ứng dụng tiếp tục được nhận diện là app Chromium (`wa_chromium_flag = true`).
    - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên **v2.3.6**.
    - Biên dịch và cài đặt hoàn tất vào `/usr/lib/fcitx5/liblilypad.so`, khởi động lại Fcitx5 sạch sẽ.
+
+2. **Phát Hành Bản Đóng Gói Nhị Phân & Cập Nhật AUR:**
+   - Biên dịch bản Release sạch (`-DCMAKE_BUILD_TYPE=Release`, `NDEBUG`).
+   - Đóng gói file nhị phân `dist/fcitx5-lilypad-v2.3.6-x86_64-archlinux.tar.zst` (SHA256: `cfd6a4b2397938e412036a0738e31bfa41f7c6a700afc13eb8a07bc297fb5df7`).
+   - Đẩy tag `v2.3.6` lên remote `origin/main` (GitHub: `chiconcota/fcitx5-lilypad`).
+   - Cập nhật đồng bộ và đẩy thành công lên 3 kho AUR (`aur.archlinux.org`):
+     - `fcitx5-lilypad` (`v2.3.6-1`)
+     - `fcitx5-lilypad-bin` (`v2.3.6-1`)
+     - `fcitx5-lilypad-git` (`v2.3.6.r...`)
+
+3. **Chuẩn Hóa Quyền Tác Giả & Hệ Thống Tài Liệu README:**
+   - Phát hiện `.git/config` local có email `thanhpy2009@gmail.com`. Đã cập nhật lại `git config user.email lytatthanh@gmail.com` và `git config user.name chiconcota`.
+   - Rebase toàn bộ commit thuộc đợt phát hành `v2.3.6` (`6f00947`, `8cf66f9`, `cec1eb8`, `9379354`, `ecd8ebc`, `8137ba3`) với `--reset-author` để ghi nhận chính xác tác giả **chiconcota**.
+   - Cập nhật lại tag `v2.3.6` và đẩy `git push --force-with-lease origin main --tags`.
+   - Cập nhật nội dung trên cả 3 file README (`README.md`, `fcitx5-lilypad/README.md`, `fcitx5-lilypad/README.en.md`): mô tả các cải tiến kiến trúc v2.3.6 và bổ sung mục Lời Cảm Ơn trang trọng tới tác giả Bamboo Engine (**Luật Nguyễn**), tác giả VMK (**thanhpy2009**), và nền tảng **fcitx5-lotus**.
+   - Hoàn tất cập nhật `CHANGELOG.md`.
 
 1. **Khảo Sát DOM & Truy Tìm Nguyên Nhân "Đoạn Chat Cũ Bị Lỗi Dù Không Mở Thêm Gì":**
    - Kết nối Chrome DevTools Protocol vào Antigravity kiểm tra cây DOM của cuộc hội thoại `"Thiết Kế Website Cá Nhân"`:
