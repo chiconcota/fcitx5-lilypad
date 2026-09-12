@@ -73,8 +73,9 @@
 Dự án **fcitx5-lilypad** xin gửi lời tri ân sâu sắc đến những đóng góp quý giá đã đặt nền móng cho sự phát triển của bộ gõ:
 
 * **Tác giả Engine Bamboo:** Chân thành cảm ơn tác giả **Luật Nguyễn** ([BambooEngine](https://github.com/BambooEngine/bamboo-core)) đã phát triển bộ engine Bamboo mã nguồn mở tuyệt vời — trái tim thuật toán xử lý biến âm Tiếng Việt tự nhiên và chuẩn xác.
-* **Tác giả bộ gõ `fcitx5-lilypad`:** Tác giả **Võ Ngô Hoàng Thành** ([thanhpy2009 / VMK](https://github.com/thanhpy2009)) — Kiến trúc sư trưởng thiết kế hạ tầng Sequencer, Sentinel Barrier $N+1$, Uinput Server Daemon, Cảm biến IKI Adaptive và cơ chế điều hòa vi trễ Tri-Layer Protection.
-* **Dự án tiền đề `fcitx5-lotus`:** Chân thành cảm ơn dự án [fcitx5-lotus](https://github.com/vnlilypad/fcitx5-lotus) — Nguồn cảm hứng mở đường và nền móng vững chắc ban đầu cho hành trình xây dựng bộ gõ tiếng Việt hiện đại, mượt mà trên Linux Wayland & X11.
+* **Tác giả bộ gõ VMK:** Chân thành cảm ơn tác giả **thanhpy2009** ([VMK](https://github.com/thanhpy2009/VMK)) đã phát triển bộ gõ VMK, đặt nền móng và ý tưởng kỹ thuật ban đầu cho dự án.
+* **Dự án `fcitx5-lotus`:** Chân thành cảm ơn dự án [fcitx5-lotus](https://github.com/vnlilypad/fcitx5-lotus) — Nguồn cảm hứng mở đường và nền móng vững chắc ban đầu cho hành trình xây dựng bộ gõ tiếng Việt hiện đại trên Wayland Linux.
+* **Tác giả bộ gõ `fcitx5-lilypad`:** **chiconcota** ([chiconcota](https://github.com/chiconcota)) — Tác giả phát triển, duy trì và nâng cấp toàn bộ hệ thống Sequencer, Sentinel Barrier $N+1$, Uinput Server Daemon, Cảm biến IKI Adaptive và cơ chế điều hòa vi trễ Tri-Layer Protection.
 
 ---
 

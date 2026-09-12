@@ -106,8 +106,9 @@
 The **fcitx5-lilypad** project gratefully acknowledges the pioneering contributions that made this modern input method possible:
 
 * **Bamboo Engine Author:** Special thanks to **Luật Nguyễn** ([BambooEngine](https://github.com/BambooEngine/bamboo-core)) for creating the wonderful open-source Bamboo engine — the core algorithms powering natural and accurate Vietnamese Telex/VNI syllable processing.
-* **fcitx5-lilypad Author:** **Võ Ngô Hoàng Thành** ([thanhpy2009 / VMK](https://github.com/thanhpy2009)) — Chief architect behind the Sequencer, $N+1$ Sentinel Barrier, Uinput Daemon Server, IKI Adaptive Engine, and Tri-Layer Micro-Pacing.
-* **Predecessor Project `fcitx5-lotus`:** Sincere thanks to [fcitx5-lotus](https://github.com/vnlilypad/fcitx5-lotus) — The pioneering initiative providing the inspiration and solid foundation for modern, smooth Vietnamese typing on Linux Wayland & X11.
+* **VMK Input Method Author:** Sincere thanks to **thanhpy2009** ([VMK](https://github.com/thanhpy2009/VMK)) for creating the VMK input method, laying the architectural groundwork and initial ideas for this project.
+* **Predecessor Project `fcitx5-lotus`:** Sincere thanks to [fcitx5-lotus](https://github.com/vnlilypad/fcitx5-lotus) — The pioneering initiative providing the inspiration and solid foundation for modern Vietnamese typing on Linux Wayland.
+* **fcitx5-lilypad Author:** **chiconcota** ([chiconcota](https://github.com/chiconcota)) — Creator and lead maintainer developing the Sequencer, $N+1$ Sentinel Barrier, Uinput Daemon Server, IKI Adaptive Engine, and Tri-Layer Micro-Pacing system.
 
 ---
 
