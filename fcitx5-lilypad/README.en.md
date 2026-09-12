@@ -46,13 +46,9 @@
 
 <br />
 
-This project is an architectural upgrade optimized from [VMK](https://github.com/thanhpy2009/VMK). Special thanks to author Thanh for creating the baseline foundation.
+## 💡 Architectural Breakthroughs (`v2.3.6 - Adaptive Dynamic Micro-Pacing & Tri-Layer Protection`)
 
----
-
-## 💡 Architectural Breakthroughs (`v2.3.0 - IKI Adaptive & Sentinel Barrier`)
-
-`fcitx5-lilypad` v2.3.0 delivers a complete, robust solution to the longstanding challenges of Vietnamese IME on Linux (dropped keystrokes, character duplication, DOM desynchronization on web apps, and inverted space bars):
+`fcitx5-lilypad` v2.3.6 delivers a complete, robust solution to the longstanding challenges of Vietnamese IME on Linux (dropped keystrokes, character duplication, DOM desynchronization on web apps, and inverted space bars):
 
 ```text
   ┌────────────────────────────────────────────────────────────────────────┐
@@ -65,15 +61,16 @@ This project is an architectural upgrade optimized from [VMK](https://github.com
   ┌────────────────────────────────────────────────────────────────────────┐
   │         LILYPAD SEQUENCER & SENTINEL BARRIER (COORDINATOR CORE)        │
   │  - Sentinel Barrier N+1: Emits N+1 Backspaces, swallows (N+1)-th key   │
-  │  - Two-Tier Timeout: Dynamic Soft Timeout (App Lag) & Watchdog 250ms   │
-  │  - Emergency Purge: Instant raw key flush on complete app freeze       │
+  │  - Real-time Swallow Measurement: ΔT_swallow = T2 - T1 (roundtrip)     │
+  │  - Post-Commit Settling Window (70ms): Preserves RAM buffer for Webview│
+  │  - Watchdog Hard Timeout (250ms) & Emergency Purge: No-Freeze Guarantee│
   └───────────────────────────────────┬────────────────────────────────────┘
                                       │
                                       ▼
   ┌────────────────────────────────────────────────────────────────────────┐
   │          MODULAR ACK SENSOR LAYER (ADAPTIVE LATENCY SENSORS)           │
-  │  - Dynamic Micro-Pacing Lerp: Normalized scaling with finger IKI speed │
-  │  - App ACK Consumption: Integrated DOM consumption time (N * T_ack)    │
+  │  - Tri-Layer Protection: max(Finger Floor, EMA swallow, T_measured)   │
+  │  - Dynamic Micro-Pacing: T_total = base_us + N * per_bs_us             │
   │  - Cold Start Safe Baseline: Safe >50ms ceiling for the first character│
   └───────────────────────────────────┬────────────────────────────────────┘
                     │ (Raw Typing Stream)               │ (Emits N+1 Backspaces)
@@ -86,25 +83,31 @@ This project is an architectural upgrade optimized from [VMK](https://github.com
   └──────────────────────────────────┘ └──────────────────────────────────┘
 ```
 
-### 1. Dynamic Micro-Pacing via Normalized Lerp & App ACK Consumption
-- **Normalized Linear Interpolation (Lerp):** Instead of blind static delays, the engine continuously tracks finger typing rhythm ($\mathrm{EMA}_{\mathrm{IKI}}$) via the `IIkiSensor` module combined with application response time ($T_{\text{ack}}$):
-  - **Terminal / Lightweight Apps:** Micro-delay dynamically compresses to the physical floor of **$1.5\text{ms} \sim 2.5\text{ms}$** (Zero-Latency responsiveness).
-  - **Facebook / Web DOM / Electron:** Micro-delay automatically scales up to safely match DOM consumption time ($45\text{ms} \sim 60\text{ms}$), ensuring React DOM finishes consuming deletions before new characters are committed.
-- **Cold Start Safe Baseline ($>50\text{ms}$):** On application start or when typing the first word without prior $\text{IKI}$ and $\text{App ACK}$ history, a safe baseline ($50\text{ms} \sim 80\text{ms}$) guarantees 0% dropped characters on the very first character.
+### 1. Real-Time Swallow Measurement ($\Delta T_{\text{swallow}}$) & Tri-Layer Protection
+- **Hardware-Level Swallow Timing:** Clocks the exact uinput roundtrip from emitting $N+1$ backspaces until Fcitx5 swallows the Sentinel token to derive raw latency $T_{\text{measured}} = \frac{\Delta T_{\text{swallow}}}{N+1}$.
+- **Tri-Layer Safety Protection Formula:**
+  $$\text{per\_bs\_us} = \max\Big(\underbrace{\text{min\_per\_bs\_us}}_{\text{Layer 1: Finger Floor } t}, \quad \underbrace{\text{app\_ack}_{\text{new}}}_{\text{Layer 2: Smoothed EMA}}, \quad \underbrace{T_{\text{measured}}}_{\text{Layer 3: Instant Reflex}}\Big)$$
+  - **Layer 1 (Finger Floor):** Normalized Min-Max feature scaling from finger IKI speed $\in [35\text{ms}, 150\text{ms}]$. Under fast burst typing, compresses micro-delay down to **$1.0\text{ms} \sim 2.5\text{ms}$** (Zero-Latency on Terminal).
+  - **Layer 2 (Smoothed EMA):** Maintains rhythm stability, filtering out sudden CPU/compositor jitter.
+  - **Layer 3 (Instant Reflex):** Immediately stretches micro-delay in $1\mu\text{s}$ if the application experiences a momentary render lag or GC stall.
 
-### 2. Uinput $N+1$ Sentinel Barrier Protocol
-- When replacing $N$ characters, the daemon emits **$N+1$ `KEY_BACKSPACE` events**:
-  - The first $N$ events pass through to the application (`return false;`) to erase old text.
-  - The $(N+1)$-th event acts as a **Sentinel Barrier**: Fcitx5 swallows this token (`event.filterAndAccept(); return true;`) and prevents it from reaching the application.
-- **Hardware FIFO Guarantee:** The arrival of the $(N+1)$-th token at Fcitx5 serves as deterministic hardware proof that all prior $N$ deletions have been consumed by the app, eliminating 100% of race conditions.
+### 2. Uinput $N+1$ Sentinel Barrier & Post-Commit Settling Window
+- **Deterministic FIFO Barrier:** Daemon emits $N+1$ backspaces; the $(N+1)$-th token is swallowed by Fcitx5 to ensure old text has been fully erased before commit.
+- **Post-Commit Settling Window (70ms):** On Chromium/Electron webview applications, fast subsequent keystrokes are temporarily queued in RAM for $70\text{ms}$ while the asynchronous DOM updates, eliminating character loss in compound vowels (e.g., `"thương"` $\to$ `"tương"`).
 
-### 3. Two-Tier Timeout & Emergency State Protection
-- **Dynamic Soft Timeout ($T_{\text{soft}}$):** Automatically detects DOM render lag or GC stalls, transitioning the sequencer into `BarrierState::AppLagHolding` and buffering keys in RAM (`buffered_keys_`) to prevent broken words.
-- **Watchdog Hard Timeout (250ms) & Emergency Purge:** An independent 250ms watchdog timer runs on the Main Event Loop. If the app freezes completely, `purgeContextEmergency()` resets the engine, clears the word buffer, and immediately forwards buffered keystrokes as raw keys (`ic_->forwardKey()`), guaranteeing **the keyboard never freezes or gets stuck**.
+### 3. Unified Watchdog (250ms) & Clean Architecture
+- **250ms Hard Timeout:** Standardized ceiling on the Linux EventLoop triggers `purgeContextEmergency()` if an app freezes, ensuring the keyboard never hangs.
+- **Zero Technical Debt:** Removed hardcoded per-app overrides, treating all Chromium/Electron applications uniformly via `ack_apps`.
 
-### 4. Uniform Web IME Routing & GTK4 Native Precision ($1\mu\text{s}$)
-- **Chromium / Web Routing:** Harmonizes the commit stream for Chromium/Electron through `ic_->commitString()` to eliminate Virtual DOM conflicts on Google Docs and Facebook.
-- **GTK4 Native Precision ($1\mu\text{s}$):** Uses $1\mu\text{s}$ high-precision event loop timers while preserving native key event forwarding for GTK4 / Text Editors, eliminating inverted space bar issues.
+---
+
+## 💖 Acknowledgments
+
+The **fcitx5-lilypad** project gratefully acknowledges the pioneering contributions that made this modern input method possible:
+
+* **Bamboo Engine Author:** Special thanks to **Luật Nguyễn** ([BambooEngine](https://github.com/BambooEngine/bamboo-core)) for creating the wonderful open-source Bamboo engine — the core algorithms powering natural and accurate Vietnamese Telex/VNI syllable processing.
+* **fcitx5-lilypad Author:** **Võ Ngô Hoàng Thành** ([thanhpy2009 / VMK](https://github.com/thanhpy2009)) — Chief architect behind the Sequencer, $N+1$ Sentinel Barrier, Uinput Daemon Server, IKI Adaptive Engine, and Tri-Layer Micro-Pacing.
+* **Predecessor Project `fcitx5-lotus`:** Sincere thanks to [fcitx5-lotus](https://github.com/vnlilypad/fcitx5-lotus) — The pioneering initiative providing the inspiration and solid foundation for modern, smooth Vietnamese typing on Linux Wayland & X11.
 
 ---
 

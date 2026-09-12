@@ -46,34 +46,37 @@
 
 <br />
 
-Dự án này là bản nâng cấp tối ưu hóa kiến trúc dựa trên [VMK](https://github.com/thanhpy2009/VMK). Chân thành cảm ơn tác giả Thành đã đặt nền móng cho bộ gõ này.
+## 💡 Điểm Đột Phá Kiến Trúc (`v2.3.6 - Adaptive Dynamic Micro-Pacing & Tri-Layer Protection`)
 
----
+`fcitx5-lilypad` v2.3.6 là giải pháp toàn diện loại bỏ triệt để các hạn chế cố hữu của bộ gõ Tiếng Việt trên Wayland/X11:
 
-## 💡 Điểm Đột Phá Kiến Trúc (`v2.3.0 - IKI Adaptive & Sentinel Barrier`)
-
-`fcitx5-lilypad` v2.3.0 là giải pháp toàn diện loại bỏ triệt để các hạn chế cố hữu của bộ gõ Tiếng Việt trên Wayland/X11:
-
-### 1. Dynamic Micro-Pacing via Normalized Lerp & App ACK Consumption
-- **Module Cảm Biến Nhịp Tay (`IIkiSensor`):** Đo liên tục khoảng cách thời gian giữa các lần gõ phím vật lý ($\mathrm{EMA}_{\mathrm{IKI}}$).
-- **Nội Suy Tuyến Tính (Lerp) Theo Tốc Độ Tiêu Thụ Của Ứng Dụng ($N \times T_{\text{ack}}$):**
-  - **Trên Terminal / App nhẹ:** Vi trễ nén về mức sàn vật lý **$1.5\text{ms} \sim 2.5\text{ms}$** (Zero-Latency tức thì, gõ siêu nhạy).
-  - **Trên Facebook / Web DOM:** Vi trễ tự động dãn nở an toàn theo thời gian tiêu thụ DOM ($45\text{ms} \sim 60\text{ms}$), chống đè rác chữ và nuốt chữ.
+### 1. Đo Đạc Nuốt Phím Thực Tế ($\Delta T_{\text{swallow}}$) & Bảo Vệ 3 Tầng (Tri-Layer Protection)
+- **Đo thời gian thực qua uinput loop:** Bấm giờ chính xác từ lúc phát $N+1$ phím xóa cho tới khi phím Sentinel quay về Fcitx5 để thu được thời gian thực tế $\Delta T_{\text{swallow}}$.
+- **Công thức điều hòa vi trễ 3 tầng an toàn:**
+  $$\text{per\_bs\_us} = \max\Big(\text{min\_per\_bs\_us}, \; \text{ema\_swallow\_us}, \; T_{\text{measured}}\Big)$$
+  - **Terminal / App nhẹ:** Nén vi trễ về mức sàn vật lý **$1.0\text{ms} \sim 2.5\text{ms}$** (Zero-Latency tức thì, gõ siêu nhạy).
+  - **Web DOM / Electron:** Vi trễ tự động co giãn theo thời gian tiêu thụ DOM thực tế, chống đè rác chữ và nuốt chữ.
 - **Cold Start Safe Baseline ($>50\text{ms}$):** Khi gõ từ đầu tiên lúc chưa có dữ liệu lịch sử $\text{IKI}$ và $\text{App ACK}$, hệ thống áp dụng ngưỡng an toàn $50\text{ms} \sim 80\text{ms}$ bảo đảm 100% không nuốt chữ.
 
-### 2. Giao Thức Uinput Sentinel Barrier $N+1$
+### 2. Giao Thức Uinput Sentinel Barrier $N+1$ & Post-Commit Settling Window
 - Khi xóa $N$ ký tự cũ, daemon bắn $N+1$ phím xóa `KEY_BACKSPACE` qua `/dev/uinput`:
   - $N$ phím đầu xóa sạch text cũ trong ứng dụng.
   - Phím thứ $N+1$ được Fcitx5 nuốt trọn (`filterAndAccept`) làm chốt chặn an toàn (Sentinel).
-- **Trật tự vật lý FIFO:** Sự xuất hiện của phím $N+1$ tại Fcitx5 là bằng chứng phần cứng xác nhận $N$ phím trước đã vào App xong, triệt tiêu $100\%$ xung đột phím xóa nhầm chuỗi vừa commit.
+- **Post-Commit Settling Window (70ms):** Đối với các ứng dụng nền Chromium/Electron, giữ phím gõ nhanh trong RAM trong $70\text{ms}$ để DOM cập nhật hoàn tất ký tự vừa commit, loại bỏ $100\%$ lỗi nuốt chữ âm ghép ("thương" $\to$ "tương").
 
-### 3. Two-Tier Timeout & Emergency State Protection
-- **Dynamic Soft Timeout ($T_{\text{soft}}$):** Khi App bị giật/lag DOM, Sequencer chuyển sang `BarrierState::AppLagHolding` và gom phím an toàn vào RAM `buffered_keys_` chống rách từ.
-- **Watchdog Hard Timeout (250ms) & Emergency Purge:** Main Event Loop cài đặt timer 250ms độc lập. Nếu ứng dụng treo quá 250ms, hệ thống tự động kích hoạt `purgeContextEmergency()` xả toàn bộ phím thô an toàn, **không bao giờ đơ/kẹt bàn phím**.
+### 3. Watchdog Hard Timeout (250ms) Chuẩn Hóa & Clean Code
+- **Watchdog Hard Timeout (250ms):** Main Event Loop cài đặt timer $250\text{ms}$ độc lập. Nếu ứng dụng treo quá 250ms, hệ thống tự động kích hoạt `purgeContextEmergency()` xả toàn bộ phím thô an toàn, **không bao giờ đơ/kẹt bàn phím**.
+- **Loại bỏ nợ kỹ thuật:** Gỡ bỏ các cờ can thiệp cứng, quy chuẩn toàn bộ ứng dụng Chromium/Electron về cơ chế chung qua danh mục `ack_apps`.
 
-### 4. Uniform Web IME Routing & GTK4 Native Precision ($1\mu\text{s}$)
-- Tự động đồng bộ luồng commit cho Chromium/Electron chống xung đột Virtual DOM.
-- Giữ nguyên kênh phím Native với độ chính xác $1\mu\text{s}$ cho GTK4 / Text Editor, triệt tiêu lỗi đảo dấu cách.
+---
+
+## 💖 Lời Cảm Ơn (Acknowledgments)
+
+Dự án **fcitx5-lilypad** xin gửi lời triân sâu sắc đến những đóng góp quý giá đã đặt nền móng cho bộ gõ:
+
+* **Tác giả Engine Bamboo:** Chân thành cảm ơn tác giả **Luật Nguyễn** ([BambooEngine](https://github.com/BambooEngine/bamboo-core)) đã phát triển bộ engine Bamboo mã nguồn mở tuyệt vời — trái tim thuật toán xử lý biến âm Tiếng Việt tự nhiên và chuẩn xác.
+* **Tác giả bộ gõ `fcitx5-lilypad`:** Tác giả **Võ Ngô Hoàng Thành** ([thanhpy2009 / VMK](https://github.com/thanhpy2009)) — Kiến trúc sư trưởng thiết kế hạ tầng Sequencer, Sentinel Barrier $N+1$, Uinput Server Daemon, Cảm biến IKI Adaptive và cơ chế điều hòa vi trễ Tri-Layer Protection.
+* **Dự án tiền đề `fcitx5-lotus`:** Chân thành cảm ơn dự án [fcitx5-lotus](https://github.com/vnlilypad/fcitx5-lotus) — Nguồn cảm hứng mở đường và nền móng vững chắc ban đầu cho hành trình xây dựng bộ gõ tiếng Việt hiện đại, mượt mà trên Linux Wayland & X11.
 
 ---
 

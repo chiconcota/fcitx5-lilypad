@@ -11,9 +11,9 @@
 
 ---
 
-## 💡 Điểm Đột Phá Kiến Trúc (`v2.3.0 - IKI Adaptive & Sentinel Barrier`)
+## 💡 Điểm Đột Phá Kiến Trúc (`v2.3.6 - Adaptive Dynamic Micro-Pacing & Tri-Layer Protection`)
 
-`fcitx5-lilypad` v2.3.0 giải quyết dứt điểm các vấn đề cố hữu của bộ gõ tiếng Việt trên Linux (nuốt chữ, lặp chữ, đè rác chữ trên Web DOM/Electron, và đảo dấu cách) thông qua các công nghệ cốt lõi:
+`fcitx5-lilypad` v2.3.6 giải quyết dứt điểm các vấn đề cố hữu của bộ gõ tiếng Việt trên Linux (nuốt chữ, mất ký tự khi gõ nhanh, đè rác chữ trên Web DOM/Electron, và đảo dấu cách) thông qua các công nghệ cốt lõi:
 
 ```text
   ┌────────────────────────────────────────────────────────────────────────┐
@@ -26,16 +26,17 @@
   ┌────────────────────────────────────────────────────────────────────────┐
   │         LILYPAD SEQUENCER & SENTINEL BARRIER (BỘ NÃO ĐIỀU PHỐI)        │
   │  - Sentinel Barrier N+1: Bắn N+1 Backspace, nuốt phím thứ N+1 bảo vệ   │
-  │  - Two-Tier Timeout: Dynamic Soft Timeout (App Lag) & Watchdog 250ms   │
-  │  - Emergency Purge: Xả phím thô tức thì nếu App treo cứng              │
+  │  - Đo đạc thời gian nuốt thực tế: ΔT_swallow = T2 - T1 (nguồn -> đích) │
+  │  - Post-Commit Settling Window (70ms): Giữ phím RAM cho Chromium Web   │
+  │  - Watchdog Hard Timeout (250ms) & Emergency Purge: Chống đơ phím 100% │
   └───────────────────────────────────┬────────────────────────────────────┘
                                       │
                                       ▼
   ┌────────────────────────────────────────────────────────────────────────┐
   │          MODULAR ACK SENSOR LAYER (CẢM BIẾN THÍCH ỨNG ĐỘ TRỄ)          │
-  │  - Dynamic Micro-Pacing Lerp: Tự động co giãn theo nhịp IKI ngón tay   │
-  │  - App ACK Consumption: Tích hợp thời gian tiêu thụ DOM (N * T_ack)    │
-  │  - Cold Start Safe Baseline: Trần trễ >50ms an toàn cho chữ đầu tiên   │
+  │  - Tri-Layer Protection: max(Sàn ngón tay, EMA swallow, T_measured)   │
+  │  - Dynamic Micro-Pacing: T_tổng = base_us + N * per_bs_us              │
+  │  - Cold Start Safe Baseline: Trần trễ an toàn cho chữ đầu tiên         │
   └───────────────────────────────────┬────────────────────────────────────┘
                     │ (Gửi phím gõ thô)                 │ (Phát N+1 phím xóa)
                     ▼                                  ▼
@@ -47,25 +48,33 @@
   └──────────────────────────────────┘ └──────────────────────────────────┘
 ```
 
-### 1. Dynamic Micro-Pacing via Normalized Lerp & App ACK Consumption
-- **Nội suy tuyến tính (Lerp):** Thay vì áp đặt thời gian trễ cố định, bộ gõ liên tục đo nhịp gõ ngón tay ($\mathrm{EMA}_{\mathrm{IKI}}$) qua module `IIkiSensor` kết hợp thời gian phản hồi của ứng dụng ($T_{\text{ack}}$) để điều chỉnh vi trễ $\Delta t(N)$:
-  - **Terminal / App nhẹ:** Vi trễ nén về mức sàn vật lý **$1.5\text{ms} \sim 2.5\text{ms}$** (Zero-Latency tức thì, gõ siêu nhạy không cảm nhận độ trễ).
-  - **Facebook / Web DOM / Electron:** Vi trễ tự động giãn nở an toàn theo thời gian tiêu thụ DOM ($45\text{ms} \sim 60\text{ms}$), đảm bảo React DOM tiêu hóa sạch phím xóa trước khi chèn chữ mới.
-- **Cold Start Safe Baseline ($>50\text{ms}$):** Khi vừa mở ứng dụng hoặc gõ từ đầu tiên lúc chưa có dữ liệu lịch sử $\text{IKI}$ và $\text{App ACK}$, hệ thống áp dụng mức trần an toàn $50\text{ms} \sim 80\text{ms}$ loại bỏ $100\%$ nguy cơ nuốt chữ ở ký tự đầu, sau đó chuyển giao sang thuật toán Lerp từ từ thứ 2.
+### 1. Đo Đạc Nuốt Phím Thực Tế ($\Delta T_{\text{swallow}}$) & Cơ Chế Bảo Vệ 3 Tầng (Tri-Layer Protection)
+- **Bấm giờ vòng lặp uinput thực tế:** Hệ thống bấm giờ từ lúc phát chuỗi phím xóa $N+1$ cho tới khi phím Sentinel quay về Fcitx5 để tính $\Delta T_{\text{swallow}}$ và độ trễ thô mỗi phím $T_{\text{measured}} = \frac{\Delta T_{\text{swallow}}}{N+1}$.
+- **Cơ chế bảo vệ 3 tầng (Tri-Layer Safety Protection):**
+  $$\text{per\_bs\_us} = \max\Big(\underbrace{\text{min\_per\_bs\_us}}_{\text{Lớp 1: Sàn ngón tay } t}, \quad \underbrace{\text{app\_ack}_{\text{new}}}_{\text{Lớp 2: EMA mượt mà}}, \quad \underbrace{T_{\text{measured}}}_{\text{Lớp 3: Phản xạ tức thì}}\Big)$$
+  - **Lớp 1 (Sàn ngón tay):** Tự động co giãn theo nhịp gõ $\text{IKI} \in [35\text{ms}, 150\text{ms}]$. Khi gõ lướt cực nhanh (Burst), nén vi trễ xuống **$1.0\text{ms} \sim 2.5\text{ms}$** (Zero-Latency tức thì trên Terminal).
+  - **Lớp 2 (EMA làm mịn):** Giữ nhịp gõ ổn định, triệt tiêu xung nhiễu giật cục của hệ thống.
+  - **Lớp 3 (Phản xạ tức thì):** Tự động dãn vi trễ trong $1\mu\text{s}$ để cấp cứu ký tự nếu ứng dụng đột ngột bị giật/lag ở chính lần gõ đó.
 
-### 2. Giao Thức Uinput Sentinel Barrier $N+1$
-- Khi thực hiện thay thế chuỗi ký tự cũ bằng chuỗi mới, daemon phát **$N+1$ phím xóa `KEY_BACKSPACE`**:
-  - $N$ phím đầu được chuyển tiếp xuống ứng dụng (`return false;`) để xóa $N$ ký tự cũ.
-  - Phím thứ $N+1$ đóng vai trò **Phím Rào Chắn Sentinel**: Fcitx5 nuốt trọn phím này (`event.filterAndAccept(); return true;`) và chặn không cho xuống App.
-- **Bảo đảm trật tự vật lý FIFO:** Sự xuất hiện của phím $N+1$ tại Fcitx5 là bằng chứng xác nhận ứng dụng đã xóa xong $N$ ký tự cũ. Triệt tiêu $100\%$ race condition (không bao giờ xảy ra tình trạng phím xóa đến sau xóa mất chữ vừa commit).
+### 2. Giao Thức Uinput Sentinel Barrier $N+1$ & Post-Commit Settling Window
+- Khi thay thế ký tự, daemon phát **$N+1$ phím xóa `KEY_BACKSPACE`**:
+  - $N$ phím đầu xóa ký tự cũ trong ứng dụng.
+  - Phím thứ $N+1$ (Sentinel) được Fcitx5 nuốt trọn làm chốt chặn an toàn vật lý FIFO trước khi commit.
+- **Post-Commit Settling Window (70ms):** Khi gõ trên các trình duyệt và ứng dụng Webview (Chromium, Brave, Edge, VS Code), Fcitx5 giữ phím gõ nhanh tiếp theo trong RAM trong $70\text{ms}$ để cây DOM hoàn tất render ký tự vừa commit, loại bỏ $100\%$ lỗi nuốt chữ âm ghép (như `"thương"` $\to$ `"tương"`).
 
-### 3. Cơ Chế Two-Tier Timeout & Emergency State Protection
-- **Dynamic Soft Timeout ($T_{\text{soft}}$):** Tự động phát hiện khi ứng dụng bị nghẽn (DOM render lag, GC stall) để chuyển sang trạng thái `AppLagHolding`, tạm hoãn phát uinput tiếp theo và gom phím an toàn vào RAM `buffered_keys_` chống rách từ.
-- **Watchdog Hard Timeout (250ms) & Emergency Purge:** Main Event Loop cài đặt timer $250\text{ms}$ độc lập. Nếu ứng dụng bị treo quá 250ms, hệ thống lập tức kích hoạt `purgeContextEmergency()`: reset engine, xóa word buffer và xả toàn bộ phím đệm ra màn hình dưới dạng phím thô (`ic_->forwardKey()`), đảm bảo **bàn phím không bao giờ bị đơ hay kẹt cứng**.
+### 3. Watchdog Hard Timeout (250ms) Chuẩn Hóa & Clean Architecture
+- **Watchdog Hard Timeout (250ms):** Chuẩn hóa mức trần an toàn $250\text{ms}$ độc lập trên Linux EventLoop. Nếu ứng dụng bị đóng băng (freeze), hệ thống lập tức kích hoạt `purgeContextEmergency()` xả toàn bộ phím đệm ra màn hình, bảo đảm **bàn phím không bao giờ bị đơ hay kẹt cứng**.
+- **Clean Code & Zero Technical Debt:** Loại bỏ hoàn toàn các cờ ngoại lệ cứng, đưa toàn bộ ứng dụng nền tảng Chromium/Electron về cơ chế chuẩn hóa qua danh mục `ack_apps`.
 
-### 4. Uniform Web IME Routing & GTK4 Native Precision ($1\mu\text{s}$)
-- **Chromium / Web Routing:** Tự động đồng bộ hóa kênh phát cho Chromium/Electron qua `ic_->commitString()`, tránh xung đột Virtual DOM trên Google Docs và Facebook.
-- **GTK4 Native Precision ($1\mu\text{s}$):** Đặt độ chính xác timer $1\mu\text{s}$ cho Event Loop, bảo tồn kênh phím Native cho GTK4 / Gnome Text Editor, triệt tiêu $100\%$ lỗi đảo dấu cách (`"c òngi"`, `"l àcười"`).
+---
+
+## 💖 Lời Cảm Ơn (Acknowledgments)
+
+Dự án **fcitx5-lilypad** xin gửi lời tri ân sâu sắc đến những đóng góp quý giá đã đặt nền móng cho sự phát triển của bộ gõ:
+
+* **Tác giả Engine Bamboo:** Chân thành cảm ơn tác giả **Luật Nguyễn** ([BambooEngine](https://github.com/BambooEngine/bamboo-core)) đã phát triển bộ engine Bamboo mã nguồn mở tuyệt vời — trái tim thuật toán xử lý biến âm Tiếng Việt tự nhiên và chuẩn xác.
+* **Tác giả bộ gõ `fcitx5-lilypad`:** Tác giả **Võ Ngô Hoàng Thành** ([thanhpy2009 / VMK](https://github.com/thanhpy2009)) — Kiến trúc sư trưởng thiết kế hạ tầng Sequencer, Sentinel Barrier $N+1$, Uinput Server Daemon, Cảm biến IKI Adaptive và cơ chế điều hòa vi trễ Tri-Layer Protection.
+* **Dự án tiền đề `fcitx5-lotus`:** Chân thành cảm ơn dự án [fcitx5-lotus](https://github.com/vnlilypad/fcitx5-lotus) — Nguồn cảm hứng mở đường và nền móng vững chắc ban đầu cho hành trình xây dựng bộ gõ tiếng Việt hiện đại, mượt mà trên Linux Wayland & X11.
 
 ---
 
