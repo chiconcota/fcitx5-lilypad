@@ -19,7 +19,7 @@
       <img src="https://img.shields.io/github/v/release/chiconcota/fcitx5-lilypad?style=flat&color=success" alt="Release">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad">
-      <img src="https://img.shields.io/badge/version-2.3.1-blue.svg" alt="Version 2.3.1">
+      <img src="https://img.shields.io/badge/version-2.3.6-blue.svg" alt="Version 2.3.6">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/chiconcota/fcitx5-lilypad?style=flat&color=blue" alt="License">

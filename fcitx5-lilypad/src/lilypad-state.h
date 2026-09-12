@@ -111,7 +111,9 @@ namespace fcitx {
         bool                    wa_chromium_flag    = false;
         Sequencer               sequencer_;
         std::unique_ptr<EventSourceTime> commit_timer_;
+        std::unique_ptr<EventSourceTime> settle_timer_;
         std::unique_ptr<EventSourceTime> watchdog_timer_; ///< Hard timeout (250ms) emergency watchdog timer
+        std::chrono::steady_clock::time_point uinput_send_time_{}; ///< Timestamp when uinput backspaces were emitted
 
         /**
          * @brief Connects to the uinput server.

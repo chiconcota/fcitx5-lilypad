@@ -24,6 +24,9 @@ namespace fcitx {
         /// Gọi khi nhận tín hiệu ACK hoặc hoàn thành giao dịch (dừng đồng hồ đo)
         virtual void on_ack_received(uint32_t serial) = 0;
 
+        /// Ghi nhận thời gian thực tế nuốt phím xóa qua uinput vòng lặp (microsecond)
+        virtual void on_swallow_measured(int bsCount, uint64_t swallow_duration_us) = 0;
+
         /// Lấy thời gian ngắt nhịp vi mô (microsecond) dựa trên số phím xóa và nhịp gõ IKI
         virtual uint64_t get_micro_delay_us(int bsCount, uint64_t iki_ms = 0) const = 0;
 

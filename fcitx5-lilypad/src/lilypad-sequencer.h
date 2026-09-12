@@ -93,6 +93,7 @@ namespace fcitx {
         int64_t  elapsed_since_barrier_start_ms() const;
         bool     is_soft_timeout(uint64_t iki_ms) const;
         bool     is_hard_timeout() const;
+        void     set_max_ack_timeout_ms(uint64_t ms) { config_.max_ack_timeout_ms = ms; }
 
       private:
         std::deque<MicroStep>                 queue_;

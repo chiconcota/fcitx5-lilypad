@@ -40,6 +40,23 @@
             }
         }
 
+        void on_swallow_measured(int bsCount, uint64_t swallow_duration_us) override {
+            int count = std::max(1, bsCount);
+            uint64_t measured = (count == 1) ? swallow_duration_us : std::max<uint64_t>(swallow_duration_us / (count + 1), swallow_duration_us / 2);
+            measured = std::clamp<uint64_t>(measured, 1000, 250000);
+            last_raw_measured_us_.store(measured, std::memory_order_release);
+
+            uint64_t prev = last_measured_swallow_us_.load(std::memory_order_acquire);
+            uint64_t adaptive = static_cast<uint64_t>(0.35 * static_cast<double>(measured) + 0.65 * static_cast<double>(prev));
+            adaptive = std::clamp<uint64_t>(adaptive, 1000, 250000);
+            last_measured_swallow_us_.store(adaptive, std::memory_order_release);
+            last_measured_ack_ms_.store(adaptive / 1000, std::memory_order_release);
+
+            LILYPAD_INFO("📊 [GENERIC ACK SWALLOW] duration=" + std::to_string(swallow_duration_us) +
+                         "us (count=" + std::to_string(count) + ") -> measured=" + std::to_string(measured) +
+                         "us, EMA=" + std::to_string(adaptive) + "us (" + std::to_string(adaptive / 1000) + "ms)");
+        }
+
         uint64_t get_micro_delay_us(int bsCount, uint64_t iki_ms = 0) const override {
             int count = std::max(1, bsCount);
             if (iki_ms == 0) {
@@ -53,13 +70,14 @@
             // Base settling delay: 1.5ms (Burst) -> 15.0ms (Safe Web DOM)
             double base_us = 1500.0 + t * (15000.0 - 1500.0);
 
-            // Thời gian tiêu thụ mỗi phím xóa kết hợp Cảm biến App ACK đo thực tế:
-            uint64_t app_ack_us = last_measured_ack_ms_.load(std::memory_order_acquire) * 1000;
+            // Lớp bảo vệ 3 tầng: Sàn ngón tay (t), EMA mượt mà, và Phản xạ đo thô tức thì:
             double min_per_bs_us = 800.0 + t * (18000.0 - 800.0);
-            double per_bs_us = std::max(min_per_bs_us, static_cast<double>(app_ack_us));
+            double ema_swallow_us = static_cast<double>(last_measured_swallow_us_.load(std::memory_order_acquire));
+            double raw_swallow_us = static_cast<double>(last_raw_measured_us_.load(std::memory_order_acquire));
+            double per_bs_us = std::max({min_per_bs_us, ema_swallow_us, raw_swallow_us});
 
             uint64_t total_us = static_cast<uint64_t>(base_us + static_cast<double>(count) * per_bs_us);
-            return std::max<uint64_t>(1500, total_us);
+            return std::clamp<uint64_t>(total_us, 1000, 250000);
         }
 
         uint64_t get_last_measured_ack_ms() const override {
@@ -73,6 +91,8 @@
       private:
         std::atomic<uint32_t>                 active_serial_{0};
         std::atomic<uint64_t>                 last_measured_ack_ms_{5};
+        std::atomic<uint64_t>                 last_measured_swallow_us_{5000};
+        std::atomic<uint64_t>                 last_raw_measured_us_{5000};
         std::atomic<bool>                     has_start_time_{false};
         std::chrono::steady_clock::time_point start_time_;
         uint64_t                              min_delay_ms_       = 5;

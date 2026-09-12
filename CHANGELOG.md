@@ -5,6 +5,18 @@ All notable changes to **fcitx5-lilypad** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.6] - 2026-09-12
+
+### 🚀 Added / Improved (Tính năng Mới & Cải tiến)
+- **Đo đạc Thời gian Nuốt phím Thực tế ($\Delta T_{\text{swallow}}$):** Bấm giờ chính xác vòng lặp uinput từ lúc phát chuỗi phím xóa $N+1$ cho tới khi Fcitx5 nuốt phím Sentinel, tự động cập nhật độ trễ nuốt phím theo nhịp thời gian thực qua EMA.
+- **Cơ chế Bảo vệ 3 Tầng (Tri-Layer Safety Protection):** Tính toán vi trễ động theo 3 lớp an toàn: $\text{per\_bs\_us} = \max(\text{min\_per\_bs\_us}, \text{ema\_swallow\_us}, T_{\text{measured}})$, vừa tôn trọng tốc độ gõ của người dùng vừa cấp cứu ngay lập tức khi ứng dụng bị nghẽn (spike/lag).
+- **Chuẩn hóa Watchdog Hard Timeout 250ms Toàn Hệ thống:** Áp dụng trần bảo vệ 250ms trên Linux EventLoop, đảm bảo bàn phím không bao giờ bị đơ/kẹt khi ứng dụng đích bị treo.
+- **Post-Commit Settling Window cho Chromium/Electron:** Duy trì trạng thái giữ phím an toàn trong RAM ($70\text{ms}$) sau khi commit trên các ứng dụng Webview, giải quyết triệt để lỗi nuốt chữ âm ghép ("thương" $\to$ "tương").
+
+### 🧹 Refactored / Clean Code (Dọn dẹp Nợ Kỹ thuật)
+- **Loại bỏ Hoàn toàn Cờ Riêng `is_antigravity_flag_`:** Xóa bỏ toàn bộ các mức sàn cứng ad-hoc $32\text{ms}$ và nhánh rẽ đặc thù, giữ cho core engine Fcitx5 trong sạch và thuần khiết.
+- **Thống nhất Cơ chế Nhận diện Chromium (`ack_apps`):** Đưa Antigravity và các ứng dụng nền tảng Electron về cơ chế Chromium tiêu chuẩn (`wa_chromium_flag = true`), trao quyền điều phối hoàn toàn cho kiến trúc Adaptive Dynamic Micro-Pacing tự thích ứng.
+
 ---
 
 ## [2.3.1] - 2026-08-28

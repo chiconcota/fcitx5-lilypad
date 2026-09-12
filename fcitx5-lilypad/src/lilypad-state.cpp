@@ -452,14 +452,30 @@ namespace fcitx {
                     if (sequencer_.expected_swallow_backspaces() == 0) {
                         event.filterAndAccept(); // Filter and swallow the final sentinel trigger backspace!
                         sequencer_.clear_barrier();
+
+                        auto swallow_now = std::chrono::steady_clock::now();
+                        uint64_t swallow_duration_us = 0;
+                        if (uinput_send_time_.time_since_epoch().count() > 0) {
+                            swallow_duration_us = static_cast<uint64_t>(
+                                std::chrono::duration_cast<std::chrono::microseconds>(swallow_now - uinput_send_time_).count()
+                            );
+                        }
+
                         MicroStep step;
                         if (sequencer_.poll_next_step(step) && step.type == MicroStepType::CommitString) {
                             auto& eventLoop    = engine_->instance()->eventLoop();
                             auto  now_time     = ::fcitx::now(CLOCK_MONOTONIC);
                             int bsCount = std::max(1, expected_backspaces_);
+
+                            if (sequencer_.sensor()) {
+                                sequencer_.sensor()->on_swallow_measured(bsCount, swallow_duration_us);
+                            }
+
                             uint64_t current_iki = (iki_sensor_ && *engine_->config().enableIkiAdaptive) ? iki_sensor_->get_ema_iki_ms() : 0;
                             uint64_t micro_delay_us = sequencer_.sensor() ? sequencer_.sensor()->get_micro_delay_us(bsCount, current_iki) : (6000 + static_cast<uint64_t>(bsCount * 4000));
-                            LILYPAD_INFO("⚡ [DYNAMIC MICRO-PACING] Delay: " + std::to_string(micro_delay_us) + "us (bsCount=" + std::to_string(bsCount) + ", EMA IKI=" + std::to_string(current_iki) + "ms)");
+                            micro_delay_us = std::min<uint64_t>(micro_delay_us, 250000);
+
+                            LILYPAD_INFO("⚡ [DYNAMIC MICRO-PACING] Delay: " + std::to_string(micro_delay_us) + "us (swallow=" + std::to_string(swallow_duration_us) + "us, bsCount=" + std::to_string(bsCount) + ", EMA IKI=" + std::to_string(current_iki) + "ms)");
                             auto  timeout_time = now_time + micro_delay_us;
                             std::string commitStr = step.text;
                             uint32_t serial = step.serial;
@@ -470,18 +486,31 @@ namespace fcitx {
                                 ic_->commitString(commitStr);
                                 LILYPAD_INFO("Commit (Sequence Mode): " + commitStr);
                                 sequencer_.receive_ack(serial);
-                                is_deleting_.store(false, std::memory_order_release);
+
+                                // Post-Commit Settling Window:
+                                // Webview/Chromium apps (wa_chromium_flag) update DOM asynchronously (~50-70ms).
+                                // We keep is_deleting_ = true during this settling window so fast subsequent
+                                // keystrokes (like 'n' in 'thương') are safely held in buffered_keys_ in RAM.
+                                // This prevents premature micro-replacement backspaces from erasing preceding letters.
+                                uint64_t settle_delay_us = wa_chromium_flag ? 70000 : 300;
                                 if (!buffered_keys_.empty()) {
-                                     bool isSpace = (buffered_keys_.front().sym == ' ' || Key::keySymToUTF8(static_cast<KeySym>(buffered_keys_.front().sym)) == " ");
-                                     uint64_t replay_delay_us = isSpace ? 3000 : 300;
-                                     LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys (isSpace: " + std::to_string(isSpace) + ") after " + std::to_string(replay_delay_us) + "us");
-                                     auto& loop = engine_->instance()->eventLoop();
-                                     auto  t    = ::fcitx::now(CLOCK_MONOTONIC) + replay_delay_us;
-                                    commit_timer_ = loop.addTimeEvent(CLOCK_MONOTONIC, t, 1, [this](EventSourceTime*, uint64_t) {
-                                        replayBufferedKeys();
-                                        return false;
-                                    });
+                                    bool isSpace = (buffered_keys_.front().sym == ' ' || Key::keySymToUTF8(static_cast<KeySym>(buffered_keys_.front().sym)) == " ");
+                                    if (isSpace && settle_delay_us < 3000) {
+                                        settle_delay_us = 3000;
+                                    }
                                 }
+
+                                LILYPAD_INFO("⏳ [POST-COMMIT SETTLING] Holding is_deleting_ for " + std::to_string(settle_delay_us) + "us (wa_chromium=" + std::to_string(wa_chromium_flag) + ")");
+                                auto& loop = engine_->instance()->eventLoop();
+                                auto  t    = ::fcitx::now(CLOCK_MONOTONIC) + settle_delay_us;
+                                settle_timer_ = loop.addTimeEvent(CLOCK_MONOTONIC, t, 1, [this](EventSourceTime*, uint64_t) {
+                                    is_deleting_.store(false, std::memory_order_release);
+                                    if (!buffered_keys_.empty()) {
+                                        LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys after settling window");
+                                        replayBufferedKeys();
+                                    }
+                                    return false;
+                                });
                                 return false;
                             });
                         }
@@ -569,18 +598,20 @@ namespace fcitx {
             current_backspace_count_ = 0;
             is_deleting_.store(true, std::memory_order_release);
 
-            // Arm Hard Timeout Watchdog (250ms Safety Cap)
+            // Arm Hard Timeout Watchdog (Unified 250ms for all apps)
             auto& eventLoop = engine_->instance()->eventLoop();
             auto  now_time  = ::fcitx::now(CLOCK_MONOTONIC);
-            auto  hard_timeout_time = now_time + 250000; // 250ms in microseconds
-            watchdog_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, hard_timeout_time, 1000, [this](EventSourceTime*, uint64_t) {
+            uint64_t hard_timeout_us = 250000;
+            auto  hard_timeout_time = now_time + hard_timeout_us;
+            watchdog_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, hard_timeout_time, 1000, [this, hard_timeout_us](EventSourceTime*, uint64_t) {
                 if (is_deleting_.load(std::memory_order_acquire)) {
-                    LILYPAD_WARN("⏱️ [WATCHDOG TIMEOUT] 250ms elapsed with is_deleting_ still active. Triggering emergency purge!");
+                    LILYPAD_WARN("⏱️ [WATCHDOG TIMEOUT] " + std::to_string(hard_timeout_us / 1000) + "ms elapsed with is_deleting_ still active. Triggering emergency purge!");
                     purgeContextEmergency();
                 }
                 return false;
             });
 
+            uinput_send_time_ = std::chrono::steady_clock::now();
             send_backspace_uinput(totalBsToSend);
             LILYPAD_INFO("Send " + std::to_string(totalBsToSend) + " backspaces (Sequence Mode - Micro replacement N=" + std::to_string(bsCount) + " + 1 Sentinel)");
             return;
@@ -615,6 +646,9 @@ namespace fcitx {
             }
             if (commit_timer_) {
                 commit_timer_.reset();
+            }
+            if (settle_timer_) {
+                settle_timer_.reset();
             }
             sequencer_.clear();
             is_deleting_.store(false, std::memory_order_release);
@@ -1161,6 +1195,10 @@ namespace fcitx {
             }
         }
 
+        if (checkForwardSpecialKey(keyEvent, currentSym)) {
+            return;
+        }
+
         if (is_deleting_.load(std::memory_order_acquire)) {
             if (realMode == LilypadMode::Sequence) {
                 if (sequencer_.is_hard_timeout()) {
@@ -1356,6 +1394,12 @@ namespace fcitx {
         if (is_deleting_.load(std::memory_order_acquire)) {
             return;
         }
+        if (settle_timer_) {
+            settle_timer_.reset();
+        }
+        if (commit_timer_) {
+            commit_timer_.reset();
+        }
         oldPreBuffer_.clear();
         hasHistory_ = false;
         if (!is_deleting_.load(std::memory_order_acquire)) {
@@ -1482,6 +1526,9 @@ namespace fcitx {
         }
         if (commit_timer_) {
             commit_timer_.reset();
+        }
+        if (settle_timer_) {
+            settle_timer_.reset();
         }
         is_deleting_.store(false, std::memory_order_release);
         expected_backspaces_     = 0;

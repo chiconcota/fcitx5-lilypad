@@ -37,7 +37,7 @@ stateDiagram-v2
 
 ## 3. CHIẾN LƯỢC ĐIỀU PHỐI ADAPTIVE & TWO-TIER TIMEOUT (PHASE 4.3)
 
-> **Tài liệu Kỹ thuật Chi tiết:** Xem giải thích toán học EMA và Hướng dẫn đóng góp Sensor mới tại [niri-ack-sensor-architecture.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/3-modules/sequencer-layer/niri-ack-sensor-architecture.md) và [iki-adaptive-architecture.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/3-modules/sequencer-layer/iki-adaptive-architecture.md).
+> **Tài liệu Kỹ thuật Chi tiết:** Xem giải thích toán học EMA và Hướng dẫn đóng góp Sensor mới tại [niri-ack-sensor-architecture.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/3-modules/sequencer-layer/niri-ack-sensor-architecture.md), [iki-adaptive-architecture.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/3-modules/sequencer-layer/iki-adaptive-architecture.md), và Đặc tả công thức vi trễ 4 bước tại [dynamic-delay-specification.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/3-modules/sequencer-layer/dynamic-delay-specification.md).
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -72,6 +72,9 @@ stateDiagram-v2
 
 ---
 
-## 5. BẢO VỆ AN TOÀN & APTOMAT KHẨN CẤP (WATCHDOG 250MS SAFETY GUARD)
-- **Watchdog Timer 250ms:** Main Event Loop cài đặt timer 250ms mỗi khi bắt đầu `performReplacement()`, tự động hủy khi commit thành công.
-- **Hàm `purgeContextEmergency()`:** Nếu xảy ra freeze/lag quá 250ms, hệ thống lập tức cắt lỗ trạng thái, reset Engine và xả phím thô trong RAM, đảm bảo bàn phím không bao giờ bị đơ.
+## 5. BẢO VỆ AN TOÀN & APTOMAT KHẨN CẤP (WATCHDOG & POST-COMMIT SETTLING)
+- **Dynamic Watchdog Safety Cap (`set_max_ack_timeout_ms`):**
+  - Mặc định $250\text{ms}$ cho các ứng dụng thông thường.
+  - Tự động nâng lên $800\text{ms}$ khi phát hiện ứng dụng có DOM cực nặng (như Antigravity 2.0 với $>134\text{k}$ nodes DOM do context drawer ẩn), kiên nhẫn đợi React traversal hoàn tất mà không cắt lỗ nhầm.
+- **Hàm `purgeContextEmergency()`:** Nếu xảy ra freeze/lag quá ngưỡng Watchdog, hệ thống lập tức cắt lỗ trạng thái, reset Engine và xả phím thô trong RAM, đảm bảo bàn phím không bao giờ bị đơ.
+- **Post-Commit Settling Window (`settle_timer_`):** Giữ phím an toàn trong RAM ($70\text{ms} \sim 100\text{ms}$) sau khi gửi commit string vào Chromium/Electron Webview, chống xóa nhầm phụ âm khi gõ nhanh.

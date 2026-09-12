@@ -5,19 +5,84 @@
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
 - **Nhánh Git làm việc:** `main`
-- **Tình trạng:** **ĐÃ HOÀN TẤT ĐỒNG BỘ RELEASE V2.3.1 TRÊN GITHUB & AUR. CHUẨN HÓA HƯỚNG DẪN CÀI ĐẶT 2 BƯỚC VÀ SCRIPTLET INSTALL.**
+- **Tình trạng:** **ĐÃ HOÀN TẤT NÂNG CẤP V2.3.6 (CLEAN CODE & TECHNICAL DEBT CLEANUP): LOẠI BỎ TRIỆT ĐỂ CỜ RIÊNG `is_antigravity_flag_` VÀ CÁC NGOẠI LỆ MỨC SÀN CỨNG 32MS. GIỮ NGUYÊN NHẬN DIỆN CHROMIUM TIÊU CHUẨN (`wa_chromium_flag = true`) CHO CÁC APP ELECTRON/CHROMIUM QUA `ack-apps.h`. TOÀN BỘ BỘ GÕ CHẠY THỐNG NHẤT TRÊN CƠ CHẾ ADAPTIVE DYNAMIC MICRO-PACING VÀ TRI-LAYER PROTECTION. ĐÃ BIÊN DỊCH DEBUG, CÀI ĐẶT THÀNH CÔNG VÀO HỆ THỐNG VÀ KHỞI ĐỘNG LẠI FCITX5.**
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-08-28 - Phát Hành Release v2.3.1 & Cập Nhật AUR):
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-09-12 - Gỡ Bỏ Nợ Kỹ Thuật & Hoàn Thiện v2.3.6):
 
-1. **Chuẩn Hóa Tài Liệu Hướng Dẫn Cài Đặt AUR 2 Bước:**
-   - Cập nhật cả 3 file README (`README.md`, `fcitx5-lilypad/README.md`, `fcitx5-lilypad/README.en.md`) bổ sung rõ ràng bước 2: kích hoạt daemon qua `sudo systemctl enable --now fcitx5-lilypad-server@$USER.service` và `fcitx5 -r -d`.
+1. **Gỡ bỏ Nợ Kỹ thuật & Cờ `is_antigravity_flag_`:**
+   - Xóa bỏ `is_antigravity_flag_` trong `lilypad-state.h` và `lilypad-engine.cpp`.
+   - Xóa bỏ mức sàn cứng $32\text{ms}$ và logic settle riêng $100\text{ms}$ trong `lilypad-state.cpp`, đưa về chuẩn Chromium $70\text{ms}$.
+   - Giữ `"antigravity"` trong `ack-apps.h` để ứng dụng tiếp tục được nhận diện là app Chromium (`wa_chromium_flag = true`).
+   - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên **v2.3.6**.
+   - Biên dịch và cài đặt hoàn tất vào `/usr/lib/fcitx5/liblilypad.so`, khởi động lại Fcitx5 sạch sẽ.
 
-2. **Cập Nhật Scriptlet `fcitx5-lilypad.install`:**
-   - Thiết lập khung hướng dẫn nổi bật kích hoạt systemd service và khởi động lại fcitx5 khi cài qua `yay`/`pacman`.
+1. **Khảo Sát DOM & Truy Tìm Nguyên Nhân "Đoạn Chat Cũ Bị Lỗi Dù Không Mở Thêm Gì":**
+   - Kết nối Chrome DevTools Protocol vào Antigravity kiểm tra cây DOM của cuộc hội thoại `"Thiết Kế Website Cá Nhân"`:
+   - Phát hiện Antigravity ngầm giấu một panel drawer bên phải (`width: 0px`, người dùng không thấy trên màn hình) chứa danh sách duyệt của **8.174 files**.
+   - Điều này làm tổng số DOM nodes phình to lên tới **134.842 nodes** (trong đó 130.784 nodes nằm ở drawer ẩn này).
+   - Mỗi lần bấm Backspace, React traversal trên cây DOM 134k nodes mất **$300\text{ms} \sim 450\text{ms}$**.
+   - Trong khi đó, trần Watchdog Timeout mặc định của Fcitx5 là **$250\text{ms}$**. Fcitx5 tưởng ứng dụng bị đơ nên kích hoạt cơ chế cắt lỗ khẩn cấp `purgeContextEmergency()`, xả phím số `6`, `4` ra màn hình dạng thô $\to$ tạo thành chuỗi `loi64a`.
 
-3. **Nâng Phiên Bản & Đóng Gói Nhị Phân `fcitx5-lilypad-bin` (v2.3.1):**
-   - Nâng phiên bản `2.3.1` trong `CMakeLists.txt` và đóng gói `dist/fcitx5-lilypad-v2.3.1-x86_64-archlinux.tar.zst`.
-   - Cập nhật SHA256 checksum và PKGBUILD của 3 gói AUR.
+2. **Triển Khai Watchdog 800ms & Settling Window 100ms Cách Ly Tuyệt Đối (`v2.3.4`):**
+   - `fcitx5-lilypad/src/lilypad-sequencer.h`: Thêm hàm `set_max_ack_timeout_ms(uint64_t ms)`.
+   - `fcitx5-lilypad/src/lilypad-engine.cpp`: Trong `activate()`, khi phát hiện `antigravity`, đặt `state->sequencer_.set_max_ack_timeout_ms(800)`. Ngược lại đặt `250ms`.
+   - `fcitx5-lilypad/src/lilypad-state.cpp`:
+     - Nâng trần watchdog an toàn: `hard_timeout_us = is_antigravity_flag_ ? 800000 : 250000;` ($800\text{ms}$ cho Antigravity, $250\text{ms}$ cho app khác).
+     - Mở rộng settling delay: `settle_delay_us = wa_chromium_flag ? (is_antigravity_flag_ ? 100000 : 70000) : 300;` ($100\text{ms}$ cho Antigravity).
+   - Mọi app khác (Ghostty, Chrome, IDE, Terminal...) giữ nguyên 100% trần 250ms và không bị ảnh hưởng.
+
+3. **Biên Dịch & Nâng Cấp Hệ Thống:**
+   - Cập nhật `CMakeLists.txt` và `PKGBUILD` lên `v2.3.4`.
+   - Biên dịch thành công 100% và cài đặt ghi đè `/usr/lib/fcitx5/liblilypad.so`.
+4. **Kiểm Thử Thực Nghiệm Cuối Phiên & Phát Hiện Bản Chất Lỗi Nuốt Ký Tự (`nhn`, `qu`):**
+   - Người dùng gõ câu: *"anh hai nhìn ... chịu quá"* trên đoạn chat cũ có DOM nặng.
+   - Kết quả hiển thị: `anh hai nhn chịu qu` (mất chữ `ì` $\to$ `nhn`, mất chữ `á` $\to$ `qu`, nhưng chữ `chịu` thì còn nguyên).
+   - Đối chiếu phân tích log:
+     - Với `nhìn` (`bsCount=1`, `micro_delay_us=33000us` = $33\text{ms}$): Fcitx5 bắn Backspace xóa `i`, nhưng chỉ chờ $33\text{ms}$ là gọi `ic_->commitString("ì")`. Do cây DOM của React có tới hơn $134.000$ nodes, React xử lý Backspace chưa xong trong $33\text{ms}$ nên Lexical vứt bỏ sự kiện `commitString("ì")` $\implies$ thành `nhn`.
+     - Với `quá` (`bsCount=1`, `micro_delay_us=33000us` = $33\text{ms}$) $\implies$ tương tự, nuốt mất chữ `á` $\implies$ thành `qu`.
+     - Ngược lại với `chịu` (`bsCount=2`, `micro_delay_us=51000us` = $51\text{ms}$): Fcitx5 tự động giãn delay theo số lượng Backspace lên $51\text{ms}$, vừa vặn đủ thời gian cho React xử lý xong $\implies$ chữ `chịu` hiển thị hoàn hảo 100%!
+   - **Kết luận:** Mức sàn $32\text{ms}$ cho $N=1$ Backspace trên DOM $134\text{k}$ nodes là chưa đủ, cần nâng lên **$80\text{ms} \sim 100\text{ms}$**.
+
+## 🎯 Tiến Độ Trước Đó (2026-09-11 - Per-App Delay Floor cho Antigravity & Nâng v2.3.3):
+
+1. **Khảo Sát Thực Nghiệm & Bắt Trọn Log Trực Tiếp Qua CDP Trong Ô Lexical Antigravity:**
+   - Kết nối trực tiếp vào Antigravity 2.0 qua Chrome DevTools Protocol, phát hiện ô chat thực chất là `contenteditable="true"` dùng **Lexical Editor của Meta** tích hợp sâu các AI plugins: `["ghost-text", "contextScopeItemMention", "beautifulMention", "artificial"]`.
+   - Gắn bộ logger sự kiện (`window.__inputLog`) bắt trọn từng mili-giây khi người dùng gõ.
+   - Bằng chứng thực nghiệm đối chứng:
+     - Từ `"giáo"` ($N=2$ backspace, trễ $29\text{ms}$): Thành công 100%, Lexical xử lý hoàn hảo!
+     - Từ `"cô"` ($N=1$ backspace, trễ co xuống $0.1\text{ms}$): Thất bại, Lexical đang lock selection để re-render Backspace nên vứt bỏ sự kiện `beforeinput "ô"`, không sinh ra sự kiện `input`.
+     - Từ `"thương"` biến thành `"tương"`: Do ký tự dấu đầu tiên bị rụng, gây lệch nhịp đệm giữa Fcitx5 và DOM $\to$ đợt xóa kế tiếp xóa nhầm phụ âm `"h"`.
+   - Lý giải vì sao `playground.lexical.dev` trên Chrome không bị: Do là bản Vanilla thuần túy không có dàn plugin AI ngầm can thiệp vào con trỏ selection.
+
+2. **Triển Khai Per-App Micro-Pacing Floor Cách Ly Tuyệt Đối (`is_antigravity_flag_`):**
+   - Thêm cờ `is_antigravity_flag_` vào `LilypadState`.
+   - Trong `LilypadEngine::activate`: Nếu `appNameLower.find("antigravity") != std::string::npos`, kích hoạt `is_antigravity_flag_ = true`.
+   - Trong `handleUInputKeyPress`: Nếu `is_antigravity_flag_ == true`, áp mức sàn an toàn `micro_delay_us = std::max(micro_delay_us, 32000)` ($32\text{ms}$).
+   - Mọi ứng dụng khác (Ghostty, Kitty, Chrome, Gedit, IDE...) giữ nguyên 100% tốc độ siêu tốc $1\text{ms} \sim 6\text{ms}$, hoàn toàn không bị ảnh hưởng.
+
+3. **Nâng Phiên Bản Lên v2.3.3 & Biên Dịch / Cài Đặt Hệ Thống:**
+   - Cập nhật `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`.
+   - Biên dịch thành công 100% với `-DCMAKE_BUILD_TYPE=Debug` và cài đặt vào `/usr/lib/fcitx5/liblilypad.so`.
+   - Khởi động lại `fcitx5` và xác nhận chẩn đoán `fcitx5-diagnose` nạp `Lilypad Wrapper For Fcitx 2.3.3`.
+
+## 🎯 Tiến Độ Trước Đó (2026-09-11 - Post-Commit Settling Window cho Chromium Webview & Nâng v2.3.2):
+
+1. **Phân Tích & Xác Định Bản Chất Lỗi Nuốt Chữ "thương" $\to$ "tương":**
+   - Phân tích log thực nghiệm: Khi gõ `thuo` + `w`, `commitString("ơ")` được gửi nhưng Chromium Webview (chat dài có DOM nặng) chưa kịp render vào DOM trong 60ms.
+   - Khi người dùng gõ tiếp `n` (mốc 61ms sau commit), bộ đệm Bamboo nổ đợt thay thế thứ 2 (`uơ` $\to$ `ươn`), gửi 2 Backspace qua uinput.
+   - Vì `"ơ"` chưa có trong DOM, 2 phím Backspace xóa nhầm `"u"` và `"h"`, dẫn đến mất chữ `"h"` hiển thị thành `"tương"`.
+
+2. **Triển Khai Lựa Chọn B - Post-Commit Settling Window (`settle_timer_`):**
+   - Thêm biến timer `settle_timer_` vào `LilypadState` (`fcitx5-lilypad/src/lilypad-state.h`).
+   - Trong callback `commit_timer_`: Nếu `wa_chromium_flag == true`, giữ cờ `is_deleting_ = true` thêm $70\text{ms}$ sau `ic_->commitString()`.
+   - Các phím gõ nhanh tiếp theo (`n`, `g`) được gom an toàn vào RAM `buffered_keys_`.
+   - Khi hết $70\text{ms}$, Chromium đã vẽ xong `"ơ"` vào DOM, Fcitx5 hạ cờ `is_deleting_ = false` và gọi `replayBufferedKeys()` để tiếp tục xử lý các phím sau.
+   - Sửa nhánh phím Backspace trong `keyEvent`: Giữ nguyên passthrough cho intermediate backspaces (1..N) để không hủy `commit_timer_` sớm, khắc phục lỗi mất sạch chữ (`chau1` -> `""`).
+
+3. **Nâng Phiên Bản Lên v2.3.2 & Biên Dịch / Cài Đặt Hệ Thống:**
+   - Cập nhật `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`.
+   - Biên dịch thành công 100% với `-DCMAKE_BUILD_TYPE=Debug` và cài đặt vào `/usr/lib/fcitx5/liblilypad.so`.
+   - Khởi động lại `fcitx5` và xác nhận log đã nhận diện `antigravity detected: set wa_chromium_flag=true`.
 
 1. **Phát Hành Nhị Phân `fcitx5-lilypad-bin` (v2.3.0):**
    - Biên dịch Release sạch (`-DCMAKE_BUILD_TYPE=Release`, `NDEBUG`), đóng gói file `dist/fcitx5-lilypad-v2.3.0-x86_64-archlinux.tar.zst` (2.1MB).
@@ -38,8 +103,13 @@
 
 ## 🎯 Kế Hoạch Bàn Giao Phiên Tiếp Theo (Handover Plan for Next Session):
 
-1. **Theo dõi phản hồi cộng đồng về phiên bản v2.3.0 trên AUR & GitHub.**
-2. **Nghiên cứu các cải tiến tiếp theo cho Phase 5 (Hỗ trợ mở rộng Wayland Compositors & GUI Settings enhancements).**
+1. **Nâng mức sàn `micro_delay_us` cho Antigravity 2.0 từ $32\text{ms}$ lên $80\text{ms} \sim 100\text{ms}$:**
+   - Trong `lilypad-state.cpp`, sửa dòng:
+     `micro_delay_us = std::max<uint64_t>(micro_delay_us, 80000);` (hoặc `100000`) khi `is_antigravity_flag_ == true`.
+   - Giúp Lexical Editor và React có đủ thời gian hoàn tất xóa ký tự trên cây DOM $>134\text{k}$ nodes trước khi nhận ký tự có dấu mới, khắc phục triệt để lỗi nuốt chữ (`nhìn` $\to$ `nhn`, `quá` $\to$ `qu`).
+2. **Biên dịch, cài đặt vào hệ thống và mời người dùng gõ kiểm thử câu đối chứng:**
+   - Chuỗi kiểm thử: *"anh hai nhìn khó chịu quá"* trên đoạn chat cũ `"Thiết Kế Website Cá Nhân"`.
+3. **Tiếp tục theo dõi phản hồi cộng đồng về phiên bản v2.3.x trên AUR & GitHub.**
 
 ---
 

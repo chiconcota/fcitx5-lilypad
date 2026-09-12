@@ -426,6 +426,7 @@ namespace fcitx {
 #else
         std::transform(appNameLower.begin(), appNameLower.end(), appNameLower.begin(), ::tolower);
 #endif
+        state->sequencer_.set_max_ack_timeout_ms(250);
         if (targetMode == LilypadMode::Uinput || targetMode == LilypadMode::Smooth || targetMode == LilypadMode::Minecraft || targetMode == LilypadMode::SuperSmooth || targetMode == LilypadMode::Sequence) {
             for (const auto& ackApp : ack_apps) {
                 if (appNameLower.find(ackApp) != std::string::npos) {

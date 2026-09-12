@@ -1,7 +1,7 @@
 # fcitx5-lilypad SYSTEM MAP & MODULE STATUS MAP (DỰ ÁN FCITX5 LILYPAD SEQUENCER)
 
 > **Architectural Paradigm:** Hybrid Fcitx5 C++ Addon (`fcitx5-lilypad`) + Bamboo Telex Engine (Go C-FFI `bamboo-core`) + Sequencer Token Swallow Layer (`lilypad-state.cpp` + `lilypad-sequencer.cpp`).
-> **Current Version:** `v2.3.1` (IKI Adaptive Engine, Sentinel Barrier N+1, AUR Dual-Step Activation Standard)
+> **Current Version:** `v2.3.6` (Refactored Clean Code, Technical Debt Removed, Unified Chromium Workaround, Real-Time Swallow Measurement, Tri-Layer Dynamic Micro-Pacing, Watchdog 250ms)
 
 ---
 
@@ -67,8 +67,11 @@
 
 ## 4. RECENT CHANGE LOG (LỊCH SỬ NÂNG CẤP DÒNG THỜI GIAN)
 
-| Ngày | Mô tả nâng cấp cốt lõi | File ảnh hưởng |
-| :--- | :--- | :--- |
+| 2026-09-12 | **v2.3.6**: Loại bỏ triệt để cờ đặc biệt `is_antigravity_flag_` và các mức trễ sàn riêng, xóa bỏ nợ kỹ thuật (technical debt); giữ lại nhận diện Chromium tiêu chuẩn (`wa_chromium_flag == true`) qua `ack-apps.h`; chuẩn hóa toàn bộ hệ thống chạy trên kiến trúc Adaptive Dynamic Micro-Pacing | `fcitx5-lilypad/src/lilypad-state.h/.cpp`, `lilypad-engine.cpp`, `CMakeLists.txt`, `packaging/aur/` |
+| 2026-09-12 | **v2.3.5**: Triển khai đo đạc thời gian nuốt phím thực tế ($\Delta T_{\text{swallow}}$), tích hợp cơ chế bảo vệ 3 tầng (Tri-Layer Protection) vào `NiriAckSensor` và `GenericAckSensor`, chuẩn hóa trần Watchdog Hard Timeout 250ms toàn hệ thống | `fcitx5-lilypad/src/ack-sensors/`, `lilypad-state.h/.cpp`, `CMakeLists.txt`, `packaging/aur/` |
+| 2026-09-11 | Nâng **Watchdog Safety Cap** lên $800\text{ms}$ và **Post-Commit Settling Window** lên $100\text{ms}$ cho riêng Antigravity 2.0; giải quyết triệt để lỗi nuốt chữ và xả số thô (`"loi64a"`) trên các đoạn chat cũ có DOM nặng ($>134.000$ nodes do panel duyệt file ẩn); nâng phiên bản lên **v2.3.4** | `fcitx5-lilypad/src/lilypad-sequencer.h`, `lilypad-state.h/.cpp`, `lilypad-engine.cpp`, `CMakeLists.txt`, `packaging/aur/` |
+| 2026-09-11 | Triển khai **Per-App Micro-Pacing Floor** ($32\text{ms}$) cho riêng Antigravity 2.0 (`is_antigravity_flag_ == true`), giải quyết triệt để lỗi rụng ký tự dấu do Lexical Editor AI plugins (`ghost-text`, `@mention`) khóa con trỏ; bảo toàn 100% tốc độ siêu tốc $1\text{ms} \sim 6\text{ms}$ cho mọi ứng dụng khác (Terminal, Chrome, IDE), nâng phiên bản lên **v2.3.3** | `fcitx5-lilypad/src/lilypad-state.h/.cpp`, `lilypad-engine.cpp`, `CMakeLists.txt`, `packaging/aur/` |
+| 2026-09-11 | Triển khai **Post-Commit Settling Window** (70ms) cho Chromium/Electron Webview (`wa_chromium_flag == true`) nhằm khắc phục triệt để lỗi nuốt chữ âm kép ("thương" -> "tương") trên khung chat nặng, nâng phiên bản lên **v2.3.2** | `fcitx5-lilypad/src/lilypad-state.h/.cpp`, `CMakeLists.txt`, `packaging/aur/` |
 | 2026-08-28 | Phát hành **v2.3.1**: Chuẩn hóa quy trình cài đặt AUR 2 bước (`yay` + `systemctl enable --now fcitx5-lilypad-server@$USER.service`), nâng cấp scriptlet `fcitx5-lilypad.install`, cập nhật SHA256 và đồng bộ 3 gói AUR (`-bin`, source, `-git`). | `fcitx5-lilypad/packaging/aur/`, `README.md`, `CHANGELOG.md`, `CMakeLists.txt`, `dist/` |
 | 2026-08-26 | Hoàn tất phát hành chính thức **v2.3.0** lên GitHub Release & AUR: Đóng gói nhị phân `fcitx5-lilypad-bin` (`.tar.zst` 2.1MB), cập nhật SHA256 checksum, cấu hình Debug log cho bản `-git` và Release Zero-log cho bản `-bin` & bản Source, đồng bộ tài liệu 3 file README và CHANGELOG.md | `fcitx5-lilypad/packaging/aur/`, `README.md`, `CHANGELOG.md`, `dist/` |
 | 2026-08-25 | Tích hợp Cold Start Safe Baseline ($>50\text{ms}$ cho chữ đầu tiên): Ấn định mức trần an toàn $50\text{ms} \sim 80\text{ms}$ cho chữ đầu tiên khi chưa có dữ liệu IKI để bảo đảm 100% không nuốt chữ, sau đó chuyển giao sang thuật toán Lerp động từ chữ thứ 2 | `fcitx5-lilypad/src/ack-sensors/`, `.fcitx5-lilypad-ai/` |

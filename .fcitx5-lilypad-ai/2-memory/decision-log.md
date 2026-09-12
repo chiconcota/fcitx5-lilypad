@@ -8,6 +8,63 @@
 
 ## 🎯 1. HỆ THỐNG CẢM BIẾN ADAPTIVE ACK, IKI & DYNAMIC LATENCY CONTROL
 
+### [2026-09-12] Quyết định 031: Gỡ bỏ Cờ Đặc biệt `is_antigravity_flag_` & Xóa Nợ Kỹ thuật (Technical Debt Cleanup - v2.3.6)
+- **Bối cảnh:** Antigravity 2.0 có kiến trúc Electron đơn luồng mang cây DOM quá nặng (>134.000 nodes), tiêu thụ tới 5GB RAM và gây tắc nghẽn giao diện. Việc duy trì cờ riêng `is_antigravity_flag_` với mức sàn cứng 32ms và Watchdog 800ms tạo ra sự phân mảnh và nợ kỹ thuật không cần thiết trong core engine Fcitx5.
+- **Quyết định:**
+  1. **Xóa bỏ hoàn toàn cờ `is_antigravity_flag_`:**
+     - Gỡ bỏ biến thành viên `is_antigravity_flag_` khỏi `LilypadState`.
+     - Gỡ bỏ logic nhận diện riêng trong `LilypadEngine::activate()`.
+     - Gỡ bỏ mức sàn cứng $32\text{ms}$ trong `LilypadState::handleUInputKeyPress()`.
+  2. **Quy chuẩn về Workaround Chromium Thống nhất:**
+     - Giữ `"antigravity"` trong danh mục `ack_apps` của `ack-apps.h`. Khi Antigravity chạy, nó được đối xử bình đẳng như Google Chrome, Brave, VS Code với cờ `wa_chromium_flag = true` (Post-Commit Settling Window $70\text{ms}$).
+     - Toàn bộ cơ chế điều hòa vi trễ được trao quyền hoàn toàn cho kiến trúc tự thích ứng **Adaptive Dynamic Micro-Pacing** (v2.3.5) mà không phụ thuộc vào bất kỳ ngoại lệ cứng nào.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-state.h`, `fcitx5-lilypad/src/lilypad-state.cpp`, `fcitx5-lilypad/src/lilypad-engine.cpp`, `CMakeLists.txt` (nâng `v2.3.6`), `PKGBUILD`.
+
+### [2026-09-12] Quyết định 030: Đo Đạc Thời Gian Nuốt Phím Thực Tế ($\Delta T_{\text{swallow}}$) & Bảo Vệ 3 Tầng Tri-Layer (v2.3.5)
+- **Bối cảnh:** Nâng cấp Sequencer đo chính xác thời gian uinput vòng lặp thực tế từ khi phát $N+1$ phím cho tới khi Fcitx5 nuốt phím Sentinel; chuẩn hóa Watchdog Hard Timeout 250ms toàn hệ thống.
+- **Quyết định:**
+  1. Triển khai phương thức `on_swallow_measured(bsCount, duration_us)` trong `IAckSensor`, `NiriAckSensor`, `GenericAckSensor`.
+  2. Áp dụng công thức bảo vệ 3 tầng: `per_bs_us = max(min_per_bs_us, ema_swallow_us, raw_swallow_us)`.
+  3. Chuẩn hóa Watchdog Hard Timeout 250ms cho mọi ứng dụng Linux.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/ack-sensors/`, `fcitx5-lilypad/src/lilypad-state.h/.cpp`, `CMakeLists.txt` (nâng `v2.3.5`), `PKGBUILD`.
+
+### [2026-09-11] Quyết định 029: Dynamic Watchdog Ceiling (800ms) & Settling Extension (100ms) cho Antigravity 2.0 Heavy DOM (v2.3.4)
+- **Bối cảnh:** Trên các đoạn hội thoại cũ của Antigravity 2.0 (như *"Thiết Kế Website Cá Nhân"*), khung chat có hiện tượng xuất hiện số thô như `loi64a` hoặc mất chữ khi gõ dấu. Qua khảo sát CDP phát hiện Antigravity ẩn một drawer danh sách duyệt file (`width: 0px`) với hơn 8.100 files, đẩy tổng cây DOM lên hơn **134.000 nodes**. Mỗi thao tác Backspace của React/Lexical trên cây DOM khổng lồ này tốn $300\text{ms} \sim 450\text{ms}$, vượt quá ngưỡng Watchdog Safety Cap 250ms mặc định. Fcitx5 phán đoán app bị treo nên kích hoạt `purgeContextEmergency()`, xả phím số thô `6`, `4` ra màn hình.
+- **Quyết định:**
+  1. **Nâng trần Watchdog Timeout lên 800ms riêng cho Antigravity:**
+     - Thiết lập `state->sequencer_.set_max_ack_timeout_ms(800)` và `hard_timeout_us = 800000` ($800\text{ms}$).
+     - Ngưỡng $800\text{ms}$ bảo đảm kiên nhẫn đợi React hoàn tất cập nhật DOM mà không kích hoạt cắt lỗ khẩn cấp sai lầm.
+     - Các ứng dụng khác vẫn giữ nguyên trần $250\text{ms}$ để bảo vệ chống kẹt phím khi app khác đơ.
+  2. **Mở rộng Post-Commit Settling Window lên 100ms:**
+     - Nâng `settle_delay_us` thành $100\text{ms}$ cho Antigravity (`wa_chromium_flag ? (is_antigravity_flag_ ? 100000 : 70000) : 300`).
+     - Đảm bảo các phím gõ nhanh tiếp theo trong lúc DOM $134\text{k}$ nodes đang render được lưu giữ an toàn trong RAM, hoàn toàn không bị xóa nhầm.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-sequencer.h`, `fcitx5-lilypad/src/lilypad-engine.cpp`, `fcitx5-lilypad/src/lilypad-state.h`, `fcitx5-lilypad/src/lilypad-state.cpp`, `CMakeLists.txt` (nâng `v2.3.4`), `PKGBUILD`.
+
+### [2026-09-11] Quyết định 028: Per-App Micro-Pacing Floor cho Antigravity 2.0 Lexical AI Editor (v2.3.3)
+- **Bối cảnh:** Trên khung chat Antigravity 2.0 (Electron 41, Lexical Editor nạp các plugin AI `ghost-text`, `beautifulMention`, `contextScopeItemMention`), khi xóa 1 ký tự (`c-o-6` $\to$ `cô`, `l-e-6-n` $\to$ `lên`), cảm biến ACK co thời gian chờ `micro_delay_us` xuống mức siêu nhanh ($0.1\text{ms} \sim 6\text{ms}$). Lexical Editor đang trong chu kỳ re-render DOM/selection của phím Backspace nên vứt bỏ sự kiện `beforeinput`, làm mất chữ commit mới (`ô`, `ê`) và gây hiệu ứng domino lệch nhịp xóa mất phụ âm (`thương` $\to$ `tương`).
+- **Quyết định:**
+  1. **Nhận diện và cách ly tuyệt đối theo ứng dụng (`is_antigravity_flag_`):**
+     - Khi `appNameLower.find("antigravity") != std::string::npos`, bật cờ `is_antigravity_flag_ = true`.
+     - Với mọi ứng dụng khác (Ghostty, Kitty, Chrome, Gedit, IDE...): Giữ nguyên 100% tốc độ siêu tốc $1\text{ms} \sim 6\text{ms}$, hoàn toàn không bị trễ thêm dù chỉ $1\mu\text{s}$.
+  2. **Áp mức sàn an toàn riêng cho Antigravity:**
+     - Trong `handleUInputKeyPress`, nếu `is_antigravity_flag_ == true`, áp `micro_delay_us = std::max(micro_delay_us, 32000)` ($32\text{ms}$).
+     - Khoảng nghỉ $32\text{ms}$ bảo đảm Lexical Editor nhả khóa con trỏ hoàn tất trước khi ký tự commit mới được đưa vào DOM, loại bỏ 100% hiện tượng rụng ký tự dấu.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-state.h`, `fcitx5-lilypad/src/lilypad-state.cpp`, `fcitx5-lilypad/src/lilypad-engine.cpp`, `CMakeLists.txt` (nâng `v2.3.3`), `PKGBUILD`.
+
+### [2026-09-11] Quyết định 027: Post-Commit Settling Window cho Chromium Webview (Khắc phục nuốt chữ khi gõ âm kép)
+- **Bối cảnh:** Khi gõ từ có thay thế âm kép như `"thương"` (`t-h-u-o-w-n-g`) trên khung chat Electron/Chromium Webview có lịch sử dài (như Antigravity), chữ `"h"` bị xén thành `"tương"`. Nguyên nhân: Sau khi `commitString("ơ")`, Fcitx5 lập tức nhả rào chắn (`is_deleting_ = false`). Phím kế tiếp (`n`) nổ tiếp đợt xóa $N=2$ qua uinput trong khi Chromium Webview chưa kịp vẽ `"ơ"` vào DOM, dẫn đến 2 phím Backspace xóa nhầm `"u"` và `"h"`.
+- **Quyết định:**
+  1. **Triển khai Post-Commit Settling Window (`settle_timer_`):**
+     - Khi `wa_chromium_flag == true`, giữ cờ `is_deleting_ = true` thêm $70\text{ms}$ sau khi `ic_->commitString()` được gửi qua Wayland.
+     - Mọi phím gõ nhanh trong $70\text{ms}$ này (như `n`, `g`) được giữ an toàn trong RAM (`buffered_keys_`).
+     - Khi hết $70\text{ms}$, DOM của Chromium đã render xong ký tự cũ, `is_deleting_` chuyển về `false` và kích hoạt `replayBufferedKeys()` để tiếp tục chu kỳ gõ.
+  2. **Bảo toàn hiệu năng ứng dụng khác (`wa_chromium_flag == false`):**
+     - Terminal, game, ứng dụng native Wayland/Qt/GTK4 giữ độ trễ lắng đọng cực tiểu ($300\mu\text{s}$), không bị ảnh hưởng tốc độ gõ.
+  3. **Cơ chế an toàn phím điều hướng & phím xóa vật lý:**
+     - Nếu người dùng bấm phím điều hướng, Tab, Escape trong lúc settling: hủy timer tức thì qua `checkForwardSpecialKey`.
+     - Nếu người dùng bấm Backspace vật lý trong lúc settling: nhận diện qua trạng thái barrier và xử lý xóa ký tự ngay lập tức.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-state.h`, `fcitx5-lilypad/src/lilypad-state.cpp`, `fcitx5-lilypad/CMakeLists.txt` (nâng `v2.3.2`).
+
 ### [2026-08-28] Quyết định 026: Dual-Step AUR Activation Standard & Interactive Post-Install UX
 - **Bối cảnh:** Theo Arch Packaging Guidelines, trình quản lý gói `pacman`/`yay` không tự ý bật service systemd trong phiên người dùng. Nếu README và scriptlet không chỉ dẫn rõ, người dùng cài qua AUR sẽ không bật daemon `fcitx5-lilypad-server@$USER.service`, dẫn đến lỗi không kết nối được uinput socket.
 - **Quyết định:**

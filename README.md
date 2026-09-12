@@ -3,7 +3,7 @@
 > **Bộ gõ Tiếng Việt thế hệ mới cho Linux Wayland & X11** dựa trên kiến trúc Hybrid: **Fcitx5 C++ Addon + IKI Adaptive Engine + Modular IAckSensor + Sentinel Barrier Protocol + Pure Kernel Uinput Server Daemon**.
 
 [![Release](https://img.shields.io/github/v/release/chiconcota/fcitx5-lilypad?style=flat&color=success)](https://github.com/chiconcota/fcitx5-lilypad/releases)
-[![Version](https://img.shields.io/badge/version-2.3.1-blue.svg)](https://github.com/chiconcota/fcitx5-lilypad)
+[![Version](https://img.shields.io/badge/version-2.3.6-blue.svg)](https://github.com/chiconcota/fcitx5-lilypad)
 [![License](https://img.shields.io/github/license/chiconcota/fcitx5-lilypad?style=flat&color=blue)](LICENSE)
 [![Tested Compositor](https://img.shields.io/badge/tested_compositor-Niri-purple.svg)](https://github.com/niri-wm/niri)
 [![Target Packaging](https://img.shields.io/badge/target_packaging-AUR_Arch_Linux-blue.svg)](#-phát-hành--cài-đặt)
