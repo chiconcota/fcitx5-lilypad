@@ -1,6 +1,0 @@
-[InputMethod]
-Name=Lotus
-Icon=fcitx-lotus
-LangCode=vi
-Addon=lotus
-Configurable=True
