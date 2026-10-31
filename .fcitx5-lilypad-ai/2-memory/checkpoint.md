@@ -117,15 +117,13 @@
 
 ---
 
-## 🎯 Kế Hoạch Bàn Giao Phiên Tiếp Theo (Handover Plan for Next Session):
+## 🎯 Kế Hoạch Bàn Giao & Nhiệm Vụ Tiếp Theo (Handover Plan):
 
-1. **Nâng mức sàn `micro_delay_us` cho Antigravity 2.0 từ $32\text{ms}$ lên $80\text{ms} \sim 100\text{ms}$:**
-   - Trong `lilypad-state.cpp`, sửa dòng:
-     `micro_delay_us = std::max<uint64_t>(micro_delay_us, 80000);` (hoặc `100000`) khi `is_antigravity_flag_ == true`.
-   - Giúp Lexical Editor và React có đủ thời gian hoàn tất xóa ký tự trên cây DOM $>134\text{k}$ nodes trước khi nhận ký tự có dấu mới, khắc phục triệt để lỗi nuốt chữ (`nhìn` $\to$ `nhn`, `quá` $\to$ `qu`).
-2. **Biên dịch, cài đặt vào hệ thống và mời người dùng gõ kiểm thử câu đối chứng:**
-   - Chuỗi kiểm thử: *"anh hai nhìn khó chịu quá"* trên đoạn chat cũ `"Thiết Kế Website Cá Nhân"`.
-3. **Tiếp tục theo dõi phản hồi cộng đồng về phiên bản v2.3.x trên AUR & GitHub.**
+1. **Nghiên cứu & Thiết kế Chuyển đổi Core Engine sang `bamboo-core` Rust (Phase 6):**
+   - Thay thế module Go C-FFI (`fcitx5-lilypad/bamboo/`) bằng `bamboo-vi/bamboo-core` Rust qua C-ABI binding.
+   - Tận dụng cơ chế Vectorized / SWAR, Zero-heap allocation và $O(1)$ Backspace snapshot.
+   - Giữ nguyên 100% tầng Sequencer Layer (`lilypad-sequencer.cpp`) và Cảm biến ACK / IKI.
+2. **Tiếp tục theo dõi phản hồi cộng đồng về phiên bản v2.3.6 trên AUR & GitHub.**
 
 ---
 

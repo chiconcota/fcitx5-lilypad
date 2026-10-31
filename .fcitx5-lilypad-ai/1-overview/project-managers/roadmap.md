@@ -57,3 +57,21 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
   - [x] Cập nhật đồng bộ 3 gói AUR: `fcitx5-lilypad`, `fcitx5-lilypad-bin`, `fcitx5-lilypad-git`.
   - [x] Sửa triệt để tác giả commit sang `chiconcota <lytatthanh@gmail.com>` và cập nhật đầy đủ lời cảm ơn trong 3 file README.
 
+---
+
+### 🦀 Kế Hoạch Tương Lai (Phase 6 — Rust Core Engine Migration `bamboo-vi/bamboo-core`):
+> **Mục tiêu:** Thay thế engine Go C-FFI bằng Rust thuần hiệu năng cao, giảm RAM về $<1\text{MB}$, nén binary, đạt Zero-Heap Allocation và $O(1)$ Backspace Snapshot.
+
+- [ ] **Phase 6.1: Khởi tạo nhánh `feat/rust-bamboo-engine` & Thiết lập Build Toolchain:**
+  - [ ] Thêm submodule / crate `bamboo-vi/bamboo-core` vào cây thư mục mã nguồn.
+  - [ ] Cấu hình CMake tự động build thư viện tĩnh Rust `libbamboo_core.a` (qua Corrosion hoặc Custom Target `cargo build --release`).
+- [ ] **Phase 6.2: Viết Lớp C++ Wrapper (`lilypad-rust-engine.h/.cpp`):**
+  - [ ] Bọc các hàm C-ABI `bamboo_engine_new`, `bamboo_process_key`, `bamboo_engine_reset`, `bamboo_free_string`.
+  - [ ] Đổi interface `lilypadEngine_` trong `LilypadState` sang lớp wrapper mới.
+- [ ] **Phase 6.3: Tích hợp với Sequencer Layer & Kiểm Thử Hồi Quy:**
+  - [ ] Đảm bảo cơ chế $O(1)$ Backspace của Rust ăn khớp với tính toán `compareAndSplitStrings` và Sentinel Barrier $N+1$.
+  - [ ] Kiểm thử gõ lướt tốc độ cao trên Terminal, Chrome, VS Code và Discord/Messenger.
+- [ ] **Phase 6.4: Đóng gói & Phát hành Phiên bản mới:**
+  - [ ] Cập nhật PKGBUILD AUR (thêm `cargo`/`rust` vào `makedepends`).
+  - [ ] Loại bỏ hoàn toàn thư mục Go cũ `fcitx5-lilypad/bamboo/` để repo sạch sẽ.
+

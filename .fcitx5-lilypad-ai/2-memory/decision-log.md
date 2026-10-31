@@ -267,6 +267,24 @@
 
 ## 🚀 6. KIẾN TRÚC VI MÔ THÍCH ỨNG & QUẢN TRỊ MÃ NGUỒN (v2.3.6)
 
+### [2026-11-01] Quyết định 046: Định Hướng Chuyển Đổi Core Engine Từ Bamboo Go Sang `bamboo-core` Rust (Phase 6 Architecture Initiative)
+- **Bối cảnh:**
+  1. Engine hiện tại sử dụng Go C-FFI (`fcitx5-lilypad/bamboo/`) làm phình kích thước nhị phân thêm 2.2MB, tiêu tốn 20MB ~ 35MB RAM cho Go runtime & Garbage Collector, và phát sinh chi phí CGO context switch (50 ~ 100ns) mỗi khi gõ phím.
+  2. Việc đối chiếu với Lotus C++ Engine (port thuần) và dự án mới `bamboo-vi/bamboo-core` (Rust) cho thấy phương án Rust mang lại lợi thế vượt trội: Vectorized / SWAR, Zero-heap allocation trên hot-path, $O(1)$ Backspace Snapshot Stack, loại bỏ 100% CGO overhead và giải phóng hoàn toàn Go runtime.
+- **Quyết định kiến trúc:**
+  1. **Thông qua định hướng chuyển đổi Core Engine sang `bamboo-vi/bamboo-core` (Rust) trong Phase 6:**
+     - Thay thế toàn bộ module Go C-FFI (`fcitx5-lilypad/bamboo/`) bằng thư viện tĩnh Rust `libbamboo_core.a` liên kết qua C-ABI (`bamboo_core::ffi`).
+     - Giảm kích thước file nhị phân và đưa mức tiêu thụ RAM về dưới 1MB.
+  2. **Bảo toàn 100% Kiến trúc Sequencer Layer:**
+     - Cơ chế $O(1)$ Backspace của Rust chỉ tác động nội bộ máy trạng thái trong RAM (thay thế việc rebuild chuỗi $O(N)$).
+     - Toàn bộ Sequencer Layer (`lilypad-sequencer.cpp`), giao thức Sentinel Barrier $N+1$, Cảm biến ACK thời gian thực ($\Delta T_{\text{swallow}}$) và nhịp ngón tay IKI tiếp tục đóng vai trò điều phối vật lý ngoài màn hình, không bị xáo trộn.
+  3. **Lộ trình triển khai:**
+     - Bước 1: Khởi tạo nhánh `feat/rust-bamboo-engine`.
+     - Bước 2: Tích hợp crate `bamboo-core` qua CMake (Corrosion hoặc custom Cargo build target).
+     - Bước 3: Viết lớp C++ wrapper mỏng kết nối C-ABI vào `LilypadState`.
+     - Bước 4: Kiểm thử hồi quy trên các bộ gõ Telex, VNI và các kịch bản micro-replacement của Sequencer.
+     - Bước 5: Cập nhật dependency `rust`/`cargo` trong PKGBUILD AUR và phát hành.
+
 ### [2026-09-12] Quyết định 045: Tri-Layer Protection, Technical Debt Cleanup & Chuẩn hóa Quyền Tác Giả (Ownership)
 - **Bối cảnh:**
   1. Trên các ứng dụng Electron/Chromium có cây DOM nặng (như Antigravity 2.0 với $>134.000$ DOM nodes do drawer duyệt file ẩn), Single-threaded Chromium Renderer mất $45\text{ms} \sim 60\text{ms}$ để DOM reconciliation. Với $N=1$ Backspace, độ trễ $33\text{ms}$ gửi `commitString` quá sớm khiến Lexical nuốt mất ký tự (`thương` $\to$ `tương`, `cháu lê` $\to$ `cháu l`).
