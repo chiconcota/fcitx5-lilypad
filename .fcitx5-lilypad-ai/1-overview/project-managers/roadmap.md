@@ -75,3 +75,24 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
   - [ ] Cập nhật PKGBUILD AUR (thêm `cargo`/`rust` vào `makedepends`).
   - [ ] Loại bỏ hoàn toàn thư mục Go cũ `fcitx5-lilypad/bamboo/` để repo sạch sẽ.
 
+---
+
+### 🛡️ Kế Hoạch Tương Lai (Phase 7 — Cơ Chế Nhận Diện Nghẽn DOM Động & Tự Động Điều Hòa $T_{\text{render}}$):
+> **Mục tiêu:** Nhận diện chính xác 100% khi nào ứng dụng bị nghẽn DOM (như Antigravity 134k nodes) mà không phụ thuộc vào chính tả người gõ, không gán cứng $60\text{ms} \sim 80\text{ms}$, bảo toàn tốc độ bàn thờ $1\text{ms}$ cho Terminal và cứu chữ tuyệt đối cho Webview nặng.
+
+- [ ] **Phase 7.1: Gắn Nhãn Mốc Thời Gian Cho Phím Đệm (`KeyEntry::enter_time`):**
+  - [ ] Thêm trường `std::chrono::steady_clock::time_point enter_time` vào cấu trúc `KeyEntry` trong `lilypad-state.h`.
+  - [ ] Ghi mốc thời gian ngay khi phím bị đưa vào hàng đợi `buffered_keys_.push_back()`.
+- [ ] **Phase 7.2: Triển Khai Bộ Nhận Diện Lag Bằng Tuổi Thọ Phím & Áp Lực Hàng Đợi (Dwell Time & Queue Pressure):**
+  - [ ] Bật cờ `is_app_lagging = true` khi thỏa mãn một trong các điều kiện cơ học:
+    1. **Tuổi thọ phím bị giam:** $\text{Age} = \text{now} - \text{enter\_time} \ge 40\text{ms} \sim 50\text{ms}$ (phím quá cảnh lâu bất thường).
+    2. **Thời gian rào chắn bị giam giữ:** $\Delta t_{\text{locked}} = \text{now} - uinput\_send\_time\_ \ge 40\text{ms}$.
+    3. **Độ sâu tích tụ hàng đợi:** `buffered_keys_.size() >= 2` (dồn ứ nhiều hơn 1 phím).
+    4. **Gõ chậm mà vẫn bị nghẽn buffer:** `(is_deleting_ && current_iki >= 50ms)`.
+- [ ] **Phase 7.3: Tự Động Điều Hòa $T_{\text{render}}$ & Post-Commit Settling Window Động:**
+  - [ ] Khi `is_app_lagging == true`: Tự động nở $T_{\text{render}}$ và Settling Window lên mức an toàn ($70\text{ms} \sim 100\text{ms}$) cho đến khi xả sạch hàng đợi.
+  - [ ] Khi `is_app_lagging == false` (Terminal, App mượt, hoặc khi App đã hạ nhiệt): Co $T_{\text{render}}$ về $0\text{ms}$, trả lại tốc độ tức thì $1\text{ms} \sim 2\text{ms}$.
+- [ ] **Phase 7.4: Kiểm thử thực nghiệm đối chứng:**
+  - [ ] Kiểm thử gõ siêu tốc trên Terminal/Kitty: Xác nhận hàng đợi không bị phình, $T_{\text{render}} = 0\text{ms}$.
+  - [ ] Kiểm thử trên Antigravity đoạn chat nặng: Xác nhận phát hiện nghẽn tức thì, không rụng chữ (`nhìn`, `quá`).
+

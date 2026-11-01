@@ -119,11 +119,14 @@
 
 ## 🎯 Kế Hoạch Bàn Giao & Nhiệm Vụ Tiếp Theo (Handover Plan):
 
-1. **Nghiên cứu & Thiết kế Chuyển đổi Core Engine sang `bamboo-core` Rust (Phase 6):**
+1. **Triển khai Cơ chế Nhận diện Nghẽn DOM Động & Tự động Điều hòa $T_{\text{render}}$ (Phase 7):**
+   - Áp dụng 4 trụ cột cơ học: Keystroke Dwell Time ($\ge 40\text{ms}$), Lock Duration ($\ge 40\text{ms}$), Queue Accumulation (`size >= 2`), và Tương quan Nhịp tay gõ chậm mà bị buffer (`IKI >= 50ms && is_deleting`).
+   - Tự động kích hoạt Heavy-DOM Emergency Profile giãn $T_{\text{render}}$ lên $70\text{ms} \sim 100\text{ms}$ trên app lag, và co về $0\text{ms}$ trên app mượt.
+2. **Nghiên cứu & Thiết kế Chuyển đổi Core Engine sang `bamboo-core` Rust (Phase 6):**
    - Thay thế module Go C-FFI (`fcitx5-lilypad/bamboo/`) bằng `bamboo-vi/bamboo-core` Rust qua C-ABI binding.
    - Tận dụng cơ chế Vectorized / SWAR, Zero-heap allocation và $O(1)$ Backspace snapshot.
    - Giữ nguyên 100% tầng Sequencer Layer (`lilypad-sequencer.cpp`) và Cảm biến ACK / IKI.
-2. **Tiếp tục theo dõi phản hồi cộng đồng về phiên bản v2.3.6 trên AUR & GitHub.**
+3. **Tiếp tục theo dõi phản hồi cộng đồng về phiên bản v2.3.6 trên AUR & GitHub.**
 
 ---
 

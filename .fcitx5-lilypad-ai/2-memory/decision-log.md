@@ -267,6 +267,21 @@
 
 ## 🚀 6. KIẾN TRÚC VI MÔ THÍCH ỨNG & QUẢN TRỊ MÃ NGUỒN (v2.3.6)
 
+### [2026-11-01] Quyết định 047: Cơ Chế Nhận Diện Nghẽn DOM Động (App Lag Detection) Qua Keystroke Dwell Time & Queue Pressure (Phase 7)
+- **Bối cảnh:**
+  1. $\Delta T_{\text{swallow}}$ đo chính xác thời gian hoàn tất vòng lặp Kernel/Compositor, nhưng hoàn toàn "mù" trước thời gian ứng dụng Webview (Chromium/Electron) chạy chu kỳ DOM Reconciliation & Paint ($T_{\text{render}}$). Trên các ứng dụng có cây DOM nặng ($>134.000$ nodes), $T_{\text{render}}$ có thể tốn $60\text{ms} \sim 80\text{ms}$, dẫn đến hiện tượng Lexical Editor vứt bỏ ký tự commit và gây nuốt chữ.
+  2. Việc gán cứng mức sàn $60\text{ms} \sim 80\text{ms}$ là giải pháp tĩnh, làm chậm oan uổng các ứng dụng mượt (Terminal, native text editor). Ngược lại, việc đo gián tiếp qua RAM/CPU hệ thống hoặc suy đoán qua phím xóa sai chính tả (AIMD) dễ sinh ra sai số (false positive).
+- **Quyết định kiến trúc:**
+  1. **Định nghĩa Cơ Chế Nhận Diện Lag Bằng 4 Trụ Cột Cơ Học Khách Quan:**
+     - **Trụ cột 1 (Tuổi thọ phím đệm - Keystroke Dwell Time):** $\text{Age} = \text{now} - \text{enter\_time} \ge 40\text{ms} \sim 50\text{ms}$. Phím quá cảnh bình thường chỉ mất $<10\text{ms}$; nếu bị giam $\ge 40\text{ms}$ thì chứng minh $100\%$ đầu ra của App đang bị tắc.
+     - **Trụ cột 2 (Thời gian rào chắn bị giam giữ):** $\Delta t_{\text{locked}} = \text{now} - uinput\_send\_time\_ \ge 40\text{ms}$.
+     - **Trụ cột 3 (Áp lực hàng đợi phím đệm - Queue Accumulation):** `buffered_keys_.size() >= 2`. Trên app mượt, phím xả tức thì $0.3\text{ms}$ nên không bao giờ tích tụ lên 2 phím; chỉ khi App nghẽn DOM thì các phím gõ nhanh tiếp theo mới bị dồn ứ.
+     - **Trụ cột 4 (Tương quan Nhịp tay & Rào chắn):** `(is_deleting_ && current_iki >= 50ms)`. Người dùng gõ thong thả mà phím tiếp theo vẫn bị rào chắn chặn lại và phải lưu vào buffer $\implies$ App chắc chắn đang lag.
+  2. **Tự động kích hoạt Heavy-DOM Emergency Profile khi có tín hiệu Lag:**
+     - Khi phát hiện cờ lag: Nở $T_{\text{render}}$ và Settling Window lên mức an toàn ($70\text{ms} \sim 100\text{ms}$), kích hoạt trạng thái `BarrierState::AppLagHolding` gom phím an toàn trong RAM, bảo vệ tuyệt đối không rụng chữ.
+     - Khi hàng đợi xả sạch và app hạ nhiệt: Tự động co $T_{\text{render}}$ về $0\text{ms}$, trả lại tốc độ tức thì $1\text{ms} \sim 2\text{ms}$ cho Terminal.
+- **Mã nguồn dự kiến:** `fcitx5-lilypad/src/lilypad-state.h/.cpp`, `lilypad-sequencer.h/.cpp`.
+
 ### [2026-11-01] Quyết định 046: Định Hướng Chuyển Đổi Core Engine Từ Bamboo Go Sang `bamboo-core` Rust (Phase 6 Architecture Initiative)
 - **Bối cảnh:**
   1. Engine hiện tại sử dụng Go C-FFI (`fcitx5-lilypad/bamboo/`) làm phình kích thước nhị phân thêm 2.2MB, tiêu tốn 20MB ~ 35MB RAM cho Go runtime & Garbage Collector, và phát sinh chi phí CGO context switch (50 ~ 100ns) mỗi khi gõ phím.
