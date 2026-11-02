@@ -267,6 +267,24 @@
 
 ## 🚀 6. KIẾN TRÚC VI MÔ THÍCH ỨNG & QUẢN TRỊ MÃ NGUỒN (v2.3.6)
 
+### [2026-11-03] Quyết định 048: Chống Focus Bounce (100ms Deferral) & Sequencer Settling Atomic Commit cho Rich Text Web (Phase 8)
+- **Bối cảnh:**
+  1. Trên TikTok Web khung bình luận, React re-render DOM node khi người dùng gõ phím, làm Chromium bắn chuỗi sự kiện `FocusOut` $\to$ `FocusIn` giả chỉ trong vòng $5\text{ms} \sim 20\text{ms}$ (Focus Bounce). Do Lilypad xóa sạch Caret Buffer ngay khi nhận `FocusOut`, phím dấu tiếp theo (`s`) mất ngữ cảnh từ trước đó và bị in thô ra màn hình (`no` + `s` $\to$ `nos`).
+  2. Trên TikTok Web khung đăng video (Caption Rich Editor), bộ phân tích cú pháp `#Hashtag` và `@Mention` ngầm khóa tạm thời con trỏ sau khi nhận 2 phím Backspace. Lệnh commit từ Fcitx5 được gửi đi ngay lập tức ($\Delta t = 0\text{ms}$) khi con trỏ chưa kịp lắng đọng khiến chuỗi commit mới bị trình duyệt vứt bỏ, chỉ còn trơ lại phần đầu từ chưa bị xóa (`cháu` $\to$ `ch`).
+  3. Người dùng yêu cầu giải quyết triệt để 2 vấn đề trên bằng chính kiến trúc Sequencer & Uinput của Lilypad, không sao chép cơ chế Select (`Shift+Left`) của Lotus.
+- **Quyết định kiến trúc:**
+  1. **Triển khai Cơ chế Chống Nảy Tiêu Điểm (Focus Bounce Protection - 100ms Deferral Window):**
+     - Khi nhận sự kiện `InputContextFocusOut` ở chế độ Uinput: Không gọi `clearAllBuffers()` ngay lập tức. Đặt cờ `deferred_focus_out_ = true` và lưu mốc thời gian `last_deactivate_time_ = now_ms()`.
+     - Khi nhận sự kiện `InputContextFocusIn`: Nếu $\Delta t = \text{now\_ms}() - \text{last\_deactivate\_time\_} < 100\text{ms}$, kết luận đây là Focus Bounce do Web re-render $\implies$ Hủy nợ xóa (`deferred_focus_out_ = false`), giữ nguyên vẹn 100% Caret Buffer trong RAM.
+     - Nếu $\Delta t \ge 100\text{ms}$ (người dùng thật sự Alt-Tab hoặc click ra ngoài): Lúc này mới thực thi xả nợ xóa (`flush_deferred_focus_out()`), xóa sạch bộ đệm an toàn.
+  2. **Triển khai Sequencer Settling Delay & Khóa Chặt Hàng Đợi (Atomic Commit Lock):**
+     - Cài đặt khoảng nghỉ lắng đọng vi mô `settling_delay_us = 6000 ~ 8000` ($6\text{ms} \sim 8\text{ms}$) vào Sequencer giữa nhịp phát phím Backspace cuối cùng và nhịp phát lệnh Commit.
+     - Trong suốt chu trình Xóa $\to$ Settle $\to$ Commit, Sequencer giữ khóa cứng hàng đợi (`is_deleting_`), gom mọi phím gõ nhanh tiếp theo của người dùng vào `MicroStep Queue`, bảo đảm tính nguyên tử của giao dịch (Atomic Transaction).
+     - Không can thiệp hay viết code riêng cho Hashtag/Mention; giải quyết tận gốc ở tầng độ trễ đồng bộ (Event Loop Settle).
+  3. **Chuẩn hóa Hardware Barrier Key:**
+     - Loại bỏ phím Backspace Sentinel thứ $N+1$, thay bằng phím rào cản phần cứng an toàn (`KEY_PAUSE`), bảo đảm không bao giờ xóa lẹm vào lệnh Terminal hay văn bản Web.
+- **Mã nguồn dự kiến:** `fcitx5-lilypad/src/lilypad-state.h/.cpp`, `lilypad-engine.cpp`, `lilypad-sequencer.h/.cpp`.
+
 ### [2026-11-01] Quyết định 047: Cơ Chế Nhận Diện Nghẽn DOM Động (App Lag Detection) Qua Keystroke Dwell Time & Queue Pressure (Phase 7)
 - **Bối cảnh:**
   1. $\Delta T_{\text{swallow}}$ đo chính xác thời gian hoàn tất vòng lặp Kernel/Compositor, nhưng hoàn toàn "mù" trước thời gian ứng dụng Webview (Chromium/Electron) chạy chu kỳ DOM Reconciliation & Paint ($T_{\text{render}}$). Trên các ứng dụng có cây DOM nặng ($>134.000$ nodes), $T_{\text{render}}$ có thể tốn $60\text{ms} \sim 80\text{ms}$, dẫn đến hiện tượng Lexical Editor vứt bỏ ký tự commit và gây nuốt chữ.

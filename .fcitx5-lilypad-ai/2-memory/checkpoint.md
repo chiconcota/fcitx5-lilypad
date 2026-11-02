@@ -5,7 +5,30 @@
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
 - **Nhánh Git làm việc:** `main`
-- **Tình trạng:** **ĐÃ HOÀN TẤT NÂNG CẤP V2.3.6 (CLEAN CODE & TECHNICAL DEBT CLEANUP): LOẠI BỎ TRIỆT ĐỂ CỜ RIÊNG `is_antigravity_flag_` VÀ CÁC NGOẠI LỆ MỨC SÀN CỨNG 32MS. GIỮ NGUYÊN NHẬN DIỆN CHROMIUM TIÊU CHUẨN (`wa_chromium_flag = true`) CHO CÁC APP ELECTRON/CHROMIUM QUA `ack-apps.h`. TOÀN BỘ BỘ GÕ CHẠY THỐNG NHẤT TRÊN CƠ CHẾ ADAPTIVE DYNAMIC MICRO-PACING VÀ TRI-LAYER PROTECTION. ĐÃ BIÊN DỊCH DEBUG, CÀI ĐẶT THÀNH CÔNG VÀO HỆ THỐNG VÀ KHỞI ĐỘNG LẠI FCITX5.**
+- **Tình trạng:** **ĐÃ HOÀN TẤT PHÂN TÍCH CHUYÊN SÂU NGUYÊN NHÂN LỖI TIKTOK WEB & LẬP KẾ HOẠCH PHASE 8: CHỐNG FOCUS BOUNCE (100MS DEFERRAL) VÀ SEQUENCER SETTLING ATOMIC COMMIT. GIỮ NGUYÊN KIẾN TRÚC THUẦN LILYPAD, KHÔNG SAO CHÉP SELECT MODE CỦA LOTUS. SẴN SÀNG TRIỂN KHAI CODE TRONG PHIÊN TIẾP THEO.**
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-03 - Nghiên Cứu TikTok Web & Hoạch Định Phase 8):
+
+1. **Nghiên cứu Cơ Chế Uinput Select (`Shift+Left`) của Lotus > 6.0:**
+   - Đọc và phân tích trực tiếp mã nguồn `fcitx5-lotus-main/` (v6.0.4) qua các commit `a68195b`, `4c6fddc`, `cb67d6b`, `8b4cb89`.
+   - Xác định Lotus dùng `Shift + Left` x $N$ để bôi đen, nhả Shift, bấm `Delete`, và bắn mỏ neo `KEY_PAUSE` (hoặc `KEY_F24`) làm rào cản.
+   - Thảo luận cùng người dùng: Người dùng quyết định **không sao chép cơ chế Select của Lotus**, mà tập trung phát triển giải pháp thuần chất Lilypad trên nền tảng Sequencer Layer và Backspace truyền thống.
+
+2. **Truy Tìm Cội Nguồn 2 Bệnh Riêng Biệt của TikTok Web:**
+   - **Bệnh 1 (Khung bình luận: `no` + `s` $\to$ `nos`):**
+     - Do React DOM re-render làm Chromium bắn `FocusOut` $\to$ `FocusIn` giả chỉ trong vòng $5\text{ms} \sim 20\text{ms}$ (Focus Bounce).
+     - Lilypad xóa sạch Caret Buffer ngay khi nhận `FocusOut`, khiến phím `s` mất ngữ cảnh từ trước đó và bị in thô thành chữ thường không dấu.
+   - **Bệnh 2 (Khung đăng video caption: `cháu` $\to$ `ch`):**
+     - Do bộ phân tích cú pháp `#Hashtag` và `@Mention` ngầm khóa tạm thời con trỏ sau nhịp Backspace.
+     - Lilypad commit chữ mới quá vội ($\Delta t = 0\text{ms}$) khi con trỏ chưa ổn định, khiến chuỗi commit `áu` bị vứt bỏ, chỉ còn trơ lại phần đầu từ chưa xóa `ch`.
+
+3. **Chốt Kế Hoạch Triển Khai Phase 8:**
+   - **Mục 1 (Focus Bounce Protection):** Hoãn xóa bộ đệm $100\text{ms}$ khi nhận `FocusOut`. Nếu `FocusIn` quay lại trong $< 100\text{ms}$ thì hủy lệnh xóa, bảo toàn 100% Caret Buffer (`deferred_focus_out_`, `last_deactivate_time_`).
+   - **Mục 2 (Sequencer Settling Atomic Commit):** Thêm khoảng nghỉ lắng đọng vi mô $6\text{ms} \sim 8\text{ms}$ giữa nhịp Xóa và Commit, khóa chặt hàng đợi Sequencer đảm bảo giao dịch nguyên tử, triệt tiêu khe hở thời gian làm rơi rụng chữ commit trên Rich Text Web.
+   - **Mục 3 (Hardware Barrier Key):** Thay phím Sentinel Backspace thứ $N+1$ bằng `KEY_PAUSE`, an toàn tuyệt đối cho Terminal và Web.
+   - Đã cập nhật đầy đủ: `roadmap.md` (Phase 8), `decision-log.md` (Quyết định 048), `system_map.md` và `sequencer-layer/README.md`.
+
+---
 
 ## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-09-12 - Gỡ Bỏ Nợ Kỹ Thuật, Phát Hành v2.3.6 & AUR, Chuẩn Hóa Tác Giả):
 

@@ -96,3 +96,32 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
   - [ ] Kiểm thử gõ siêu tốc trên Terminal/Kitty: Xác nhận hàng đợi không bị phình, $T_{\text{render}} = 0\text{ms}$.
   - [ ] Kiểm thử trên Antigravity đoạn chat nặng: Xác nhận phát hiện nghẽn tức thì, không rụng chữ (`nhìn`, `quá`).
 
+---
+
+### 🎯 Kế Hoạch Trọng Tâm Phiên Tới (Phase 8 — Chống Focus Bounce & Sequencer Settling Atomic Commit):
+> **Mục tiêu:** Giải quyết triệt để lỗi gõ tiếng Việt trên TikTok Web và các trình soạn thảo Rich Text nặng (React/Lexical/Hashtag Editor) mà không cần sao chép cơ chế Select của Lotus:
+> 1. Triệt tiêu hiện tượng nảy tiêu điểm ảo khiến bộ đệm bị xóa oan (`no` + `s` $\to$ `nos`).
+> 2. Triệt tiêu hiện tượng nuốt ký tự commit do đụng độ bộ phân tích cú pháp ngầm (`cháu` $\to$ `ch`).
+
+- [ ] **Phase 8.1: Cơ Chế Chống Nảy Tiêu Điểm (Focus Bounce Protection / 100ms Deferral):**
+  - [ ] Thêm biến cờ `deferred_focus_out_ = false` và mốc `last_deactivate_time_ = 0` vào `LilypadState`.
+  - [ ] Khi nhận sự kiện `InputContextFocusOut` ở chế độ Uinput:
+    - Không gọi `clearAllBuffers()` ngay lập tức.
+    - Đặt cờ `deferred_focus_out_ = true` và ghi `last_deactivate_time_ = now_ms()`.
+  - [ ] Khi nhận sự kiện `InputContextFocusIn`:
+    - Tính $\Delta t = \text{now\_ms}() - \text{last\_deactivate\_time\_}$.
+    - Nếu $\Delta t < 100\text{ms}$ (Focus Bounce của Chromium/TikTok): Hủy bỏ nợ xóa (`deferred_focus_out_ = false`), giữ nguyên vẹn `oldPreBuffer_` và Caret Buffer trong RAM.
+    - Nếu $\Delta t \ge 100\text{ms}$ (Người dùng chuyển ứng dụng thật): Thực thi xả nợ xóa (`flush_deferred_focus_out()`), làm sạch bộ đệm an toàn.
+- [ ] **Phase 8.2: Sequencer Settling Delay & Khóa Chặt Hàng Đợi (Atomic Commit Lock):**
+  - [ ] Thêm khoảng nghỉ lắng đọng `settling_delay_us = 6000 ~ 8000` ($6\text{ms} \sim 8\text{ms}$) vào Sequencer giữa nhịp phát phím Backspace cuối cùng và nhịp phát lệnh Commit.
+  - [ ] Khóa cứng hàng đợi Sequencer (`is_deleting_ / lock`) trong toàn bộ chu trình Xóa $\to$ Settle $\to$ Commit để bảo đảm tính nguyên tử (Atomic Transaction).
+  - [ ] Cho phép luồng xử lý sự kiện của ứng dụng (DOM reconciliation / Hashtag & Mention parser) ổn định vị trí con trỏ trước khi ký tự commit mới đáp xuống.
+- [ ] **Phase 8.3: Thay Thế Sentinel Backspace (N+1) Bằng Hardware Barrier Key:**
+  - [ ] Khai tử phím Backspace thứ $N+1$ (nguồn gốc gây xóa lẹm vào lệnh Terminal và văn bản web).
+  - [ ] Sử dụng `KEY_PAUSE` (hoặc phím chức năng vô hại) làm rào cản đồng bộ phần cứng ở đuôi chuỗi Backspace.
+  - [ ] Fcitx5 chặn `KEY_PAUSE`, kích hoạt Commit và xả hàng đợi phím an toàn.
+- [ ] **Phase 8.4: Kiểm Thử Thực Địa & Xác Nhận:**
+  - [ ] Kiểm thử trên TikTok Web (Khung bình luận): Gõ `no` + `s` $\to$ ra đúng `nó`, không bị rơi rụng thành `nos`.
+  - [ ] Kiểm thử trên TikTok Web (Khung đăng video caption): Gõ `cháu` $\to$ ra đúng `cháu`, không bị nuốt mất thành `ch`.
+  - [ ] Kiểm thử trên Terminal/CLI: Xác nhận không sinh mã rác và không xóa lẹm dòng lệnh.
+

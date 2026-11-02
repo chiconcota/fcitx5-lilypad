@@ -32,6 +32,16 @@ stateDiagram-v2
 - **`WaitingMicroDelay`**: Tạm dừng $1.0 \sim 5.0\,\text{ms}$ (co giãn theo IKI Fast-Path) sau khi phát phím xóa `KEY_BACKSPACE` để Compositor & App render sạch phím xóa trước khi chèn chữ mới.
 - **`WaitingForAck`**: Rào chắn bị khóa chờ tín hiệu `receive_ack()` từ Cảm biến `IAckSensor`.
 - **`AppLagHolding`**: Tự động kích hoạt khi chạm Soft Timeout ($T_{\text{elapsed}} \ge T_{\text{soft}}$), tạm ngừng bắn uinput tiếp theo và gom phím an toàn vào RAM `buffered_keys_` chờ App bắt kịp.
+- **`SettlingDelay` (Phase 8)**: Khoảng nghỉ lắng đọng vi mô ($6\text{ms} \sim 8\text{ms}$) sau khi nhịp xóa uinput hoàn tất, chờ Event Loop của ứng dụng (DOM reconciliation / Rich Editor parser) ổn định vị trí con trỏ trước khi commit ký tự mới.
+
+---
+
+## 4. CƠ CHẾ BẢO VỆ CHỐNG NẢY TIÊU ĐIỂM (FOCUS BOUNCE PROTECTION - PHASE 8)
+- **Vấn đề:** Trình duyệt Chromium/Electron trên các trang web động (như TikTok Web, Lexical Editor) thường xuyên bắn sự kiện `FocusOut` $\to$ `FocusIn` ngầm trong khoảng thời gian siêu ngắn ($5\text{ms} \sim 20\text{ms}$) khi re-render thẻ HTML.
+- **Giải pháp:** Cơ chế **100ms Focus-Out Deferral**:
+  - Khi nhận `FocusOut`, Sequencer/State đặt cờ `deferred_focus_out_ = true` và bấm giờ `last_deactivate_time_`, không xóa đệm ngay.
+  - Nếu `FocusIn` quay lại trong $< 100\text{ms}$ $\implies$ Hủy lệnh xóa, giữ nguyên bộ nhớ từ đang gõ dở (`oldPreBuffer_`).
+  - Nếu quá $100\text{ms}$ không quay lại $\implies$ Xả nợ xóa (`flush_deferred_focus_out()`), đảm bảo an toàn tuyệt đối khi người dùng chuyển ứng dụng thật.
 
 ---
 
