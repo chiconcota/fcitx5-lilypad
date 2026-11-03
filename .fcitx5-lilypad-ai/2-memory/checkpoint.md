@@ -189,35 +189,35 @@
 
 ---
 
-## 🎯 Kế Hoạch Bàn Giao & Nhiệm Vụ Tiếp Theo (Handover Plan):
+## 🎯 Kế Hoạch Bàn Giao & Nhiệm Vụ Cho Phiên Kế Tiếp (Handover Plan):
 
-1. **Triển khai Cơ chế Nhận diện Nghẽn DOM Động & Tự động Điều hòa $T_{\text{render}}$ (Phase 7):**
-   - Áp dụng 4 trụ cột cơ học: Keystroke Dwell Time ($\ge 40\text{ms}$), Lock Duration ($\ge 40\text{ms}$), Queue Accumulation (`size >= 2`), và Tương quan Nhịp tay gõ chậm mà bị buffer (`IKI >= 50ms && is_deleting`).
-   - Tự động kích hoạt Heavy-DOM Emergency Profile giãn $T_{\text{render}}$ lên $70\text{ms} \sim 100\text{ms}$ trên app lag, và co về $0\text{ms}$ trên app mượt.
-2. **Nghiên cứu & Thiết kế Chuyển đổi Core Engine sang `bamboo-core` Rust (Phase 6):**
-   - Thay thế module Go C-FFI (`fcitx5-lilypad/bamboo/`) bằng `bamboo-vi/bamboo-core` Rust qua C-ABI binding.
-   - Tận dụng cơ chế Vectorized / SWAR, Zero-heap allocation và $O(1)$ Backspace snapshot.
-   - Giữ nguyên 100% tầng Sequencer Layer (`lilypad-sequencer.cpp`) và Cảm biến ACK / IKI.
-3. **Tiếp tục theo dõi phản hồi cộng đồng về phiên bản v2.3.6 trên AUR & GitHub.**
+1. **Ưu Tiên 1 — Triển khai Phase 8.2 (Sequencer Settling Delay & Atomic Commit Lock):**
+   - Thêm khoảng nghỉ lắng đọng vi mô `settling_delay_us = 6000 ~ 8000` ($6\text{ms} \sim 8\text{ms}$) giữa nhịp phát phím Backspace cuối cùng và nhịp phát lệnh Commit.
+   - Khóa cứng hàng đợi Sequencer (`is_deleting_`) trong suốt chu trình `Xóa -> Settle -> Commit`, đảm bảo giao dịch nguyên tử, giải quyết triệt để lỗi rụng dấu vỡ từ ra chuỗi thô (`couo7`) trên TikTok Web.
+
+2. **Ưu Tiên 2 — Triển khai Phase 8.3 (Bộ Nhận Diện Nghẽn DOM Động 4 Trụ Cột):**
+   - Gắn nhãn `KeyEntry::enter_time`, đo tuổi thọ phím đệm trong RAM $\ge 40\text{ms}$ và áp lực hàng đợi $\ge 2$.
+   - Tự động dãn Settling Window lên mức an toàn ($70\text{ms} \sim 100\text{ms}$) trên các trang web có DOM khổng lồ (video 25.2K comments), và co về $0\text{ms} \sim 1\text{ms}$ trên Terminal để giữ tốc độ Zero-Latency.
+
+3. **Ưu Tiên 3 — Triển khai Phase 8.4 (Hardware Barrier Key `KEY_PAUSE` / `KEY_F24`):**
+   - Khai tử phím Backspace thứ $N+1$, chuyển sang dùng `KEY_PAUSE` vô hại (Non-destructive) làm chốt đo ACK an toàn tuyệt đối cho Terminal và Web.
 
 ---
 
-## 📁 Các File Thay Đổi Trong Phiên:
+## 📁 Các File Thay Đổi Trong Phiên (2026-11-03 - Phase 8.1):
 
 | File | Thay đổi |
 | :--- | :--- |
-| `fcitx5-lilypad/src/ack-sensors/niri-sensor.h` | Tích hợp công thức Lerp động, App ACK Consumption $N \times T_{\text{ack}}$, và Cold Start Safe Baseline $>50\text{ms}$ |
-| `fcitx5-lilypad/src/ack-sensors/generic-sensor.h` | Tích hợp công thức Lerp động và Cold Start Safe Baseline cho Generic sensor |
-| `fcitx5-lilypad/src/lilypad-sequencer.h/.cpp` | Triển khai `AppLagHolding`, Two-Tier Timeout (Soft/Hard), `calculate_soft_timeout_ms`, `is_soft_timeout` |
-| `fcitx5-lilypad/src/lilypad-state.h/.cpp` | Triển khai Giao thức Sentinel Barrier $N+1$ phím, Watchdog 250ms, `purgeContextEmergency()`, `accuracy = 1µs`, phân luồng Chrome/GTK4 |
-| `fcitx5-lilypad/src/lilypad-engine.cpp` | Cập nhật routing `wa_chromium_flag` |
-| `.fcitx5-lilypad-ai/3-modules/sequencer-layer/README.md` | Cập nhật tài liệu kiến trúc Sentinel Barrier & Lerp ACK formula |
-| `.fcitx5-lilypad-ai/2-memory/decision-log.md` | Ghi Quyết định 020, 021, 022, 023, 024 |
-| `.fcitx5-lilypad-ai/1-overview/system_map.md` | Cập nhật Recent Change Log Phase 4.3 |
-| `.fcitx5-lilypad-ai/1-overview/project-managers/iki-adaptive-engine-plan.md` | Cập nhật tiến độ TASK-406 hoàn thành |
-| `.fcitx5-lilypad-ai/1-overview/project-managers/roadmap.md` | Đánh dấu hoàn thành Phase 4.1, 4.2, 4.3 |
-| `.fcitx5-lilypad-ai/2-memory/self-improve.md` | Thêm bài học kinh nghiệm tính toán Soft Timeout & App Lag |
-| `.fcitx5-lilypad-ai/2-memory/checkpoint.md` | Niêm phong bộ nhớ phiên làm việc |
+| `fcitx5-lilypad/src/lilypad-state.h/.cpp` | Triển khai cờ `deferredFocusOut_`, `cancelDeferredFocusOut()`, `flushDeferredFocusOut()`, tách `resetNow(bool)` bảo vệ 100% Caret Buffer |
+| `fcitx5-lilypad/src/lilypad-engine.cpp` | Bắt sự kiện Focus Bounce (`delta < 100ms`), đảo điều kiện lỗi `< 100` thành `>= 100`, hủy nợ xóa và không gọi `setMode()` làm xóa buffer |
+| `fcitx5-lilypad/src/lilypad-utils.h` | Thêm inline helper `isUinputMode(LilypadMode)` |
+| `fcitx5-lilypad/settings-gui/ui/pages/about.py` | Cập nhật ghi nhận `Bamboo Engine (Rust Native Core)` |
+| `fcitx5-lilypad/CMakeLists.txt` & `PKGBUILD` | Nâng phiên bản `v2.3.7` |
+| `.fcitx5-lilypad-ai/1-overview/project-managers/roadmap.md` | Tái cấu trúc lộ trình làm việc khoa học cho Phase 8.2, 8.3, 8.4 |
+| `.fcitx5-lilypad-ai/1-overview/system_map.md` | Cập nhật Module Status & Recent Change Log v2.3.7 |
+| `.fcitx5-lilypad-ai/2-memory/decision-log.md` | Ghi Quyết định 049 (Phase 8.1 & Lộ trình hợp nhất) |
+| `.fcitx5-lilypad-ai/3-modules/sequencer-layer/README.md` | Cập nhật tài liệu kỹ thuật Focus Bounce Protection v2.3.7 |
+| `.fcitx5-lilypad-ai/2-memory/checkpoint.md` | Bàn giao phiên làm việc trên nhánh `feat/focus-bounce-protection` |
 
 ---
 

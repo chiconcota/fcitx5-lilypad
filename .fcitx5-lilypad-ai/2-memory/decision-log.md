@@ -265,7 +265,24 @@
 
 ---
 
-## 🚀 6. KIẾN TRÚC VI MÔ THÍCH ỨNG & QUẢN TRỊ MÃ NGUỒN (v2.3.6)
+## 🚀 6. KIẾN TRÚC VI MÔ THÍCH ỨNG & QUẢN TRỊ MÃ NGUỒN (v2.3.7)
+
+### [2026-11-03] Quyết định 049: Hoàn Tất Triển Khai Focus Bounce Protection (Phase 8.1) & Tái Cấu Trúc Lộ Trình Hợp Nhất (v2.3.7)
+- **Bối cảnh:**
+  1. Đã triển khai và kiểm thử thực tế Phase 8.1 trên nhánh `feat/focus-bounce-protection`. Hiện tượng nảy tiêu điểm ảo khiến bộ đệm bị xóa oan trên TikTok Web (`no` + `s` $\to$ `nos`) đã được triệt tiêu 100%, người dùng gõ mượt mà 4-5 từ đầu tiên (`ba thương con thì `).
+  2. Khi gõ tiếp tục vào các từ có dấu tiếp theo trên video có cây Virtual DOM cực nặng (25.2K comments), con trỏ bị giam giữ sau nhịp Backspace khiến lệnh Commit hoặc phím tiếp theo bị trôi, chạm trần Watchdog 250ms xả thô chuỗi `couo7`.
+  3. Cần làm rõ sự khác biệt giữa Settling Delay (Phase 8.2), Cảm biến nghẽn DOM (Phase 8.3/Phase 7 cũ) và Hardware Barrier Key (`KEY_PAUSE` - Phase 8.4).
+- **Quyết định kiến trúc & Thực thi:**
+  1. **Hoàn tất Phase 8.1 (`v2.3.7`):**
+     - Bổ sung `deferredFocusOut_`, `cancelDeferredFocusOut()`, `flushDeferredFocusOut()`, `resetNow(bool)` vào `LilypadState`.
+     - Trong `LilypadEngine::activate`: Bắt cờ `focusBounce = (uinputMode && delta < 100ms)`. Nếu nảy tiêu điểm ảo thì hủy nợ xóa, bảo toàn 100% `oldPreBuffer_` và trạng thái Bamboo Rust trong RAM. Sửa lỗi điều kiện ngược dấu `< 100` thành `>= 100`.
+     - Trong `LilypadEngine::deactivate`: Không xóa thô `clearAllBuffers()` khi nhận `FocusOut` ở chế độ Uinput.
+     - Cập nhật About page ghi nhận `Bamboo Engine (Rust Native Core)` và nâng phiên bản hệ thống lên `2.3.7`.
+  2. **Tái cấu trúc lộ trình làm việc hợp nhất cho phiên sau:**
+     - **Ưu tiên số 1 (Phase 8.2):** Sequencer Settling Delay ($6\text{ms} \sim 8\text{ms}$) & Khóa Chặt Hàng Đợi (Atomic Commit Lock) giữa nhịp Xóa và nhịp Commit.
+     - **Ưu tiên số 2 (Phase 8.3):** Bộ Nhận Diện Nghẽn DOM Động (4 trụ cột cơ học) tự động dãn Settling Window lên $70\text{ms} \sim 100\text{ms}$ khi gặp video 25K comments.
+     - **Ưu tiên số 3 (Phase 8.4):** Khai tử Sentinel Backspace thứ $N+1$, chuyển sang Hardware Barrier Key vô hại (`KEY_PAUSE`).
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-engine.cpp`, `lilypad-state.h/.cpp`, `lilypad-utils.h`, `settings-gui/ui/pages/about.py`, `CMakeLists.txt`, `PKGBUILD`.
 
 ### [2026-11-03] Quyết định 048: Chống Focus Bounce (100ms Deferral) & Sequencer Settling Atomic Commit cho Rich Text Web (Phase 8)
 - **Bối cảnh:**

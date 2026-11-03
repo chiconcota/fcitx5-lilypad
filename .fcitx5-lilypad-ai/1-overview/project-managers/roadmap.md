@@ -80,31 +80,12 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
 
 ---
 
-### 🛡️ Kế Hoạch Tương Lai (Phase 7 — Cơ Chế Nhận Diện Nghẽn DOM Động & Tự Động Điều Hòa $T_{\text{render}}$):
-> **Mục tiêu:** Nhận diện chính xác 100% khi nào ứng dụng bị nghẽn DOM (như Antigravity 134k nodes) mà không phụ thuộc vào chính tả người gõ, không gán cứng $60\text{ms} \sim 80\text{ms}$, bảo toàn tốc độ bàn thờ $1\text{ms}$ cho Terminal và cứu chữ tuyệt đối cho Webview nặng.
-
-- [ ] **Phase 7.1: Gắn Nhãn Mốc Thời Gian Cho Phím Đệm (`KeyEntry::enter_time`):**
-  - [ ] Thêm trường `std::chrono::steady_clock::time_point enter_time` vào cấu trúc `KeyEntry` trong `lilypad-state.h`.
-  - [ ] Ghi mốc thời gian ngay khi phím bị đưa vào hàng đợi `buffered_keys_.push_back()`.
-- [ ] **Phase 7.2: Triển Khai Bộ Nhận Diện Lag Bằng Tuổi Thọ Phím & Áp Lực Hàng Đợi (Dwell Time & Queue Pressure):**
-  - [ ] Bật cờ `is_app_lagging = true` khi thỏa mãn một trong các điều kiện cơ học:
-    1. **Tuổi thọ phím bị giam:** $\text{Age} = \text{now} - \text{enter\_time} \ge 40\text{ms} \sim 50\text{ms}$ (phím quá cảnh lâu bất thường).
-    2. **Thời gian rào chắn bị giam giữ:** $\Delta t_{\text{locked}} = \text{now} - uinput\_send\_time\_ \ge 40\text{ms}$.
-    3. **Độ sâu tích tụ hàng đợi:** `buffered_keys_.size() >= 2` (dồn ứ nhiều hơn 1 phím).
-    4. **Gõ chậm mà vẫn bị nghẽn buffer:** `(is_deleting_ && current_iki >= 50ms)`.
-- [ ] **Phase 7.3: Tự Động Điều Hòa $T_{\text{render}}$ & Post-Commit Settling Window Động:**
-  - [ ] Khi `is_app_lagging == true`: Tự động nở $T_{\text{render}}$ và Settling Window lên mức an toàn ($70\text{ms} \sim 100\text{ms}$) cho đến khi xả sạch hàng đợi.
-  - [ ] Khi `is_app_lagging == false` (Terminal, App mượt, hoặc khi App đã hạ nhiệt): Co $T_{\text{render}}$ về $0\text{ms}$, trả lại tốc độ tức thì $1\text{ms} \sim 2\text{ms}$.
-- [ ] **Phase 7.4: Kiểm thử thực nghiệm đối chứng:**
-  - [ ] Kiểm thử gõ siêu tốc trên Terminal/Kitty: Xác nhận hàng đợi không bị phình, $T_{\text{render}} = 0\text{ms}$.
-  - [ ] Kiểm thử trên Antigravity đoạn chat nặng: Xác nhận phát hiện nghẽn tức thì, không rụng chữ (`nhìn`, `quá`).
-
----
-
-### 🎯 Kế Hoạch Trọng Tâm Phiên Tới (Phase 8 — Chống Focus Bounce & Sequencer Settling Atomic Commit):
-> **Mục tiêu:** Giải quyết triệt để lỗi gõ tiếng Việt trên TikTok Web và các trình soạn thảo Rich Text nặng (React/Lexical/Hashtag Editor) mà không cần sao chép cơ chế Select của Lotus:
-> 1. Triệt tiêu hiện tượng nảy tiêu điểm ảo khiến bộ đệm bị xóa oan (`no` + `s` $\to$ `nos`).
-> 2. Triệt tiêu hiện tượng nuốt ký tự commit do đụng độ bộ phân tích cú pháp ngầm (`cháu` $\to$ `ch`).
+### 🎯 Lộ Trình Triển Khai Trọng Tâm (Phase 8 — Kiến Trúc Sequencer Toàn Diện Cho Rich Text & Heavy DOM):
+> **Mục tiêu:** Giải quyết triệt để lỗi gõ tiếng Việt trên TikTok Web (khung bình luận 25K+ comments, khung caption video), Lexical Editor và các trình soạn thảo Rich Text nặng mà không cần sao chép cơ chế Select của Lotus:
+> 1. Triệt tiêu hiện tượng nảy tiêu điểm ảo khiến bộ đệm bị xóa oan (`no` + `s` $\to$ `nos`). *(Đã xong ở 8.1)*
+> 2. Triệt tiêu hiện tượng nuốt ký tự commit & vỡ từ khi có dấu (`cháu` $\to$ `ch`, `couo7`). *(Mục tiêu 8.2)*
+> 3. Tự động dãn Settling Window theo độ nghẽn của cây Virtual DOM khổng lồ (25K comments). *(Mục tiêu 8.3)*
+> 4. Khai tử rủi ro xóa lẹm của phím Sentinel $N+1$ bằng Hardware Barrier Key vô hại (`KEY_PAUSE`). *(Mục tiêu 8.4)*
 
 - [x] **Phase 8.1: Cơ Chế Chống Nảy Tiêu Điểm (Focus Bounce Protection / 100ms Deferral):**
   - [x] Thêm biến cờ `deferred_focus_out_ = false` và mốc `last_deactivate_time_ = 0` vào `LilypadState`.
@@ -113,18 +94,33 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
     - Đặt cờ `deferred_focus_out_ = true` và ghi `last_deactivate_time_ = now_ms()`.
   - [x] Khi nhận sự kiện `InputContextFocusIn`:
     - Tính $\Delta t = \text{now\_ms}() - \text{last\_deactivate\_time\_}$.
-    - Nếu $\Delta t < 100\text{ms}$ (Focus Bounce của Chromium/TikTok): Hủy bỏ nợ xóa (`deferred_focus_out_ = false`), giữ nguyên vẹn `oldPreBuffer_` và Caret Buffer trong RAM.
+    - Nếu $\Delta t < 100\text{ms}$ (Focus Bounce của Chromium/TikTok): Hủy bỏ nợ xóa (`cancelDeferredFocusOut()`), giữ nguyên vẹn `oldPreBuffer_` và Caret Buffer trong RAM.
     - Nếu $\Delta t \ge 100\text{ms}$ (Người dùng chuyển ứng dụng thật): Thực thi xả nợ xóa (`flush_deferred_focus_out()`), làm sạch bộ đệm an toàn.
-- [ ] **Phase 8.2: Sequencer Settling Delay & Khóa Chặt Hàng Đợi (Atomic Commit Lock):**
+  - [x] Đảo ngược điều kiện lỗi `< 100` thành `>= 100` tại `activate()`. Nâng phiên bản lên `v2.3.7`.
+
+- [ ] **Phase 8.2: Sequencer Settling Delay & Khóa Chặt Hàng Đợi (Atomic Commit Lock) — *Ưu tiên số 1 phiên sau*:**
   - [ ] Thêm khoảng nghỉ lắng đọng `settling_delay_us = 6000 ~ 8000` ($6\text{ms} \sim 8\text{ms}$) vào Sequencer giữa nhịp phát phím Backspace cuối cùng và nhịp phát lệnh Commit.
   - [ ] Khóa cứng hàng đợi Sequencer (`is_deleting_ / lock`) trong toàn bộ chu trình Xóa $\to$ Settle $\to$ Commit để bảo đảm tính nguyên tử (Atomic Transaction).
-  - [ ] Cho phép luồng xử lý sự kiện của ứng dụng (DOM reconciliation / Hashtag & Mention parser) ổn định vị trí con trỏ trước khi ký tự commit mới đáp xuống.
-- [ ] **Phase 8.3: Thay Thế Sentinel Backspace (N+1) Bằng Hardware Barrier Key:**
-  - [ ] Khai tử phím Backspace thứ $N+1$ (nguồn gốc gây xóa lẹm vào lệnh Terminal và văn bản web).
-  - [ ] Sử dụng `KEY_PAUSE` (hoặc phím chức năng vô hại) làm rào cản đồng bộ phần cứng ở đuôi chuỗi Backspace.
-  - [ ] Fcitx5 chặn `KEY_PAUSE`, kích hoạt Commit và xả hàng đợi phím an toàn.
-- [ ] **Phase 8.4: Kiểm Thử Thực Địa & Xác Nhận:**
-  - [ ] Kiểm thử trên TikTok Web (Khung bình luận): Gõ `no` + `s` $\to$ ra đúng `nó`, không bị rơi rụng thành `nos`.
-  - [ ] Kiểm thử trên TikTok Web (Khung đăng video caption): Gõ `cháu` $\to$ ra đúng `cháu`, không bị nuốt mất thành `ch`.
-  - [ ] Kiểm thử trên Terminal/CLI: Xác nhận không sinh mã rác và không xóa lẹm dòng lệnh.
+  - [ ] Cho phép luồng xử lý sự kiện của ứng dụng (DOM reconciliation / Hashtag & Mention parser của TikTok) ổn định vị trí con trỏ trước khi ký tự commit mới đáp xuống, khắc phục lỗi rụng dấu vỡ từ `couo7`.
+
+- [ ] **Phase 8.3: Bộ Nhận Diện Nghẽn DOM Động & Tự Động Điều Hòa $T_{\text{render}}$ (Dynamic Heavy-DOM Governor) — *Ưu tiên số 2 phiên sau*:**
+  - [ ] Gắn nhãn mốc thời gian cho phím đệm: `KeyEntry::enter_time`.
+  - [ ] Triển khai bộ nhận diện lag bằng 4 trụ cột cơ học:
+    1. **Tuổi thọ phím bị giam trong RAM:** $\text{Age} = \text{now} - \text{enter\_time} \ge 40\text{ms} \sim 50\text{ms}$.
+    2. **Thời gian rào chắn bị giam giữ:** $\Delta t_{\text{locked}} = \text{now} - uinput\_send\_time\_ \ge 40\text{ms}$.
+    3. **Độ sâu tích tụ hàng đợi:** `buffered_keys_.size() >= 2` (phím dồn ứ do DOM không kịp xả).
+    4. **Tương quan ngón tay & rào chắn:** `(is_deleting_ && current_iki >= 50ms)`.
+  - [ ] Tự động điều hòa Settling Delay:
+    - Khi `is_app_lagging == true` (TikTok 25K bình luận): Tự động dãn Settling Window lên mức an toàn ($70\text{ms} \sim 100\text{ms}$) cho đến khi xả sạch hàng đợi.
+    - Khi `is_app_lagging == false` (Terminal, App mượt, hoặc khi App đã hạ nhiệt): Co Settling Window về $0\text{ms} \sim 1\text{ms}$, trả lại tốc độ bàn thờ Zero-Latency.
+
+- [ ] **Phase 8.4: Thay Thế Sentinel Backspace (N+1) Bằng Hardware Barrier Key (`KEY_PAUSE` / `KEY_F24`):**
+  - [ ] Khai tử phím Backspace thứ $N+1$ (nguồn gốc tiềm ẩn gây xóa lẹm vào lệnh Terminal và văn bản web khi có glitch).
+  - [ ] Mở keycode `KEY_PAUSE` (hoặc `KEY_F24`) trong uinput driver làm rào cản đồng bộ phần cứng ở đuôi chuỗi Backspace: `[BS_1 ... BS_N] + [KEY_PAUSE]`.
+  - [ ] Fcitx5 chặn `KEY_PAUSE` làm mốc chốt đo ACK chính xác 100%, bóc tách hoàn toàn tín hiệu đo thời gian ra khỏi luồng phím xóa văn bản. Nếu xảy ra sự cố, `KEY_PAUSE` lọt xuống app cũng hoàn toàn vô hại (Non-destructive).
+
+- [ ] **Phase 8.5: Kiểm Thử Thực Địa & Xác Nhận Toàn Diện:**
+  - [ ] Kiểm thử trên TikTok Web (Khung bình luận 25K+ comments): Gõ câu dài nhiều từ có dấu liên tiếp, xác nhận không rụng từ thành `couo7`.
+  - [ ] Kiểm thử trên TikTok Web (Khung caption video): Gõ `cháu` $\to$ ra đúng `cháu`, không bị nuốt mất thành `ch`.
+  - [ ] Kiểm thử trên Terminal/CLI (Ghostty / Kitty / Alacritty): Xác nhận gõ lướt siêu tốc $1\text{ms}$ mượt mà và không xóa lẹm prompt.
 

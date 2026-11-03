@@ -36,12 +36,12 @@ stateDiagram-v2
 
 ---
 
-## 4. CƠ CHẾ BẢO VỆ CHỐNG NẢY TIÊU ĐIỂM (FOCUS BOUNCE PROTECTION - PHASE 8)
+## 4. CƠ CHẾ BẢO VỆ CHỐNG NẢY TIÊU ĐIỂM (FOCUS BOUNCE PROTECTION - PHASE 8.1 - STABLE v2.3.7)
 - **Vấn đề:** Trình duyệt Chromium/Electron trên các trang web động (như TikTok Web, Lexical Editor) thường xuyên bắn sự kiện `FocusOut` $\to$ `FocusIn` ngầm trong khoảng thời gian siêu ngắn ($5\text{ms} \sim 20\text{ms}$) khi re-render thẻ HTML.
-- **Giải pháp:** Cơ chế **100ms Focus-Out Deferral**:
-  - Khi nhận `FocusOut`, Sequencer/State đặt cờ `deferred_focus_out_ = true` và bấm giờ `last_deactivate_time_`, không xóa đệm ngay.
-  - Nếu `FocusIn` quay lại trong $< 100\text{ms}$ $\implies$ Hủy lệnh xóa, giữ nguyên bộ nhớ từ đang gõ dở (`oldPreBuffer_`).
-  - Nếu quá $100\text{ms}$ không quay lại $\implies$ Xả nợ xóa (`flush_deferred_focus_out()`), đảm bảo an toàn tuyệt đối khi người dùng chuyển ứng dụng thật.
+- **Giải pháp:** Cơ chế **100ms Focus-Out Deferral** (`deferred_focus_out_`, `cancelDeferredFocusOut`, `flushDeferredFocusOut`):
+  - Khi nhận `FocusOut` ở chế độ Uinput/Sequence, Sequencer/State đặt cờ `deferred_focus_out_ = true` và bấm giờ `last_deactivate_time_`, không xóa đệm và không reset Bamboo Engine.
+  - Nếu `FocusIn` quay lại trong $< 100\text{ms}$ (Focus Bounce) $\implies$ Gọi `cancelDeferredFocusOut()`, giữ nguyên vẹn 100% bộ nhớ từ đang gõ dở (`oldPreBuffer_`) và trạng thái engine trong RAM.
+  - Nếu quá $100\text{ms}$ không quay lại $\implies$ Gọi `flushDeferredFocusOut()` thực thi `resetNow(true)` an toàn khi người dùng chuyển ứng dụng thật.
 
 ---
 
