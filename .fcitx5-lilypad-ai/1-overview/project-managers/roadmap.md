@@ -106,12 +106,12 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
 > 1. Triệt tiêu hiện tượng nảy tiêu điểm ảo khiến bộ đệm bị xóa oan (`no` + `s` $\to$ `nos`).
 > 2. Triệt tiêu hiện tượng nuốt ký tự commit do đụng độ bộ phân tích cú pháp ngầm (`cháu` $\to$ `ch`).
 
-- [ ] **Phase 8.1: Cơ Chế Chống Nảy Tiêu Điểm (Focus Bounce Protection / 100ms Deferral):**
-  - [ ] Thêm biến cờ `deferred_focus_out_ = false` và mốc `last_deactivate_time_ = 0` vào `LilypadState`.
-  - [ ] Khi nhận sự kiện `InputContextFocusOut` ở chế độ Uinput:
+- [x] **Phase 8.1: Cơ Chế Chống Nảy Tiêu Điểm (Focus Bounce Protection / 100ms Deferral):**
+  - [x] Thêm biến cờ `deferred_focus_out_ = false` và mốc `last_deactivate_time_ = 0` vào `LilypadState`.
+  - [x] Khi nhận sự kiện `InputContextFocusOut` ở chế độ Uinput:
     - Không gọi `clearAllBuffers()` ngay lập tức.
     - Đặt cờ `deferred_focus_out_ = true` và ghi `last_deactivate_time_ = now_ms()`.
-  - [ ] Khi nhận sự kiện `InputContextFocusIn`:
+  - [x] Khi nhận sự kiện `InputContextFocusIn`:
     - Tính $\Delta t = \text{now\_ms}() - \text{last\_deactivate\_time\_}$.
     - Nếu $\Delta t < 100\text{ms}$ (Focus Bounce của Chromium/TikTok): Hủy bỏ nợ xóa (`deferred_focus_out_ = false`), giữ nguyên vẹn `oldPreBuffer_` và Caret Buffer trong RAM.
     - Nếu $\Delta t \ge 100\text{ms}$ (Người dùng chuyển ứng dụng thật): Thực thi xả nợ xóa (`flush_deferred_focus_out()`), làm sạch bộ đệm an toàn.

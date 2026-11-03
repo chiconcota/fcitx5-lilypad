@@ -54,6 +54,19 @@ extern std::atomic<unsigned int>     realtextLen;       ///< Current text length
 extern std::atomic<int>              mouse_socket_fd;   ///< Mouse socket file descriptor
 
 /**
+ * @brief Checks if a given mode is an uinput-based mode.
+ * @param mode Mode to check.
+ * @return True if mode uses uinput.
+ */
+inline bool isUinputMode(fcitx::LilypadMode mode) {
+    return mode == fcitx::LilypadMode::Uinput ||
+           mode == fcitx::LilypadMode::Smooth ||
+           mode == fcitx::LilypadMode::Minecraft ||
+           mode == fcitx::LilypadMode::SuperSmooth ||
+           mode == fcitx::LilypadMode::Sequence;
+}
+
+/**
  * @brief Builds socket path from base suffix.
  * @param base_path_suffix Suffix to append to base path.
  * @return Full socket path.

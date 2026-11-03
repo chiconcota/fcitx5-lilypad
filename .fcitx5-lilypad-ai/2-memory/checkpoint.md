@@ -4,10 +4,27 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `main` (Đã hoàn tất merge nhánh `feat/rust-bamboo-engine`)
-- **Tình trạng:** **ĐÃ HOÀN TẤT 100% 4 BƯỚC CHUYỂN ĐỔI CORE ENGINE TỪ GO SANG RUST (PHASE 6). GỠ BỎ TOÀN BỘ GO RUNTIME/CGO/GC, NHÚNG `bamboo-core` RUST VÀO `fcitx5-lilypad/bamboo/`, TÍCH HỢP TẦNG C-ABI FFI AN TOÀN, BIÊN DỊCH THÀNH CÔNG `liblilypad.so` RELEASE, VÀ KIỂM THỬ TÍCH HỢP TELEX/VNI/REBUILD/BACKSPACE ĐẠT 100% PASS.**
+- **Nhánh Git làm việc:** `feat/focus-bounce-protection`
+- **Tình trạng:** **ĐÃ HOÀN TẤT TRIỂN KHAI PHASE 8.1 (FOCUS BOUNCE PROTECTION / 100MS DEFERRAL WINDOW). KHẮC PHỤC TRIỆT ĐỂ BỆNH XÓA OAN CARET BUFFER TRÊN TIKTOK WEB KHUNG BÌNH LUẬN (`no` + `s` $\to$ `nos`). ĐẢO NGƯỢC ĐIỀU KIỆN LỖI `< 100` THÀNH `>= 100`. BIÊN DỊCH THÀNH CÔNG 100% CẢ BẢN DEBUG VÀ RELEASE, NÂNG PHIÊN BẢN LÊN V2.3.7.**
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-03 - Chuyển Đổi Core Engine Go $\to$ Rust `bamboo-core` - Phase 6):
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-03 - Hoàn Tất Phase 8.1 Focus Bounce Protection - v2.3.7):
+
+1. **Khởi Tạo Nhánh `feat/focus-bounce-protection`:**
+   - Tạo nhánh làm việc mới cách ly tính năng Focus Bounce Protection.
+
+2. **Triển Khai Cơ Chế Hoãn Xóa 100ms Tại `LilypadState` (`lilypad-state.h/.cpp`):**
+   - Bổ sung cờ `deferredFocusOut_ = false` và các phương thức `resetNow(bool)`, `flushDeferredFocusOut()`, `cancelDeferredFocusOut()`.
+   - Trong `LilypadState::reset(isFocusOut)`: Khi `isFocusOut && isUinputMode(...)`, chỉ bật `deferredFocusOut_ = true` và reset input panel, bảo toàn 100% `oldPreBuffer_` và trạng thái Bamboo Engine trong RAM.
+
+3. **Điều Phối Nhận Diện Focus Bounce Tại `LilypadEngine` (`lilypad-engine.cpp`):**
+   - Trong `activate()`: Khi nhận diện Focus Bounce (`uinputMode && delta < 100ms`), gọi `state->cancelDeferredFocusOut()`, cập nhật `realMode = targetMode`, tuyệt đối không gọi `setMode()` hoặc `clearAllBuffers()`.
+   - Sửa lỗi điều kiện ngược dấu tại dòng 445: Đổi `< 100` thành `>= 100` để không bao giờ xóa bộ đệm khi focus quay lại trong $< 100\text{ms}$.
+   - Trong `deactivate()`: Trao quyền xử lý cho cửa sổ 100ms, không xóa thô `clearAllBuffers()` khi nhận `FocusOut` ở chế độ Uinput.
+   - Thêm helper `isUinputMode(LilypadMode)` vào `lilypad-utils.h`.
+
+4. **Nâng Phiên Bản & Biên Dịch Hệ Thống (`v2.3.7`):**
+   - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.7`.
+   - Biên dịch thành công 100% cả Debug (`build/src/liblilypad.so`) và Release (`build_release/src/liblilypad.so`).
 
 1. **Khởi Tạo Nhánh & Cài Đặt Toolchain Rust:**
    - Tạo và chuyển sang nhánh `feat/rust-bamboo-engine`.

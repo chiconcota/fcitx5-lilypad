@@ -71,6 +71,22 @@ namespace fcitx {
         void reset(bool isFocusOut = false);
 
         /**
+         * @brief Executes immediate reset logic.
+         * @param isFocusOut If true, indicates the reset is due to a focus-out event.
+         */
+        void resetNow(bool isFocusOut = false);
+
+        /**
+         * @brief Flushes deferred focus out if pending.
+         */
+        void flushDeferredFocusOut();
+
+        /**
+         * @brief Cancels deferred focus out when a focus bounce is detected.
+         */
+        void cancelDeferredFocusOut();
+
+        /**
          * @brief Commits the current buffer.
          */
         void commitBuffer();
@@ -108,6 +124,7 @@ namespace fcitx {
         bool                    shouldCapitalize_   = false;
         bool                    isPrevPunctuation_  = false;
         int64_t                 lastDeactivateTime_ = 0;
+        bool                    deferredFocusOut_   = false;
         bool                    wa_chromium_flag    = false;
         Sequencer               sequencer_;
         std::unique_ptr<EventSourceTime> commit_timer_;

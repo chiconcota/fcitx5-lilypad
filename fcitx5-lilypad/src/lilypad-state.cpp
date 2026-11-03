@@ -1294,6 +1294,16 @@ namespace fcitx {
     }
 
     void LilypadState::reset(bool isFocusOut) {
+        if (isFocusOut && isUinputMode(realMode.load(std::memory_order_relaxed))) {
+            deferredFocusOut_ = true;
+            ic_->inputPanel().reset();
+            return;
+        }
+        deferredFocusOut_ = false;
+        resetNow(isFocusOut);
+    }
+
+    void LilypadState::resetNow(bool isFocusOut) {
         const auto& surrounding = ic_->surroundingText();
         const auto& text        = surrounding.text();
         size_t      textLen     = utf8::length(text);
@@ -1358,6 +1368,18 @@ namespace fcitx {
         }
     }
 
+    void LilypadState::flushDeferredFocusOut() {
+        if (!deferredFocusOut_) {
+            return;
+        }
+        deferredFocusOut_ = false;
+        resetNow(true);
+    }
+
+    void LilypadState::cancelDeferredFocusOut() {
+        deferredFocusOut_ = false;
+    }
+
     void LilypadState::commitBuffer() {
         switch (realMode) {
             case LilypadMode::Preedit: {
@@ -1402,6 +1424,7 @@ namespace fcitx {
         }
         oldPreBuffer_.clear();
         hasHistory_ = false;
+        deferredFocusOut_ = false;
         if (!is_deleting_.load(std::memory_order_acquire)) {
             expected_backspaces_     = 0;
             current_backspace_count_ = 0;

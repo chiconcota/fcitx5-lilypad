@@ -50,7 +50,7 @@
 | **Lilypad C++ Addon Core** | `fcitx5-lilypad/src/` | Quản lý state context, uinput client, mode switching (Sequence, Smooth...), và điều phối sự kiện gõ. Biên dịch ra `liblilypad.so`. | 🟢 Ready |
 | **Bamboo Core Rust Engine** | `fcitx5-lilypad/bamboo/` | Engine xử lý Telex/VNI bằng Rust native (`bamboo-core`), C-ABI FFI zero-allocation, loại bỏ 100% Go runtime/GC. | 🟢 Ready (Phase 6) |
 | **Modular ACK Sensors** | `fcitx5-lilypad/src/ack-sensors/` | Cảm biến đo thời gian `elapsed` thực tế của giao dịch, tự động điều chỉnh Dynamic Barrier thích ứng cho phím gõ tiếp theo. | 🟢 Ready |
-| **Focus Bounce Protection** | `fcitx5-lilypad/src/` | Cơ chế hoãn xóa bộ đệm 100ms khi nhận FocusOut, chống mất ngữ cảnh gõ trên TikTok Web / Chromium. | 🟡 Planned (Phase 8) |
+| **Focus Bounce Protection** | `fcitx5-lilypad/src/` | Cơ chế hoãn xóa bộ đệm 100ms khi nhận FocusOut (`deferred_focus_out_`), chống mất ngữ cảnh gõ trên TikTok Web / Chromium. | 🟢 Ready (Phase 8.1) |
 | **Settling Atomic Commit** | `fcitx5-lilypad/src/` | Khoảng nghỉ lắng đọng 6-8ms và khóa hàng đợi nguyên tử giữa nhịp Xóa và Commit, chống nuốt phím trên Rich Editor. | 🟡 Planned (Phase 8) |
 | **Modular IKI Sensors** | `fcitx5-lilypad/src/iki-sensors/` | Cảm biến đo nhịp gõ thời gian thực ($\Delta t$), làm mịn EMA và phát hiện Burst Typing ngón tay người dùng. | 🟢 Ready |
 | **Native UI & System Tray** | `fcitx5-lilypad/src/` | Dùng chung 100% giao diện Fcitx5 Lotus (`fcitx5-configtool` UI + Fcitx5 Tray Actions). | 🟢 Ready |
@@ -70,6 +70,8 @@
 ---
 
 ## 4. RECENT CHANGE LOG (LỊCH SỬ NÂNG CẤP DÒNG THỜI GIAN)
+
+| 2026-11-03 | **v2.3.7 - Phase 8.1 Focus Bounce Protection Complete**: Triển khai cơ chế hoãn xóa bộ đệm 100ms khi nhận `FocusOut` (`deferred_focus_out_`, `cancelDeferredFocusOut`, `flushDeferredFocusOut`, `resetNow`). Loại bỏ hiện tượng xóa nhầm Caret Buffer do React / Chromium Focus Bounce trên TikTok Web (`no` + `s` $\to$ `nos`). Đảo ngược điều kiện lỗi `< 100` thành `>= 100` an toàn. Nâng phiên bản `2.3.7`. | `fcitx5-lilypad/src/lilypad-engine.cpp`, `lilypad-state.h/.cpp`, `lilypad-utils.h`, `CMakeLists.txt`, `packaging/` |
 
 | 2026-11-03 | **Phase 6 Architecture Complete**: Hoàn tất chuyển đổi kiến trúc Core Engine từ Bamboo Go sang Rust native (`bamboo-core` v0.5.3) qua C-ABI FFI an toàn (`OBJECTS` handle table). Xóa bỏ 100% Go runtime, CGO switches và Garbage Collector. Kích thước thư viện thu nhỏ từ 35MB+ về 2.0MB. Cập nhật toàn diện hệ thống đóng gói (AUR, Fedora RPM, openSUSE RPM, Debian control) và GitHub CI Workflows sang `rust`/`cargo`. | `fcitx5-lilypad/bamboo/`, `CMakeLists.txt`, `packaging/`, `.github/workflows/` |
 | 2026-09-12 | **v2.3.6**: Loại bỏ triệt để cờ đặc biệt `is_antigravity_flag_` và các mức trễ sàn riêng, xóa bỏ nợ kỹ thuật (technical debt); giữ lại nhận diện Chromium tiêu chuẩn (`wa_chromium_flag == true`) qua `ack-apps.h`; chuẩn hóa toàn bộ hệ thống chạy trên kiến trúc Adaptive Dynamic Micro-Pacing | `fcitx5-lilypad/src/lilypad-state.h/.cpp`, `lilypad-engine.cpp`, `CMakeLists.txt`, `packaging/aur/` |

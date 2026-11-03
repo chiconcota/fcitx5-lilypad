@@ -405,9 +405,19 @@ namespace fcitx {
 
         updateCharsetAction(event.inputContext());
 
-        setMode(targetMode, event.inputContext());
-
         auto* state = ic->propertyFor(&factory_);
+        const bool uinputMode = isUinputMode(targetMode);
+        const bool focusBounce = uinputMode && state->lastDeactivateTime_ > 0 && (now_ms() - state->lastDeactivateTime_) < 100;
+
+        if (focusBounce) {
+            state->cancelDeferredFocusOut();
+            realMode = targetMode;
+            ic->updateUserInterface(UserInterfaceComponent::StatusArea);
+            LILYPAD_INFO("Focus bounce detected: keep word buffers");
+        } else {
+            state->flushDeferredFocusOut();
+            setMode(targetMode, event.inputContext());
+        }
 
         // Workaround for chromium wayland issue where suggestions cause a doubled
         // first character. Forwarding may prevent BS from being sent
@@ -442,7 +452,7 @@ namespace fcitx {
         }
         if (event.type() == EventType::InputContextFocusIn && is_dbus && !surrvalid) {
             LILYPAD_INFO("Skip clearAllBuffers");
-        } else if (surrvalid && !state->oldPreBuffer_.empty() && (now_ms() - state->lastDeactivateTime_) < 100) {
+        } else if (surrvalid && !state->oldPreBuffer_.empty() && (now_ms() - state->lastDeactivateTime_) >= 100) {
             state->clearAllBuffers();
         }
         is_deleting_.store(false);
@@ -728,6 +738,7 @@ namespace fcitx {
     void LilypadEngine::deactivate(const InputMethodEntry& /*entry*/, InputContextEvent& event) {
         auto*      ic              = event.inputContext();
         auto*      state           = ic->propertyFor(&factory_);
+        const bool uinputMode      = isUinputMode(realMode);
         const bool surrvalid       = ic->surroundingText().isValid();
         const bool is_dbus         = getFrontendName(ic) == "dbus";
         state->lastDeactivateTime_ = now_ms();
@@ -738,12 +749,13 @@ namespace fcitx {
             if ((event.type() == EventType::InputContextFocusOut && is_dbus && !surrvalid) || appName == "ONLYOFFICE") {
                 state->lastDeactivateTime_ = now_ms();
                 LILYPAD_INFO("Skip clearAllBuffers for " + appName);
-            } else {
-                if (surrvalid && state->oldPreBuffer_.empty())
-                    state->clearAllBuffers();
+            } else if ((!uinputMode || event.type() != EventType::InputContextFocusOut) && surrvalid && !state->oldPreBuffer_.empty()) {
+                state->clearAllBuffers();
             }
-            is_deleting_.store(false);
-            needEngineReset.store(false);
+            if (!uinputMode || event.type() != EventType::InputContextFocusOut) {
+                is_deleting_.store(false);
+                needEngineReset.store(false);
+            }
             ic->inputPanel().reset();
             ic->updateUserInterface(UserInterfaceComponent::InputPanel);
             if (realMode == LilypadMode::Preedit || realMode == LilypadMode::Emoji || realMode == LilypadMode::SurroundingText)
