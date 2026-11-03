@@ -300,23 +300,28 @@
      - Khi hàng đợi xả sạch và app hạ nhiệt: Tự động co $T_{\text{render}}$ về $0\text{ms}$, trả lại tốc độ tức thì $1\text{ms} \sim 2\text{ms}$ cho Terminal.
 - **Mã nguồn dự kiến:** `fcitx5-lilypad/src/lilypad-state.h/.cpp`, `lilypad-sequencer.h/.cpp`.
 
-### [2026-11-01] Quyết định 046: Định Hướng Chuyển Đổi Core Engine Từ Bamboo Go Sang `bamboo-core` Rust (Phase 6 Architecture Initiative)
+### [2026-11-03] Quyết định 046: Hoàn Tất Chuyển Đổi Core Engine Từ Bamboo Go Sang `bamboo-core` Rust (Phase 6 Architecture Complete)
 - **Bối cảnh:**
-  1. Engine hiện tại sử dụng Go C-FFI (`fcitx5-lilypad/bamboo/`) làm phình kích thước nhị phân thêm 2.2MB, tiêu tốn 20MB ~ 35MB RAM cho Go runtime & Garbage Collector, và phát sinh chi phí CGO context switch (50 ~ 100ns) mỗi khi gõ phím.
-  2. Việc đối chiếu với Lotus C++ Engine (port thuần) và dự án mới `bamboo-vi/bamboo-core` (Rust) cho thấy phương án Rust mang lại lợi thế vượt trội: Vectorized / SWAR, Zero-heap allocation trên hot-path, $O(1)$ Backspace Snapshot Stack, loại bỏ 100% CGO overhead và giải phóng hoàn toàn Go runtime.
-- **Quyết định kiến trúc:**
-  1. **Thông qua định hướng chuyển đổi Core Engine sang `bamboo-vi/bamboo-core` (Rust) trong Phase 6:**
-     - Thay thế toàn bộ module Go C-FFI (`fcitx5-lilypad/bamboo/`) bằng thư viện tĩnh Rust `libbamboo_core.a` liên kết qua C-ABI (`bamboo_core::ffi`).
-     - Giảm kích thước file nhị phân và đưa mức tiêu thụ RAM về dưới 1MB.
-  2. **Bảo toàn 100% Kiến trúc Sequencer Layer:**
-     - Cơ chế $O(1)$ Backspace của Rust chỉ tác động nội bộ máy trạng thái trong RAM (thay thế việc rebuild chuỗi $O(N)$).
-     - Toàn bộ Sequencer Layer (`lilypad-sequencer.cpp`), giao thức Sentinel Barrier $N+1$, Cảm biến ACK thời gian thực ($\Delta T_{\text{swallow}}$) và nhịp ngón tay IKI tiếp tục đóng vai trò điều phối vật lý ngoài màn hình, không bị xáo trộn.
-  3. **Lộ trình triển khai:**
-     - Bước 1: Khởi tạo nhánh `feat/rust-bamboo-engine`.
-     - Bước 2: Tích hợp crate `bamboo-core` qua CMake (Corrosion hoặc custom Cargo build target).
-     - Bước 3: Viết lớp C++ wrapper mỏng kết nối C-ABI vào `LilypadState`.
-     - Bước 4: Kiểm thử hồi quy trên các bộ gõ Telex, VNI và các kịch bản micro-replacement của Sequencer.
-     - Bước 5: Cập nhật dependency `rust`/`cargo` trong PKGBUILD AUR và phát hành.
+  1. Engine cũ sử dụng Go C-FFI (`fcitx5-lilypad/bamboo/`) làm phình kích thước nhị phân, tiêu tốn 20MB ~ 35MB RAM cho Go runtime & Garbage Collector, và phát sinh chi phí CGO context switch mỗi khi gõ phím.
+  2. Dự án mới `bamboo-vi/bamboo-core` (Rust) mang lại lợi thế vượt trội: Vectorized / SWAR, Zero-heap allocation trên hot-path, $O(1)$ Backspace Snapshot Stack, kiểm tra âm tiết DFA tự động, loại bỏ 100% CGO overhead và giải phóng hoàn toàn Go runtime.
+- **Quyết định kiến trúc & Thực thi:**
+  1. **Tạo nhánh:** Đã tạo và triển khai trên nhánh `feat/rust-bamboo-engine`.
+  2. **Tích hợp `bamboo-core` Rust:**
+     - Xóa bỏ 100% mã nguồn Go (`bamboo-c.go`, `fcitxbambooengine.go`, `go.mod`, Go `bamboo-core`).
+     - Nhúng trực tiếp crate `bamboo-core` (v0.5.3) vào `fcitx5-lilypad/bamboo/`.
+     - Xây dựng tầng C-ABI FFI (`src/fcitx.rs`) an toàn qua `OBJECTS` ID map, hỗ trợ đầy đủ `NewEngine`, `NewCustomEngine`, `EngineProcessKeyEvent`, `EnginePullCommit`, `EnginePullPreedit`, `EngineCommitPreedit`, `ResetEngine`, `EngineRebuildFromText`, `GetInputMethodNames`, `GetCharsetNames`.
+  3. **Tích hợp CMake & Cargo:**
+     - Cập nhật `fcitx5-lilypad/bamboo/CMakeLists.txt` tự động tìm `cargo` và build `libbamboo_core.a` release.
+     - Cập nhật `fcitx5-lilypad/src/CMakeLists.txt` liên kết trực tiếp `Bamboo::Core` (`libbamboo_core.a`), `Pthread::Pthread`, `dl`, `m`.
+  4. **Kiểm thử tích hợp C++:**
+     - Tạo integration test `test_bamboo_rust.cpp`: Kiểm tra thành công 100% các kịch bản gõ Telex (`tieengs` $\to$ `tiếng`), space commit (`tiếng `), Backspace undo (`tôi` $\to$ `tô`), và rebuild từ text (`chiêu` + `f` $\to$ `chiều`).
+  5. **Cập nhật Toàn Bộ Packaging & Build CI:**
+     - **Arch Linux (AUR):** Đổi `makedepends` từ `go` sang `rust` trong cả 2 file PKGBUILD (`fcitx5-lilypad` và `fcitx5-lilypad-git`) cùng các file `.SRCINFO`.
+     - **Fedora RPM:** Cập nhật `fcitx5-lilypad.spec` từ `BuildRequires: golang` sang `BuildRequires: cargo` và `BuildRequires: rust`; rà soát nghiêm ngặt case-sensitivity (`python3-QtPy`, `libX11-devel`).
+     - **openSUSE RPM:** Cập nhật `fcitx5-lilypad.spec` từ `BuildRequires: go` sang `BuildRequires: cargo` và `BuildRequires: rust`.
+     - **Debian / Ubuntu:** Cập nhật `debian/control` từ `golang` sang `cargo, rustc`.
+     - **GitHub Workflows:** Cập nhật `build.yml`, `packaging-release.yml`, và `packaging-dev.yml` loại bỏ cài đặt `go` và biến môi trường `CGO_LDFLAGS`, thay bằng `rust`.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/bamboo/`, `fcitx5-lilypad/src/CMakeLists.txt`, `fcitx5-lilypad/packaging/`, `fcitx5-lilypad/.github/workflows/`.
 
 ### [2026-09-12] Quyết định 045: Tri-Layer Protection, Technical Debt Cleanup & Chuẩn hóa Quyền Tác Giả (Ownership)
 - **Bối cảnh:**

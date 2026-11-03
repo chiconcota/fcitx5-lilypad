@@ -17,7 +17,8 @@ BuildRequires:  systemd-rpm-macros
 BuildRequires:  pkgconfig(libudev)
 BuildRequires:  libX11-devel
 
-BuildRequires:  golang
+BuildRequires:  cargo
+BuildRequires:  rust
 BuildRequires:  python3
 BuildRequires:  libgudev-devel
 

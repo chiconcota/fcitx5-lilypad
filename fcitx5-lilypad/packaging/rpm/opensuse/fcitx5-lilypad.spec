@@ -16,7 +16,8 @@ BuildRequires:  systemd-rpm-macros
 BuildRequires:  systemd-devel
 BuildRequires:  libX11-devel
 
-BuildRequires:  go
+BuildRequires:  cargo
+BuildRequires:  rust
 BuildRequires:  python-rpm-macros
 Requires(post): udev
 BuildRequires:  sysuser-tools

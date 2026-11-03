@@ -1,0 +1,44 @@
+[package]
+name = "bamboo-core"
+version = "0.5.3"
+edition = "2024"
+rust-version = "1.88"
+
+description = "Vietnamese input method engine written in Rust"
+license = "MIT"
+repository = "https://github.com/bamboo-vi/bamboo-core"
+documentation = "https://docs.rs/bamboo-core"
+readme = "README.md"
+
+keywords = ["vietnamese", "ime", "input-method", "telex", "unicode"]
+categories = ["text-processing"]
+
+
+[lib]
+# Keep the Rust library for Rust callers while producing linkable artifacts for
+# the C ABI declared in `ffi`.
+crate-type = ["rlib", "staticlib", "cdylib"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+bitflags = "2.11.1"
+phf = { version = ">=0.11, <0.14", features = ["macros"] }
+rayon = { version = "1.10", optional = true }
+rustc-hash = "2"
+wasm-bindgen = { version = "0.2", optional = true }
+libc = "0.2"
+
+[features]
+default = []
+parallel = ["rayon"]
+wasm = ["wasm-bindgen"]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

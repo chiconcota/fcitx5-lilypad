@@ -23,6 +23,8 @@ target_link_libraries(lilypad
 	Bamboo::Core
 	Pthread::Pthread
 	X11::X11
+	${CMAKE_DL_LIBS}
+	m
 )
 
 target_include_directories(lilypad PRIVATE

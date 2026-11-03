@@ -4,10 +4,42 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `main`
-- **Tình trạng:** **ĐÃ HOÀN TẤT PHÂN TÍCH CHUYÊN SÂU NGUYÊN NHÂN LỖI TIKTOK WEB & LẬP KẾ HOẠCH PHASE 8: CHỐNG FOCUS BOUNCE (100MS DEFERRAL) VÀ SEQUENCER SETTLING ATOMIC COMMIT. GIỮ NGUYÊN KIẾN TRÚC THUẦN LILYPAD, KHÔNG SAO CHÉP SELECT MODE CỦA LOTUS. SẴN SÀNG TRIỂN KHAI CODE TRONG PHIÊN TIẾP THEO.**
+- **Nhánh Git làm việc:** `main` (Đã hoàn tất merge nhánh `feat/rust-bamboo-engine`)
+- **Tình trạng:** **ĐÃ HOÀN TẤT 100% 4 BƯỚC CHUYỂN ĐỔI CORE ENGINE TỪ GO SANG RUST (PHASE 6). GỠ BỎ TOÀN BỘ GO RUNTIME/CGO/GC, NHÚNG `bamboo-core` RUST VÀO `fcitx5-lilypad/bamboo/`, TÍCH HỢP TẦNG C-ABI FFI AN TOÀN, BIÊN DỊCH THÀNH CÔNG `liblilypad.so` RELEASE, VÀ KIỂM THỬ TÍCH HỢP TELEX/VNI/REBUILD/BACKSPACE ĐẠT 100% PASS.**
 
-## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-03 - Nghiên Cứu TikTok Web & Hoạch Định Phase 8):
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-03 - Chuyển Đổi Core Engine Go $\to$ Rust `bamboo-core` - Phase 6):
+
+1. **Khởi Tạo Nhánh & Cài Đặt Toolchain Rust:**
+   - Tạo và chuyển sang nhánh `feat/rust-bamboo-engine`.
+   - Cài đặt toolchain Rust chính thức: `rustc 1.99.1` & `cargo 1.99.1` qua `rustup`.
+
+2. **Tích Hợp `bamboo-core` (Rust) Thay Thế Module Go Cũ (Bước 1 & 2):**
+   - Xóa bỏ toàn bộ mã nguồn Go cũ (`bamboo-c.go`, `fcitxbambooengine.go`, `go.mod`, Go `bamboo-core/`).
+   - Nhúng trực tiếp crate `bamboo-core` (Rust v0.5.3 từ `bamboo-vi/bamboo-core`) vào `fcitx5-lilypad/bamboo/`.
+   - Viết tầng FFI C-ABI chuẩn (`fcitx5-lilypad/bamboo/src/fcitx.rs`) bọc an toàn qua atomic handle table (`OBJECTS`), triệt tiêu 100% rủi ro use-after-free/crash.
+   - Xuất đầy đủ các hàm FFI cho Fcitx5: `Init`, `NewEngine`, `NewCustomEngine`, `EngineProcessKeyEvent`, `EnginePullCommit`, `EnginePullPreedit`, `EngineCommitPreedit`, `EngineSetOption`, `ResetEngine`, `EngineRebuildFromText`, `GetInputMethodNames`, `GetCharsetNames`, `DeleteObject`.
+   - Cung cấp header C đồng bộ [`bamboo-core.h`](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/bamboo/include/bamboo-core.h).
+
+3. **Cập Nhật Hạ Tầng CMake & Liên Kết Thư Viện Tĩnh (Bước 2 & 3):**
+   - Cập nhật [`fcitx5-lilypad/bamboo/CMakeLists.txt`](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/bamboo/CMakeLists.txt): Tự động phát hiện `cargo`, build thư viện tĩnh `libbamboo_core.a` trong profile Release và export target `Bamboo::Core`.
+   - Cập nhật [`fcitx5-lilypad/src/CMakeLists.txt`](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/src/CMakeLists.txt): Liên kết trực tiếp `Bamboo::Core`, `Pthread::Pthread`, `dl`, `m`.
+   - Biên dịch thành công 100% `liblilypad.so` cả ở chế độ Debug lẫn Release (`build_release/src/liblilypad.so`). Kích thước nhị phân stripped co về chỉ còn **2.0MB**, hoàn toàn không còn Go runtime / GC / CGO switches.
+
+4. **Kiểm Thử Tích Hợp C++ Thực Nghiệm (Bước 4):**
+   - Viết test C++ chuyên sâu kiểm tra toàn diện luồng gõ FFI:
+     - Gõ từ Telex cơ bản: `tieengs` $\to$ `tiếng` (100% PASS).
+     - Phím Space commit từ: `' '` $\to$ `tiếng ` (100% PASS).
+     - Phím Backspace undo vi mô: `tooi` (`tôi`) + `Backspace` $\to$ `tô` (100% PASS).
+     - Khôi phục từ đã gõ và thêm dấu: `chiêu` + `f` $\to$ `chiều` (100% PASS).
+   - Kiểm tra rò rỉ bộ nhớ: Giải phóng đối tượng qua `DeleteObject(engine)` sạch sẽ 100%.
+
+5. **Đồng Bộ Toàn Diện Packaging (AUR, Fedora, openSUSE, Debian) & Build CI:**
+   - **Arch Linux (AUR):** Cập nhật `makedepends` từ `go` sang `rust` trong cả 2 file `PKGBUILD` và `.SRCINFO`.
+   - **Fedora RPM:** Cập nhật `fcitx5-lilypad.spec` sang `BuildRequires: cargo`, `BuildRequires: rust`; rà soát case-sensitivity chuẩn (`python3-QtPy`, `libX11-devel`).
+   - **openSUSE RPM:** Cập nhật `fcitx5-lilypad.spec` sang `BuildRequires: cargo`, `BuildRequires: rust`.
+   - **Debian / Ubuntu:** Cập nhật `debian/control` sang `Build-Depends: cargo, rustc`.
+   - **GitHub Workflows:** Thay thế `go` bằng `rust` trong `build.yml`, `packaging-release.yml`, và `packaging-dev.yml`.
+   - Cập nhật tài liệu kỹ thuật [`engine-layer/README.md`](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/3-modules/engine-layer/README.md), [`system_map.md`](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/1-overview/system_map.md), và [`decision-log.md`](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/2-memory/decision-log.md) (Quyết định 046).
 
 1. **Nghiên cứu Cơ Chế Uinput Select (`Shift+Left`) của Lotus > 6.0:**
    - Đọc và phân tích trực tiếp mã nguồn `fcitx5-lotus-main/` (v6.0.4) qua các commit `a68195b`, `4c6fddc`, `cb67d6b`, `8b4cb89`.

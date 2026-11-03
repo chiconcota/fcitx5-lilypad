@@ -358,13 +358,12 @@ jobs:
           run: |
             set -euo pipefail
             pacman -Syu --noconfirm \
-              cmake extra-cmake-modules gcc go \
+              cmake extra-cmake-modules gcc rust \
               fcitx5 libinput libx11 systemd python \
               make pkgconf zstd
 
             cd /work
             export LDFLAGS="-Wl,-O1 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,-z,pack-relative-relocs"
-            export CGO_LDFLAGS="-Wl,-O1 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,-z,pack-relative-relocs"
             cmake \
               -DCMAKE_INSTALL_PREFIX=/usr \
               -DCMAKE_INSTALL_LIBDIR=/usr/lib \

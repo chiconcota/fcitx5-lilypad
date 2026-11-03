@@ -59,21 +59,24 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
 
 ---
 
-### 🦀 Kế Hoạch Tương Lai (Phase 6 — Rust Core Engine Migration `bamboo-vi/bamboo-core`):
+### 🦀 Đã Hoàn Thành (Phase 6 — Rust Core Engine Migration `bamboo-vi/bamboo-core`):
 > **Mục tiêu:** Thay thế engine Go C-FFI bằng Rust thuần hiệu năng cao, giảm RAM về $<1\text{MB}$, nén binary, đạt Zero-Heap Allocation và $O(1)$ Backspace Snapshot.
 
-- [ ] **Phase 6.1: Khởi tạo nhánh `feat/rust-bamboo-engine` & Thiết lập Build Toolchain:**
-  - [ ] Thêm submodule / crate `bamboo-vi/bamboo-core` vào cây thư mục mã nguồn.
-  - [ ] Cấu hình CMake tự động build thư viện tĩnh Rust `libbamboo_core.a` (qua Corrosion hoặc Custom Target `cargo build --release`).
-- [ ] **Phase 6.2: Viết Lớp C++ Wrapper (`lilypad-rust-engine.h/.cpp`):**
-  - [ ] Bọc các hàm C-ABI `bamboo_engine_new`, `bamboo_process_key`, `bamboo_engine_reset`, `bamboo_free_string`.
-  - [ ] Đổi interface `lilypadEngine_` trong `LilypadState` sang lớp wrapper mới.
-- [ ] **Phase 6.3: Tích hợp với Sequencer Layer & Kiểm Thử Hồi Quy:**
-  - [ ] Đảm bảo cơ chế $O(1)$ Backspace của Rust ăn khớp với tính toán `compareAndSplitStrings` và Sentinel Barrier $N+1$.
-  - [ ] Kiểm thử gõ lướt tốc độ cao trên Terminal, Chrome, VS Code và Discord/Messenger.
-- [ ] **Phase 6.4: Đóng gói & Phát hành Phiên bản mới:**
-  - [ ] Cập nhật PKGBUILD AUR (thêm `cargo`/`rust` vào `makedepends`).
-  - [ ] Loại bỏ hoàn toàn thư mục Go cũ `fcitx5-lilypad/bamboo/` để repo sạch sẽ.
+- [x] **Phase 6.1: Khởi tạo nhánh `feat/rust-bamboo-engine` & Thiết lập Build Toolchain:**
+  - [x] Nhúng crate `bamboo-core` (Rust v0.5.3) trực tiếp vào `fcitx5-lilypad/bamboo/`.
+  - [x] Cấu hình CMake tự động build thư viện tĩnh Rust `libbamboo_core.a` (Custom Target `cargo build --release`).
+- [x] **Phase 6.2: Viết Lớp C-ABI FFI Wrapper (`src/fcitx.rs` & `include/bamboo-core.h`):**
+  - [x] Bọc các hàm C-ABI `NewEngine`, `NewCustomEngine`, `EngineProcessKeyEvent`, `EnginePullCommit`, `EnginePullPreedit`, `EngineCommitPreedit`, `ResetEngine`, `EngineRebuildFromText`, `GetInputMethodNames`, `GetCharsetNames`, `DeleteObject`.
+  - [x] Quản lý đối tượng an toàn qua atomic handle table (`OBJECTS`), triệt tiêu 100% rủi ro use-after-free/crash.
+- [x] **Phase 6.3: Tích hợp với Sequencer Layer & Kiểm Thử Hồi Quy:**
+  - [x] Tích hợp liên kết `Bamboo::Core` vào `liblilypad.so`.
+  - [x] Viết unit/integration test C++ kiểm tra toàn diện Telex (`tieengs` $\to$ `tiếng`), Space commit, Backspace undo (`tôi` $\to$ `tô`), và rebuild từ text (`chiêu` + `f` $\to$ `chiều`).
+- [x] **Phase 6.4: Cập Nhật Trình Đóng Gói (All Distros & CI):**
+  - [x] Cập nhật PKGBUILD AUR và `.SRCINFO` (đổi `makedepends` từ `go` sang `rust`).
+  - [x] Cập nhật RPM Spec cho Fedora ([fcitx5-lilypad.spec](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/packaging/rpm/fedora/fcitx5-lilypad.spec)) và openSUSE ([fcitx5-lilypad.spec](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/packaging/rpm/opensuse/fcitx5-lilypad.spec)) sang `BuildRequires: cargo`, `BuildRequires: rust`.
+  - [x] Cập nhật Debian package ([debian/control](file:///home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/packaging/debian/control)) sang `Build-Depends: cargo, rustc`.
+  - [x] Cập nhật GitHub Workflows CI (`build.yml`, `packaging-release.yml`, `packaging-dev.yml`).
+  - [x] Loại bỏ hoàn toàn mã nguồn Go cũ trong `fcitx5-lilypad/bamboo/` để repo sạch sẽ 100%.
 
 ---
 

@@ -40,7 +40,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          pacman -Syu --noconfirm base-devel clang cmake ninja extra-cmake-modules fmt libuv boost git go libinput systemd-libs extra-cmake-modules libx11 python
+          pacman -Syu --noconfirm base-devel clang cmake ninja extra-cmake-modules fmt libuv boost git rust libinput systemd-libs extra-cmake-modules libx11 python
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config --global --add safe.directory "$GITHUB_WORKSPACE/fcitx5-lotus"
           git config --global --add safe.directory "$GITHUB_WORKSPACE/fcitx5"
@@ -69,7 +69,7 @@ jobs:
       - name: Init CodeQL
         uses: github/codeql-action/init@v4
         with:
-          languages: cpp,go
+          languages: cpp
           source-root: fcitx5-lotus
       - name: Build and Install fcitx5-lotus
         uses: fcitx/github-actions@cmake
