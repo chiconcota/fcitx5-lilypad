@@ -138,7 +138,7 @@ class AboutPage(QWidget):
         authors_data = [
             ("chiconcota (Creator & Maintainer)", "https://github.com/chiconcota"),
             ("Fcitx5 Input Method Framework", "https://github.com/fcitx/fcitx5"),
-            ("Bamboo Engine (Go C-FFI Core)", "https://github.com/BambooEngine/bamboo-core"),
+            ("Bamboo Engine (Rust Native Core)", "https://github.com/bamboo-vi/bamboo-core"),
         ]
         
         for name, profile_url in authors_data:
