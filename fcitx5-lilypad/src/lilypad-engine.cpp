@@ -410,6 +410,7 @@ namespace fcitx {
         const bool focusBounce = uinputMode && state->lastDeactivateTime_ > 0 && (now_ms() - state->lastDeactivateTime_) < 100;
 
         if (focusBounce) {
+            state->recordFocusBounce();
             state->cancelDeferredFocusOut();
             realMode = targetMode;
             ic->updateUserInterface(UserInterfaceComponent::StatusArea);
@@ -436,7 +437,7 @@ namespace fcitx {
 #else
         std::transform(appNameLower.begin(), appNameLower.end(), appNameLower.begin(), ::tolower);
 #endif
-        state->sequencer_.set_max_ack_timeout_ms(250);
+        state->sequencer_.set_max_ack_timeout_ms(300);
         if (targetMode == LilypadMode::Uinput || targetMode == LilypadMode::Smooth || targetMode == LilypadMode::Minecraft || targetMode == LilypadMode::SuperSmooth || targetMode == LilypadMode::Sequence) {
             for (const auto& ackApp : ack_apps) {
                 if (appNameLower.find(ackApp) != std::string::npos) {
@@ -455,8 +456,10 @@ namespace fcitx {
         } else if (surrvalid && !state->oldPreBuffer_.empty() && (now_ms() - state->lastDeactivateTime_) >= 100) {
             state->clearAllBuffers();
         }
-        is_deleting_.store(false);
-        needEngineReset.store(false);
+        if (!focusBounce) {
+            is_deleting_.store(false);
+            needEngineReset.store(false);
+        }
         if (targetMode == LilypadMode::Emoji) {
             state->updateEmojiPreedit();
         } else {

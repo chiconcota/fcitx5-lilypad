@@ -1,6 +1,6 @@
 # MODULE: SEQUENCER LAYER (`src/sequencer/` & `fcitx5-lilypad/src/`)
 
-@status: STABLE (v2.3.6-adaptive-clean) | @last_update: 2026-09-12
+@status: STABLE (v2.3.13-watchdog-300ms) | @last_update: 2026-11-05
 
 > **Ghi chú Kiến trúc:** Hệ thống sử dụng **Kiến trúc Cảm biến Vòng lặp Kép (Dual-Sensor Control Loop)**:
 > 1. **`IAckSensor` (Cảm biến Đường truyền & Micro-Pacing):** Đo độ trễ vòng lặp Compositor/App roundtrip và tính toán độ trễ vi mô thích ứng `get_micro_delay_us(bsCount, iki_ms)` qua `fcitx5-lilypad/src/ack-sensors/`.
@@ -32,7 +32,7 @@ stateDiagram-v2
 - **`WaitingMicroDelay`**: Tạm dừng $1.0 \sim 5.0\,\text{ms}$ (co giãn theo IKI Fast-Path) sau khi phát phím xóa `KEY_BACKSPACE` để Compositor & App render sạch phím xóa trước khi chèn chữ mới.
 - **`WaitingForAck`**: Rào chắn bị khóa chờ tín hiệu `receive_ack()` từ Cảm biến `IAckSensor`.
 - **`AppLagHolding`**: Tự động kích hoạt khi chạm Soft Timeout ($T_{\text{elapsed}} \ge T_{\text{soft}}$), tạm ngừng bắn uinput tiếp theo và gom phím an toàn vào RAM `buffered_keys_` chờ App bắt kịp.
-- **`SettlingDelay` (Phase 8)**: Khoảng nghỉ lắng đọng vi mô ($6\text{ms} \sim 8\text{ms}$) sau khi nhịp xóa uinput hoàn tất, chờ Event Loop của ứng dụng (DOM reconciliation / Rich Editor parser) ổn định vị trí con trỏ trước khi commit ký tự mới.
+- **`SettlingDelay` (Phase 8.2 - Stable v2.3.8)**: Khoảng nghỉ lắng đọng vi mô ($7\text{ms}$ context-aware floor) sau khi nhịp xóa uinput hoàn tất, chờ Event Loop của ứng dụng (DOM reconciliation / Rich Editor parser của TikTok) ổn định vị trí con trỏ trước khi commit ký tự mới. Khóa cứng hàng đợi Sequencer (`is_deleting_`) bảo đảm giao dịch nguyên tử (Atomic Transaction).
 
 ---
 
@@ -57,7 +57,7 @@ stateDiagram-v2
 │  2. Soft Timeout (Dynamic App Lag): T_soft = clamp(max(2.0*T_exp,      │
 │                                    min(IKI, T_exp+30)), 35ms, 120ms)   │
 │     -> AppLagHolding: Giữ phím RAM, chống rách chữ tiếng Việt.         │
-│  3. Hard Timeout (Watchdog 250ms): Cắt lỗ khẩn cấp purgeContextEmergency│
+│  3. Hard Timeout (Watchdog 300ms): Cắt lỗ khẩn cấp purgeContextEmergency│
 │     -> Reset Bamboo Engine, Word Buffer và xả phím thô an toàn.        │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -83,10 +83,16 @@ stateDiagram-v2
 ---
 
 ## 5. BẢO VỆ AN TOÀN & APTOMAT KHẨN CẤP (WATCHDOG & POST-COMMIT SETTLING)
-- **Watchdog Hard Timeout (250ms toàn hệ thống):**
-  - Giữ ngưỡng an toàn chuẩn $250\text{ms}$ thống nhất cho toàn bộ hệ thống (`purgeContextEmergency()`), bảo đảm bàn phím không bao giờ bị đơ/freeze ngay cả khi ứng dụng gặp sự cố.
+- **Watchdog Hard Timeout (300ms toàn hệ thống - v2.3.13):**
+  - Giữ ngưỡng an toàn chuẩn $300\text{ms}$ thống nhất cho toàn bộ hệ thống (`purgeContextEmergency()`), tạo $50\text{ms}$ vùng thở an toàn chống false alarm khi Chromium V8 GC lag, bảo đảm bàn phím không bao giờ bị đơ/freeze ngay cả khi ứng dụng gặp sự cố.
   - Loại bỏ các cờ hack riêng biệt để triệt tiêu nợ kỹ thuật (Zero Technical Debt).
 - **Hàm `purgeContextEmergency()`:** Nếu xảy ra freeze/lag quá ngưỡng Watchdog, hệ thống lập tức cắt lỗ trạng thái, reset Engine và xả phím thô trong RAM, đảm bảo bàn phím an toàn tuyệt đối.
+- **Asymmetric Dynamic Governor & Chained Replacement Protection (Phase 8.3 - v2.3.10):**
+  - Khắc phục triệt để lỗi mất chữ kép "thấy -> th" trên Chromium do Post-Commit Window bị co quá ngắn.
+  - Tách độc lập 2 mắt xích:
+    * Pre-Commit Settling Delay: Thích ứng động theo `swallow_duration_us * 0.8` (co về $1.8\text{ms} \sim 2\text{ms}$ trên tab mượt, nổ chữ tức thì, không bị clamp $12\text{ms}$ bởi IKI).
+    * Post-Commit Settling Window: Giữ sàn an toàn $70\text{ms}$ trên Chromium (tự dãn nở lên $100\text{ms}$ trên tab lag), bảo vệ 100% các từ có thay thế biến âm liên tiếp.
+  - Tự động nhận diện mức tải từng tab thời gian thực qua `isTabLagging()` dựa trên 4 tín hiệu cơ học: `swallow_duration_us`, `buffered_keys_.size()` & `KeyEntry::enter_time`, `last_measured_ack_ms`, và Focus Bounce.
 - **Post-Commit Settling Window (`settle_timer_`):**
   - Tự động kích hoạt khi phát hiện ứng dụng Chromium/Electron (`wa_chromium_flag == true` từ `ack-apps.h`), giữ khoảng đệm an toàn $70\text{ms}$ sau khi gửi `commitString()`, ngăn chặn hiện tượng rụng/nuốt ký tự do Single-Threaded DOM reconciliation.
   - Với các ứng dụng không phải Chromium, mức trễ đệm tối thiểu là $300\mu\text{s}$ bảo đảm tốc độ phản hồi tức thì.

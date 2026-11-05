@@ -42,7 +42,7 @@ namespace fcitx {
     }
 
     uint64_t Sequencer::calculate_adaptive_delay_ms(uint64_t measured_ack_ms) {
-        // Adaptive formula: min_delay_ms (5ms) <= adaptive <= max_ack_timeout_ms (250ms)
+        // Adaptive formula: min_delay_ms (5ms) <= adaptive <= max_ack_timeout_ms (300ms)
         uint64_t adaptive = std::clamp(measured_ack_ms + 1, config_.min_delay_ms, config_.max_ack_timeout_ms);
         last_measured_ack_ms_ = adaptive;
         LILYPAD_INFO("📊 [ADAPTIVE DELAY] Measured App ACK: " + std::to_string(measured_ack_ms) + "ms -> Dynamic Barrier: " + std::to_string(adaptive) + "ms");
@@ -61,6 +61,13 @@ namespace fcitx {
     void Sequencer::set_app_lag_holding() {
         barrier_ = BarrierState::AppLagHolding;
         LILYPAD_INFO("🛡️ [SEQUENCER BARRIER] Set AppLagHolding for Serial #" + std::to_string(active_serial_.load()));
+    }
+
+    void Sequencer::set_settling_delay(uint64_t delay_us) {
+        barrier_             = BarrierState::SettlingDelay;
+        barrier_start_time_  = std::chrono::steady_clock::now();
+        barrier_target_time_ = barrier_start_time_ + std::chrono::microseconds(delay_us);
+        LILYPAD_INFO("⏳ [SEQUENCER BARRIER] Set SettlingDelay (" + std::to_string(delay_us) + "us) for Serial #" + std::to_string(active_serial_.load()));
     }
 
     int64_t Sequencer::elapsed_since_barrier_start_ms() const {
@@ -97,7 +104,7 @@ namespace fcitx {
     }
 
     void Sequencer::receive_ack(uint32_t serial) {
-        if (barrier_ == BarrierState::WaitingForAck || barrier_ == BarrierState::AppLagHolding) {
+        if (barrier_ == BarrierState::WaitingForAck || barrier_ == BarrierState::AppLagHolding || barrier_ == BarrierState::SettlingDelay) {
             if (serial >= active_serial_.load(std::memory_order_acquire)) {
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - barrier_start_time_).count();
                 LILYPAD_INFO("✅ [SERIAL ACK RELEASED] Compositor responded for Serial #" + std::to_string(serial) + " elapsed=" + std::to_string(elapsed) + "ms");
@@ -116,9 +123,9 @@ namespace fcitx {
         auto now = std::chrono::steady_clock::now();
 
         // Check barrier timeout or micro delay completion
-        if (barrier_ == BarrierState::WaitingMicroDelay) {
+        if (barrier_ == BarrierState::WaitingMicroDelay || barrier_ == BarrierState::SettlingDelay) {
             if (now >= barrier_target_time_) {
-                LILYPAD_INFO("⏱️ [MICRO-DELAY DONE] Adaptive delay completed, releasing barrier");
+                LILYPAD_INFO("⏱️ [DELAY DONE] Barrier delay completed, releasing barrier");
                 barrier_ = BarrierState::Ready;
             } else {
                 return false;

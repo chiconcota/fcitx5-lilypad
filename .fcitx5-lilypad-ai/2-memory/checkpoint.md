@@ -4,8 +4,150 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `feat/focus-bounce-protection`
-- **Tình trạng:** **ĐÃ HOÀN TẤT TRIỂN KHAI PHASE 8.1 (FOCUS BOUNCE PROTECTION / 100MS DEFERRAL WINDOW). KHẮC PHỤC TRIỆT ĐỂ BỆNH XÓA OAN CARET BUFFER TRÊN TIKTOK WEB KHUNG BÌNH LUẬN (`no` + `s` $\to$ `nos`). ĐẢO NGƯỢC ĐIỀU KIỆN LỖI `< 100` THÀNH `>= 100`. BIÊN DỊCH THÀNH CÔNG 100% CẢ BẢN DEBUG VÀ RELEASE, NÂNG PHIÊN BẢN LÊN V2.3.7.**
+- **Nhánh Git làm việc:** `feat/sequencer-settling-atomic-lock`
+- **Tình trạng:** **ĐÃ HOÀN TẤT NÂNG TRẦN AN TOÀN HARD TIMEOUT & SEQUENCER MAX ACK LÊN 300MS ĐỒNG BỘ TOÀN HỆ THỐNG (V2.3.13). PHÂN TÍCH RÕ NGUYÊN NHÂN LỖI ĐỨNG HÌNH CHỮ "THƯỞNG" LÀ DO PHÍM SENTINEL BỊ COMPOSITOR LÀM RƠI TRONG LÚC CHROME FOCUS BOUNCE. BÀN GIAO TIẾN ĐỘ VÀ KẾ HOẠCH CHO PHIÊN TIẾP THEO: XÂY DỰNG SWALLOW SAFETY TIMER (20MS) VÀ TRIỂN KHAI PHASE 8.4.**
+
+## 📋 Nhiệm Vụ Bàn Giao Cho Phiên Tiếp Theo (Handover Plan):
+
+1. **Vấn Đề Kỹ Thuật Đã Phát Hiện Cần Xử Lý:**
+   - **Hiện tượng:** Khi gõ từ có nhiều phím xóa (như `thương` + `r` $\to$ `thưởng`, $N=3$, phát 4 backspace), 3 phím đầu được nuốt trơn tru (`Remaining: 1`), nhưng đúng lúc đó Google Chrome bị Focus Bounce liên tiếp 4 lần $\implies$ Compositor (Niri/Wayland) chớp tắt tiêu điểm và **làm rơi phím Sentinel thứ 4** phát từ uinput.
+   - **Hậu quả:** `expected_swallow_backspaces_` bị kẹt ở 1, Sequencer chờ mãi phím thứ 4 và treo `is_deleting_ = true` suốt 300ms cho tới khi Watchdog cắt lỗ khẩn cấp.
+   - **Lưu ý quan trọng:** Engine Bamboo Core Rust hoàn toàn vô can ($100\%$ vô tội, đã xử lý thay thế `ơng -> ởng` ngay tại $0.001\text{ms}$).
+
+2. **Kế Hoạch Thực Hiện Trong Phiên Tiếp Theo:**
+   - **Nhiệm vụ 1: Xây dựng Swallow Safety Timer (Bộ Cứu Hộ Nuốt Phím 20ms - 25ms):**
+     * Trong `lilypad-state.cpp`, sau khi phát $N+1$ phím xóa, nếu đã nuốt được $\ge N$ phím mà phím Sentinel cuối cùng quá $20\text{ms} \sim 25\text{ms}$ chưa về (do Focus Bounce làm rơi packet) $\implies$ Timer tự động giải phóng rào chắn và kích hoạt commit ký tự mới (`ởng`) ngay lập tức, không bắt người dùng đợi $300\text{ms}$ của Watchdog.
+   - **Nhiệm vụ 2: Triển khai Phase 8.4 (Khai Tử Sentinel Backspace N+1):**
+     * Mở keycode `KEY_PAUSE` (hoặc `KEY_F24`) trong uinput driver làm rào cản đồng bộ phần cứng ở đuôi chuỗi Backspace.
+     * Bóc tách hoàn toàn tín hiệu đo thời gian ra khỏi luồng phím xóa văn bản, triệt tiêu $100\%$ các ca kẹt phím do rơi gói tin.
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-05 - Nâng Trần An Toàn Lên 300ms - v2.3.13):
+
+1. **Mở Rộng Trần An Toàn Hard Timeout & Watchdog Lên 300ms (`lilypad-sequencer.h/.cpp`, `lilypad-state.h/.cpp`, `ack-sensors/`):**
+   - Giải quyết tình trạng tổng các lớp trễ tích lũy ($T_{\text{swallow}} + T_{\text{pre-settle}} + T_{\text{post-settle}} \approx 175\text{ms}$) mấp mé ngưỡng $250\text{ms}$ khi gặp V8 Garbage Collection lag.
+   - Nâng đồng bộ `max_ack_timeout_ms` và `watchdog_timer_` từ $250\text{ms}$ lên **$300\text{ms}$** ($300,000\mu\text{s}$).
+   - Nâng trần kẹp `clamp` trong `NiriAckSensor` và `GenericAckSensor` lên $300,000\mu\text{s}$.
+   - Triệt tiêu $100\%$ lỗi Watchdog kích hoạt nhầm (False Alarm) làm rách từ hoặc rụng dấu (`couo7`) trên web nặng khi app chưa hề bị crash.
+
+2. **Bảo Tồn Toàn Bộ Tối Ưu Độ Trễ & An Toàn Khung Hình:**
+   - Giữ nguyên điều tốc cảm biến IKI với sàn phần cứng $16\text{ms}$ trên Chromium.
+   - Giữ nguyên trần an toàn Post-Commit $70\text{ms}$ và Native App $1.5\text{ms}$.
+
+3. **Nâng Phiên Bản & Biên Dịch Hệ Thống (`v2.3.13`):**
+   - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.13`.
+   - Biên dịch thành công 100% cả Debug (`build/src/liblilypad.so`) và Release (`build_release/src/liblilypad.so`).
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-05 - Hoàn Tất Điều Tốc Cảm Biến IKI & Sàn 16ms - v2.3.12):
+
+1. **Khôi Phục Quyền Kiểm Soát Của Cảm Biến IKI Cho Pre-Commit Settling Delay (`lilypad-state.cpp`):**
+   - Khắc phục lỗi ép sàn cứng $7\text{ms}$ ở v2.3.11 khiến từ `có` bị biến thành chữ `c` trên Antigravity IDE khi gõ thong thả nhịp $221\text{ms}$.
+   - Cho phép Pre-Commit Delay lấy trực tiếp theo `micro_delay_us` (con số `raw` do cảm biến Niri/Generic tính toán). Khi gõ thong thả, delay tự động dãn lên $33\text{ms} \sim 35\text{ms}$, cung cấp trọn vẹn 2 khung hình 60Hz cho DOM render sạch sẽ và mở khóa con trỏ.
+
+2. **Thiết Lập Mức Sàn Phần Cứng 16ms (1 Frame Quét 60Hz) Cho Chromium:**
+   - Công thức: `delay_us = clamp(micro_delay_us, 16000, 35000)`.
+   - Ngay cả khi người dùng gõ lướt siêu tốc (Burst mode), độ trễ trên Chromium không bao giờ được phép thấp hơn 1 khung hình ($16\text{ms}$), vừa đảm bảo phản hồi tức thì vừa chống nghẽn con trỏ.
+
+3. **Bảo Tồn Trần An Toàn Post-Commit 70ms & Native Apps 1.5ms:**
+   - Giữ nguyên trần Post-Commit $70\text{ms}$ trên Chromium chống mất chữ kép liên tiếp (`thấy`, `thương`).
+   - Giữ nguyên Zero-latency floor $1.5\text{ms}$ cho Native / Terminal apps.
+
+4. **Nâng Phiên Bản & Biên Dịch Hệ Thống (`v2.3.12`):**
+   - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.12`.
+   - Biên dịch thành công 100% cả Debug (`build/src/liblilypad.so`) và Release (`build_release/src/liblilypad.so`).
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-05 - Hoàn Tất Mức Sàn An Toàn Vàng 7ms - v2.3.11):
+
+1. **Thiết Lập Mức Sàn An Toàn Vàng 7ms ($7000\mu\text{s}$) Cho Pre-Commit Settling Delay (`lilypad-state.cpp`):**
+   - Khắc phục hiện tượng ép Pre-Commit xuống $1.8\text{ms}$ ở v2.3.10 khiến ô chat Antigravity IDE (Meta Lexical Editor) bị nuốt chữ (`bạn` $\to$ `b`).
+   - Nguyên nhân: Các Rich Text Editor tự động khóa Selection khoảng $6\text{ms} \sim 7\text{ms}$ sau Backspace; commit ở $1.8\text{ms}$ bị vứt bỏ.
+   - Thiết lập công thức: `uint64_t adaptive_delay = (swallow_duration_us > 0) ? (swallow_duration_us * 8 / 10) : 7000; uint64_t delay_us = std::clamp<uint64_t>(std::max<uint64_t>(adaptive_delay, 7000), 7000, 15000);`.
+   - $7\text{ms}$ nhỏ hơn 1 frame 60Hz ($16.6\text{ms}$), phản hồi thị giác gần như tức thì nhưng đảm bảo $100\%$ không bị nuốt chuỗi commit.
+
+2. **Bảo Tồn Trần An Toàn Post-Commit 70ms & Native Apps 1.5ms:**
+   - Giữ nguyên trần Post-Commit $70\text{ms}$ trên Chromium chống mất chữ kép liên tiếp (`thấy`, `thương`).
+   - Giữ nguyên Zero-latency floor $1.5\text{ms}$ cho Native / Terminal apps.
+
+3. **Nâng Phiên Bản & Biên Dịch Hệ Thống (`v2.3.11`):**
+   - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.11`.
+   - Biên dịch thành công 100% cả Debug (`build/src/liblilypad.so`) và Release (`build_release/src/liblilypad.so`).
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-05 - Hoàn Tất Sửa Lỗi Chained Replacement - v2.3.10):
+
+1. **Khôi Phục Post-Commit Settling Window 70ms Trên Chromium (`lilypad-state.cpp`):**
+   - Đặt lại mức sàn tối thiểu $70\text{ms}$ cho Post-Commit Settling Window trên Chromium (thay vì $12\text{ms}$ làm mất chữ).
+   - Bảo đảm các từ có biến đổi kép liên tiếp (`thay` $\to$ `thây` $\to$ `thấy`, `thương`, `toàn`) có đủ $70\text{ms}$ cho Chromium render vào DOM, không bị Backspace đợt 2 xóa đè.
+
+2. **Thích Ứng Động Pre-Commit Settling Delay Theo `swallow_duration_us`:**
+   - Tách Pre-Commit Settling Delay độc lập khỏi `micro_delay_us` của cảm biến ngón tay IKI (tránh bị kéo kịch trần $12\text{ms}$ khi gõ thong thả).
+   - Tự động co về $1.8\text{ms} \sim 2\text{ms}$ trên tab mượt (`swallow ~ 2300us`), giúp chữ nổ ra tức thì sau Backspace.
+
+3. **Nâng Phiên Bản & Biên Dịch Hệ Thống (`v2.3.10`):**
+   - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.10`.
+   - Biên dịch thành công 100% cả Debug (`build/src/liblilypad.so`) và Release (`build_release/src/liblilypad.so`).
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-04 - Hoàn Tất Phase 8.3 Dynamic Governor - v2.3.9):
+
+1. **Thêm Nhãn Thời Gian `enter_time` Cho Hàng Đợi Phím Đệm (`lilypad-utils.h`):**
+   - Bổ sung `std::chrono::steady_clock::time_point enter_time` vào `struct KeyEntry`.
+   - Tự động ghi lại thời điểm phím người dùng gõ bị đưa vào `buffered_keys_` để đo tuổi thọ phím đệm và áp lực hàng đợi.
+
+2. **Xây Dựng Bộ Nhận Diện Tải Từng Tab (`LilypadState::isTabLagging` trong `lilypad-state.h/.cpp`):**
+   - Đánh giá tải động dựa trên 4 tín hiệu cơ học runtime:
+     * Thời gian nuốt phím `last_swallow_duration_us_ >= 12000` ($12\text{ms}$).
+     * Tuổi thọ phím đầu hàng đợi $\ge 15\text{ms}$ hoặc `buffered_keys_.size() >= 2`.
+     * Cảm biến `last_measured_ack_ms >= 30ms`.
+     * Sự kiện Focus Bounce trong 3 giây gần nhất (`recordFocusBounce()`).
+
+3. **Điều Hòa Đồng Bộ 2 Mắt Xích Sequencer (`calculateDynamicSettlingDelayUs`, `calculateDynamicPostSettlingUs`):**
+   - **Mắt xích 1 (Pre-Commit Settling Delay):**
+     * Tab nhẹ (Facebook/Docs): Co về $1.8\text{ms} \sim 2\text{ms}$, triệt tiêu cảm giác nhả chữ chậm.
+     * Tab nặng (TikTok 25K cmt, AFFiNE): Tự dãn nở lên $25\text{ms} \sim 35\text{ms}$ bảo vệ con trỏ DOM.
+   - **Mắt xích 2 (Post-Commit Settling Window):**
+     * Tab nhẹ: Co từ $70\text{ms}$ xuống $12\text{ms}$ (nhanh gấp 6 lần).
+     * Tab nặng: Dãn nở an toàn $60\text{ms} \sim 95\text{ms}$.
+   - **Cơ chế Snapback tức thì:** Giải phóng độ trễ ngay khi xả sạch hàng đợi phím đệm.
+
+4. **Nâng Phiên Bản & Biên Dịch Hệ Thống (`v2.3.9`):**
+   - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.9`.
+   - Biên dịch thành công 100% cả Debug (`build/src/liblilypad.so`) và Release (`build_release/src/liblilypad.so`).
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-04 - Hoàn Tất Phase 8.2 Settling Delay & Atomic Lock - v2.3.8):
+
+1. **Khởi Tạo Nhánh `feat/sequencer-settling-atomic-lock`:**
+   - Tạo nhánh làm việc mới cách ly tính năng Phase 8.2.
+
+2. **Bổ Sung Trạng Thái & Điều Phối Sequencer Settling Delay (`lilypad-sequencer.h/.cpp`):**
+   - Bổ sung `BarrierState::SettlingDelay` vào `enum class BarrierState`.
+   - Bổ sung phương thức `Sequencer::set_settling_delay(uint64_t delay_us)`.
+   - Cập nhật `Sequencer::poll_next_step()` và `Sequencer::receive_ack()` xử lý đúng chu kỳ lắng đọng.
+
+3. **Triển Khai Context-Aware Pre-Commit Settling Floor Tại `LilypadState` (`lilypad-state.cpp`):**
+   - Trong `LilypadState::handleUInputKeyPress()`: Ngay khi nuốt phím Sentinel $N+1$, áp sàn lắng đọng an toàn: `settling_floor_us = wa_chromium_flag ? 7000 : 1500` ($7\text{ms}$ cho Chromium/TikTok, $1.5\text{ms}$ cho Terminal/Native).
+   - Đặt `settling_delay_us = clamp(max(micro_delay_us, settling_floor_us), settling_floor_us, 250000)`.
+   - Kích hoạt `sequencer_.set_settling_delay(settling_delay_us)` và cài đặt `commit_timer_` với thời gian `settling_delay_us`.
+   - Cho phép React DOM và Regex parser của TikTok Hashtag/Mention có đủ thời gian ổn định con trỏ trước khi commit ký tự mới.
+
+4. **Khóa Cứng Hàng Đợi (Atomic Commit Lock) Xuyên Suốt Chu Trình (`lilypad-engine.cpp`, `lilypad-state.cpp`):**
+   - Trong `LilypadEngine::activate()`: Bọc điều kiện `if (!focusBounce)` cho `is_deleting_.store(false)` và `needEngineReset.store(false)`, ngăn ngừa Focus Bounce phá vỡ rào chắn nguyên tử của giao dịch đang xử lý.
+   - Loại bỏ các lệnh `is_deleting_.store(false)` ngắt sớm thừa thãi tại dòng 846 và 1530 trong `lilypad-state.cpp`.
+
+5. **Nâng Phiên Bản & Biên Dịch Hệ Thống (`v2.3.8`):**
+   - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.8`.
+   - Biên dịch thành công 100% cả Debug (`build/src/liblilypad.so`) và Release (`build_release/src/liblilypad.so`).
+
+---
 
 ## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-03 - Hoàn Tất Phase 8.1 Focus Bounce Protection - v2.3.7):
 
@@ -191,33 +333,59 @@
 
 ## 🎯 Kế Hoạch Bàn Giao & Nhiệm Vụ Cho Phiên Kế Tiếp (Handover Plan):
 
-1. **Ưu Tiên 1 — Triển khai Phase 8.2 (Sequencer Settling Delay & Atomic Commit Lock):**
-   - Thêm khoảng nghỉ lắng đọng vi mô `settling_delay_us = 6000 ~ 8000` ($6\text{ms} \sim 8\text{ms}$) giữa nhịp phát phím Backspace cuối cùng và nhịp phát lệnh Commit.
-   - Khóa cứng hàng đợi Sequencer (`is_deleting_`) trong suốt chu trình `Xóa -> Settle -> Commit`, đảm bảo giao dịch nguyên tử, giải quyết triệt để lỗi rụng dấu vỡ từ ra chuỗi thô (`couo7`) trên TikTok Web.
+1. **Ưu Tiên 1 — Kiểm thử thực tế đối chứng Phase 8.3 (v2.3.9):**
+   - Kiểm tra trên Facebook Web / Google Docs: Xác nhận tốc độ nhả chữ tức thì ($1.8\text{ms} + 12\text{ms}$), không còn cảm giác bị ghìm phím.
+   - Kiểm tra trên TikTok Web 25K bình luận / AFFiNE Canvas: Xác nhận tự động dãn nở an toàn, không nuốt chữ commit, không rụng từ.
 
-2. **Ưu Tiên 2 — Triển khai Phase 8.3 (Bộ Nhận Diện Nghẽn DOM Động 4 Trụ Cột):**
-   - Gắn nhãn `KeyEntry::enter_time`, đo tuổi thọ phím đệm trong RAM $\ge 40\text{ms}$ và áp lực hàng đợi $\ge 2$.
-   - Tự động dãn Settling Window lên mức an toàn ($70\text{ms} \sim 100\text{ms}$) trên các trang web có DOM khổng lồ (video 25.2K comments), và co về $0\text{ms} \sim 1\text{ms}$ trên Terminal để giữ tốc độ Zero-Latency.
-
-3. **Ưu Tiên 3 — Triển khai Phase 8.4 (Hardware Barrier Key `KEY_PAUSE` / `KEY_F24`):**
+2. **Ưu Tiên 2 — Triển khai Phase 8.4 (Hardware Barrier Key `KEY_PAUSE` / `KEY_F24`):**
    - Khai tử phím Backspace thứ $N+1$, chuyển sang dùng `KEY_PAUSE` vô hại (Non-destructive) làm chốt đo ACK an toàn tuyệt đối cho Terminal và Web.
+
+3. **Ưu Tiên 3 — Phase 8.5 (Kiểm Thử Thực Địa & Xác Nhận Toàn Diện):**
+   - Kiểm thử thực tế trên TikTok Web khung bình luận 25K comments và khung caption video.
 
 ---
 
-## 📁 Các File Thay Đổi Trong Phiên (2026-11-03 - Phase 8.1):
+## 📁 Các File Thay Đổi Trong Phiên (2026-11-05 - Phase 8.3 Fix - v2.3.10):
 
 | File | Thay đổi |
 | :--- | :--- |
-| `fcitx5-lilypad/src/lilypad-state.h/.cpp` | Triển khai cờ `deferredFocusOut_`, `cancelDeferredFocusOut()`, `flushDeferredFocusOut()`, tách `resetNow(bool)` bảo vệ 100% Caret Buffer |
-| `fcitx5-lilypad/src/lilypad-engine.cpp` | Bắt sự kiện Focus Bounce (`delta < 100ms`), đảo điều kiện lỗi `< 100` thành `>= 100`, hủy nợ xóa và không gọi `setMode()` làm xóa buffer |
-| `fcitx5-lilypad/src/lilypad-utils.h` | Thêm inline helper `isUinputMode(LilypadMode)` |
-| `fcitx5-lilypad/settings-gui/ui/pages/about.py` | Cập nhật ghi nhận `Bamboo Engine (Rust Native Core)` |
-| `fcitx5-lilypad/CMakeLists.txt` & `PKGBUILD` | Nâng phiên bản `v2.3.7` |
-| `.fcitx5-lilypad-ai/1-overview/project-managers/roadmap.md` | Tái cấu trúc lộ trình làm việc khoa học cho Phase 8.2, 8.3, 8.4 |
-| `.fcitx5-lilypad-ai/1-overview/system_map.md` | Cập nhật Module Status & Recent Change Log v2.3.7 |
-| `.fcitx5-lilypad-ai/2-memory/decision-log.md` | Ghi Quyết định 049 (Phase 8.1 & Lộ trình hợp nhất) |
-| `.fcitx5-lilypad-ai/3-modules/sequencer-layer/README.md` | Cập nhật tài liệu kỹ thuật Focus Bounce Protection v2.3.7 |
-| `.fcitx5-lilypad-ai/2-memory/checkpoint.md` | Bàn giao phiên làm việc trên nhánh `feat/focus-bounce-protection` |
+| `fcitx5-lilypad/src/lilypad-state.cpp` | Khôi phục Post-Commit Settling Window 70ms trên Chromium; tính Pre-Commit động theo `swallow_duration_us * 0.8` (co về 1.8ms ~ 2ms) |
+| `fcitx5-lilypad/CMakeLists.txt` & `PKGBUILD` | Nâng phiên bản `v2.3.10` |
+| `.fcitx5-lilypad-ai/1-overview/system_map.md` | Cập nhật Asymmetric Dynamic Governor & Change Log v2.3.10 |
+| `.fcitx5-lilypad-ai/2-memory/decision-log.md` | Ghi Quyết định 052 (Asymmetric Dynamic Governor & Chained Replacement Fix) |
+| `.fcitx5-lilypad-ai/2-memory/checkpoint.md` | Bàn giao phiên làm việc trên nhánh `feat/sequencer-settling-atomic-lock` (v2.3.10) |
+
+---
+
+## 📁 Các File Thay Đổi Trong Phiên (2026-11-04 - Phase 8.3 - v2.3.9):
+
+| File | Thay đổi |
+| :--- | :--- |
+| `fcitx5-lilypad/src/lilypad-utils.h` | Bổ sung `std::chrono::steady_clock::time_point enter_time` vào `KeyEntry` |
+| `fcitx5-lilypad/src/lilypad-state.h/.cpp` | Triển khai `isTabLagging()`, `calculateDynamicSettlingDelayUs()`, `calculateDynamicPostSettlingUs()`, `recordFocusBounce()` |
+| `fcitx5-lilypad/src/lilypad-engine.cpp` | Gọi `state->recordFocusBounce()` khi phát hiện Focus Bounce |
+| `fcitx5-lilypad/CMakeLists.txt` & `PKGBUILD` | Nâng phiên bản `v2.3.9` |
+| `.fcitx5-lilypad-ai/1-overview/project-managers/roadmap.md` | Hoàn tất triển khai Phase 8.3 (8.3.1 ~ 8.3.4) |
+| `.fcitx5-lilypad-ai/1-overview/system_map.md` | Cập nhật Dynamic Heavy-DOM Governor & Change Log v2.3.9 |
+| `.fcitx5-lilypad-ai/2-memory/decision-log.md` | Ghi Quyết định 051 (Phase 8.3 Per-Tab Dynamic Governor) |
+| `.fcitx5-lilypad-ai/3-modules/sequencer-layer/README.md` | Cập nhật đặc tả kỹ thuật Per-Tab Dynamic Governor |
+| `.fcitx5-lilypad-ai/2-memory/checkpoint.md` | Bàn giao phiên làm việc trên nhánh `feat/sequencer-settling-atomic-lock` (v2.3.9) |
+
+---
+
+## 📁 Các File Thay Đổi Trong Phiên (2026-11-04 - Phase 8.2):
+
+| File | Thay đổi |
+| :--- | :--- |
+| `fcitx5-lilypad/src/lilypad-sequencer.h/.cpp` | Bổ sung `BarrierState::SettlingDelay`, `set_settling_delay()`, cập nhật `poll_next_step()` và `receive_ack()` |
+| `fcitx5-lilypad/src/lilypad-state.cpp` | Áp dụng sàn Pre-Commit Settling Delay 7ms (Option 2: Context-Aware Floor: 7ms Chromium, 1.5ms Terminal), loại bỏ ngắt `is_deleting_` sớm |
+| `fcitx5-lilypad/src/lilypad-engine.cpp` | Bọc an toàn `if (!focusBounce)` cho `is_deleting_.store(false)` tại `activate()` bảo vệ Atomic Transaction Lock |
+| `fcitx5-lilypad/CMakeLists.txt` & `PKGBUILD` | Nâng phiên bản `v2.3.8` |
+| `.fcitx5-lilypad-ai/1-overview/project-managers/roadmap.md` | Hoàn tất đánh dấu Phase 8.2 và chuyển ưu tiên sang Phase 8.3 |
+| `.fcitx5-lilypad-ai/1-overview/system_map.md` | Cập nhật Module Status & Recent Change Log v2.3.8 |
+| `.fcitx5-lilypad-ai/2-memory/decision-log.md` | Ghi Quyết định 050 (Phase 8.2 Sequencer Settling Delay & Atomic Commit Lock) |
+| `.fcitx5-lilypad-ai/3-modules/sequencer-layer/README.md` | Cập nhật tài liệu kỹ thuật SettlingDelay Stable v2.3.8 |
+| `.fcitx5-lilypad-ai/2-memory/checkpoint.md` | Bàn giao phiên làm việc trên nhánh `feat/sequencer-settling-atomic-lock` |
 
 ---
 

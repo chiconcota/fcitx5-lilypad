@@ -48,12 +48,12 @@ namespace fcitx {
         void on_swallow_measured(int bsCount, uint64_t swallow_duration_us) override {
             int count = std::max(1, bsCount);
             uint64_t measured = (count == 1) ? swallow_duration_us : std::max<uint64_t>(swallow_duration_us / (count + 1), swallow_duration_us / 2);
-            measured = std::clamp<uint64_t>(measured, 1000, 250000);
+            measured = std::clamp<uint64_t>(measured, 1000, 300000);
             last_raw_measured_us_.store(measured, std::memory_order_release);
 
             uint64_t prev = last_measured_swallow_us_.load(std::memory_order_acquire);
             uint64_t adaptive = static_cast<uint64_t>(0.35 * static_cast<double>(measured) + 0.65 * static_cast<double>(prev));
-            adaptive = std::clamp<uint64_t>(adaptive, 1000, 250000);
+            adaptive = std::clamp<uint64_t>(adaptive, 1000, 300000);
             last_measured_swallow_us_.store(adaptive, std::memory_order_release);
             last_measured_ack_ms_.store(adaptive / 1000, std::memory_order_release);
 
@@ -82,7 +82,7 @@ namespace fcitx {
             double per_bs_us = std::max({min_per_bs_us, ema_swallow_us, raw_swallow_us});
 
             uint64_t total_us = static_cast<uint64_t>(base_us + static_cast<double>(count) * per_bs_us);
-            return std::clamp<uint64_t>(total_us, 1000, 250000);
+            return std::clamp<uint64_t>(total_us, 1000, 300000);
         }
 
         uint64_t get_last_measured_ack_ms() const override {
@@ -101,7 +101,7 @@ namespace fcitx {
         std::atomic<bool>     has_start_time_{false};
         std::chrono::steady_clock::time_point start_time_;
         uint64_t min_delay_ms_ = 5;
-        uint64_t max_ack_timeout_ms_ = 250;
+        uint64_t max_ack_timeout_ms_ = 300;
     };
 
 } // namespace fcitx

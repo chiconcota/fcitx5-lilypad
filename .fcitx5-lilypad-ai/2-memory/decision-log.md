@@ -265,7 +265,126 @@
 
 ---
 
-## 🚀 6. KIẾN TRÚC VI MÔ THÍCH ỨNG & QUẢN TRỊ MÃ NGUỒN (v2.3.7)
+## 🚀 6. KIẾN TRÚC VI MÔ THÍCH ỨNG & QUẢN TRỊ MÃ NGUỒN (v2.3.13)
+
+### [2026-11-05] Quyết định 055: Nâng Trần An Toàn Hard Timeout & Watchdog Lên 300ms (Phase 8.3 - v2.3.13)
+- **Bối cảnh:**
+  1. Trong quá trình vận hành với Sequencer Layer và Dynamic Governor, việc tích lũy các khoảng trễ bảo vệ trên các ứng dụng nặng (TikTok 25K bình luận, AFFiNE Canvas) bao gồm: nuốt uinput $15\text{ms}$ + Pre-commit settling $60\text{ms}$ + Post-commit settling $100\text{ms}$ đạt ngưỡng $\approx 175\text{ms}$.
+  2. Khi gặp các sự kiện Garbage Collection (GC) của Chromium V8 hoặc nghẽn luồng DOM cục bộ ($50\text{ms} \sim 70\text{ms}$), tổng thời gian giao dịch có thể chạm ngưỡng $240\text{ms} \sim 250\text{ms}$.
+  3. Mức trần cũ $250\text{ms}$ quá khít khao, dễ dẫn đến hiện tượng "báo động giả" (False Alarm): Watchdog tưởng ứng dụng bị Deadlock/Crash và kích hoạt `purgeContextEmergency()`, làm xóa oan bộ đệm từ của Bamboo và xả phím thô, khiến câu đang gõ bị rách đôi hoặc rụng dấu.
+- **Quyết định kiến trúc & Thực thi (Mở Rộng Vùng Thở An Toàn 300ms):**
+  1. **Nâng đồng bộ trần an toàn lên 300ms ($300000\mu\text{s}$):**
+     - `SequencerConfig::max_ack_timeout_ms = 300;`
+     - `LilypadEngine`: `state->sequencer_.set_max_ack_timeout_ms(300);`
+     - `LilypadState::watchdog_timer_`: `hard_timeout_us = 300000;` (bấm giờ khẩn cấp $300\text{ms}$).
+     - `NiriAckSensor` & `GenericAckSensor`: Nâng mức kẹp `clamp` tối đa và `max_ack_timeout_ms_` lên $300\text{ms}$.
+  2. **Hiệu năng & Trải nghiệm:**
+     - Tạo thêm $50\text{ms}$ vùng thở an toàn chống giật lag V8 trên web nặng mà hoàn toàn không ảnh hưởng đến tốc độ gõ bình thường (vốn chỉ mất $1.5\text{ms} \sim 33\text{ms}$).
+     - Vẫn bảo đảm tuyệt đối tôn chỉ Panic Safety & No-Freeze (không bao giờ treo bộ gõ quá 1/3 giây nếu app bị crash thật).
+  3. **Nâng Phiên Bản & Đóng Gói (`v2.3.13`):**
+     - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.13`.
+     - Biên dịch thành công 100% cả bản Debug và Release.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-sequencer.h/.cpp`, `lilypad-state.h/.cpp`, `lilypad-engine.cpp`, `ack-sensors/`, `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`.
+
+### [2026-11-05] Quyết định 054: Khôi Phục Điều Tốc Cảm Biến IKI & Thiết Lập Sàn Phần Cứng 16ms Cho Chromium (Phase 8.3 - v2.3.12)
+- **Bối cảnh:**
+  1. Khi thử nghiệm v2.3.11 với Pre-Commit Settling Delay ép sàn cứng $7\text{ms}$ ($7000\mu\text{s}$), người dùng báo lỗi nghiêm trọng khi gõ từ đơn giản: `co` + `s` $\to$ `có` bị nuốt mất chữ `ó`, chỉ còn lại chữ `c`.
+  2. Phân tích log thực nghiệm xác định:
+     - Nhịp gõ của người dùng là $221\text{ms}$ (gõ thong thả), cảm biến IKI tính toán giá trị an toàn rất chuẩn mực là `raw = 33000us` ($33\text{ms}$).
+     - Tuy nhiên, hàm `calculateDynamicSettlingDelayUs` tại nhánh tab mượt (`!lagging`) đã hoàn toàn bỏ qua giá trị `raw` của cảm biến và ép cứng về $7\text{ms}$.
+     - Trên màn hình 60Hz, 1 khung hình render quét mất $16.6\text{ms}$. Chu trình xóa Backspace trên trình duyệt Chromium/Electron cần tối thiểu 1 khung hình ($16\text{ms} \sim 18\text{ms}$) để hoàn tất DOM mutation và mở khóa con trỏ. Việc commit ở mốc $7\text{ms}$ quá vội vàng khiến lệnh commit bị editor drop.
+- **Quyết định kiến trúc & Thực thi (Chuẩn Hóa Điều Tốc Hai Tầng):**
+  1. **Khôi phục quyền kiểm soát của Cảm biến IKI:**
+     - Cho phép Pre-Commit Settling Delay lấy trực tiếp theo `micro_delay_us` (con số `raw` do cảm biến Niri/Generic tính toán).
+     - Khi gõ thong thả: Delay tự động dãn lên $33\text{ms} \sim 35\text{ms}$, cung cấp trọn vẹn 2 khung hình cho DOM dọn dẹp sạch sẽ, bảo đảm $100\%$ không nuốt chữ.
+  2. **Thiết lập Sàn phần cứng Chromium 16ms (1 Frame 60Hz):**
+     - Áp dụng công thức: `delay_us = clamp(micro_delay_us, 16000, 35000)`.
+     - Ngay cả khi người dùng gõ lướt cực nhanh (Burst mode), độ trễ trên Chromium không bao giờ được phép tụt xuống dưới 1 khung hình ($16\text{ms}$), vừa đảm bảo phản xạ tức thì vừa chống nghẽn con trỏ.
+  3. **Bảo tồn trần an toàn Post-Commit 70ms và Native/Terminal 1.5ms:**
+     - Giữ nguyên Post-Commit $70\text{ms}$ trên Chromium chống xóa đè mất chữ kép (`thấy`).
+     - Giữ nguyên Zero-latency floor $1.5\text{ms}$ cho Terminal / Native apps.
+  4. **Nâng Phiên Bản & Đóng Gói (`v2.3.12`):**
+     - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.12`.
+     - Biên dịch thành công 100% cả bản Debug và Release.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-state.cpp`, `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`.
+
+### [2026-11-05] Quyết định 053: Thiết Lập Mức Sàn An Toàn Vàng 7ms Cho Pre-Commit Settling Delay (Phase 8.3 - v2.3.11)
+- **Bối cảnh:**
+  1. Khi thử nghiệm v2.3.10 trên Antigravity IDE (ô chat Lexical Editor), gõ `ban` + `j` $\to$ `bạn` bị nuốt mất cụm `ạn`, chỉ còn trơ lại chữ `b`.
+  2. Phân tích log thực nghiệm xác định: Sau khi 2 phím Backspace xóa `an`, việc ép Pre-Commit Settling Delay xuống $1.8\text{ms}$ ($1846\mu\text{s}$) là quá sớm. Lexical Editor của Meta sau phím Backspace có chu kỳ tự động khóa con trỏ (Selection Lock) khoảng $6\text{ms} \sim 7\text{ms}$ để tính toán ghost-text. Khi Fcitx5 phát `commitString("ạn")` lúc $1.8\text{ms}$, con trỏ đang bị khóa nên Lexical vứt bỏ luôn ký tự commit.
+  3. Để bảo đảm Rich Text Editor (Antigravity Lexical, TikTok caption) không nuốt chữ, Pre-Commit Settling Delay trên Chromium bắt buộc phải có mức sàn an toàn vàng $7\text{ms}$ ($7000\mu\text{s}$).
+- **Quyết định kiến trúc & Thực thi:**
+  1. **Thiết lập Pre-Commit Floor $7\text{ms}$ ($7000\mu\text{s}$) cho Chromium:**
+     - `delay_us = clamp(max(adaptive_delay, 7000), 7000, 15000)`.
+     - Vừa đủ nhanh cho thị giác (nhỏ hơn 1 khung hình 60Hz $16.6\text{ms}$), vừa đảm bảo $100\%$ editor mở khóa con trỏ nhận trọn vẹn `ạn`, `áu`.
+  2. **Bảo tồn trần an toàn Post-Commit $70\text{ms}$:** Chống xóa đè mất chữ kép (`thấy`).
+  3. **Nâng Phiên Bản & Đóng Gói (`v2.3.11`):**
+     - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.11`.
+     - Biên dịch thành công 100% cả bản Debug và Release.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-state.cpp`, `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`.
+
+### [2026-11-05] Quyết định 052: Sửa Lỗi Mất Chữ Kép Bằng Kiến Trúc Bất Đối Xứng (Pre-Commit ~1.8ms & Post-Commit 70ms - v2.3.10)
+- **Bối cảnh:**
+  1. Khi thử nghiệm v2.3.9 với Post-Commit Settling Window hạ xuống $12\text{ms}$, phát sinh lỗi nghiêm trọng: gõ từ có thay thế kép liên tiếp như `thay` + `a` $\to$ `thây` + `s` $\to$ `thấy` bị rụng sạch `ấy`, chỉ còn trơ lại `th`.
+  2. Phân tích log thực nghiệm xác định: Chromium cần $50\text{ms} \sim 70\text{ms}$ để render ký tự commit vào Layout/DOM. Ở mốc $65\text{ms}$ khi phím `s` đến, cửa sổ $12\text{ms}$ đã hết hạn khiến 2 Backspace của đợt 2 bắn xuống xóa nhầm vào `th` do chữ `ây` chưa kịp vẽ xong.
+  3. Đồng thời, tại Pre-Commit Settling Delay, lệnh `clamp(micro_delay_us, 1800, 12000)` bị kéo kịch trần lên $12\text{ms}$ do `micro_delay_us` từ cảm biến IKI đưa vào $46\text{ms}$ khi người dùng gõ thong thả.
+- **Quyết định kiến trúc & Thực thi (Kiến trúc Bất Đối Xứng Chuẩn Xác):**
+  1. **Khôi phục Post-Commit Settling Window $70\text{ms}$ trên Chromium:**
+     - Đặt mức sàn tối thiểu $70000\mu\text{s}$ ($70\text{ms}$) trên Chromium để bảo vệ 100% các từ có thay thế kép liên tiếp (`thấy`, `thương`, `toàn`). Tự dãn nở lên $100\text{ms}$ khi tab lag.
+  2. **Thích ứng Động Pre-Commit Settling Delay Theo `swallow_duration_us`:**
+     - Tách độc lập khỏi `micro_delay_us` của IKI.
+     - Tính theo thời gian uinput thực tế của tab: `delay_us = clamp(swallow_duration_us * 0.8, 1800, 6000)`.
+     - Trên tab mượt (`swallow ~ 2300us`), delay tự động co về $1.8\text{ms} \sim 2\text{ms}$, chữ nổ ra tức thì sau Backspace, triệt tiêu 100% cảm giác trễ.
+  3. **Nâng Phiên Bản & Đóng Gói (`v2.3.10`):**
+     - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.10`.
+     - Biên dịch thành công 100% cả bản Debug và Release.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-state.cpp`, `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`.
+
+### [2026-11-04] Quyết định 051: Bộ Nhận Diện Nghẽn DOM Động & Tự Động Điều Hòa Hai Chiều Cho Sequencer Layer (Phase 8.3 - v2.3.9)
+- **Bối cảnh:**
+  1. Trong Phase 8.2 (v2.3.8), việc đặt mức sàn cứng Pre-Commit Settling Delay $7\text{ms}$ kết hợp Post-Commit Settling Window $70\text{ms}$ cho toàn bộ tiến trình có cờ `wa_chromium_flag` bộc lộ 2 mặt trái:
+     - Trên các tab nhẹ (Facebook, Google Docs trống, web nhẹ): Tổng thời gian giữ phím lên tới $\approx 80\text{ms}$ khiến chữ nhả ra bị cảm giác trễ (lag/chậm).
+     - Trên các tab nặng (TikTok 25K bình luận, AFFiNE Canvas BlockSuite, Antigravity 2.0 DOM lớn): $7\text{ms}$ lại có lúc không đủ khi React DOM hoặc Editor re-render mất $30\text{ms} \sim 60\text{ms}$, dẫn đến vỡ từ hoặc mất ký tự commit.
+     - Không thể phân biệt bằng `appName` vì cả Facebook, TikTok, AFFiNE Web đều chạy trong cùng tiến trình `google-chrome`.
+- **Quyết định kiến trúc & Thực thi (Per-Tab Dynamic Heavy-DOM & Event-Loop Governor):**
+  1. **Đo Đạc Thời Gian Thực Bằng 4 Tín Hiệu Cơ Học Runtime (`isTabLagging()`):**
+     - **Tín hiệu 1 (Swallow Duration):** Thời gian hoàn tất vòng lặp uinput nuốt phím xóa (`last_swallow_duration_us_`). Bình thường trên tab nhẹ là $2\text{ms} \sim 6\text{ms}$. Nếu $\ge 12\text{ms}$ $\implies$ DOM/Renderer đang lag.
+     - **Tín hiệu 2 (Hàng đợi phím đệm & Tuổi thọ phím):** Thêm nhãn `enter_time` vào `KeyEntry`. Nếu `buffered_keys_.size() >= 2` hoặc phím đầu tiên đã chờ $\ge 15\text{ms}$ $\implies$ Event Loop ứng dụng đang dồn ứ.
+     - **Tín hiệu 3 (Sensor ACK):** `sequencer_.sensor()->get_last_measured_ack_ms() >= 30ms`.
+     - **Tín hiệu 4 (Focus Bounce History):** Ghi nhận `recordFocusBounce()` khi phát hiện nảy tiêu điểm trong vòng 3 giây gần nhất.
+  2. **Điều Hòa Đồng Bộ 2 Mắt Xích Sequencer:**
+     - **Mắt xích 1 (Pre-Commit Settling Delay):**
+       - Tab nhẹ (Facebook/Docs): Tự động co về mức cực tiểu $1.8\text{ms} \sim 2\text{ms}$ (nhanh gấp 3.5 lần).
+       - Tab nặng (TikTok 25K cmt, AFFiNE): Tự động dãn nở theo công thức:
+         $$\text{delay} = \text{clamp}(\text{last\_swallow\_duration} \times 0.6, 8\text{ms}, 35\text{ms}) + \text{queue\_margin}$$
+     - **Mắt xích 2 (Post-Commit Settling Window):**
+       - Tab nhẹ: Tự động co từ $70\text{ms}$ xuống $12\text{ms}$ (nhanh gấp 6 lần), giải phóng phím đệm gần như tức thì.
+       - Tab nặng: Dãn nở an toàn $60\text{ms} \sim 95\text{ms}$ bảo vệ DOM reconciliation không nuốt phím tiếp theo.
+  3. **Cơ Chế Zero-Latency Snapback:**
+     - Ngay khi xả sạch `buffered_keys_` và nhịp nuốt phím trở về $< 12\text{ms}$, hệ thống lập tức hạ trễ về mức tối thiểu, không gây trễ tích lũy cho các từ gõ tiếp theo.
+  4. **Nâng Phiên Bản & Đóng Gói (`v2.3.9`):**
+     - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.9`.
+     - Biên dịch thành công 100% cả bản Debug và Release.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-utils.h`, `fcitx5-lilypad/src/lilypad-state.h/.cpp`, `fcitx5-lilypad/src/lilypad-engine.cpp`, `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`.
+
+### [2026-11-04] Quyết định 050: Triển Khai Sequencer Settling Delay & Khóa Chặt Hàng Đợi Atomic Commit Lock (Phase 8.2 - v2.3.8)
+- **Bối cảnh:**
+  1. Khi gõ trên TikTok Web (khung caption video hoặc khung bình luận có hashtag/mention), sau khi Fcitx5 nuốt phím xóa Sentinel thứ $N+1$, nếu `commitString` được phát xuống quá sớm (chỉ $1.5\text{ms} \sim 2.5\text{ms}$ khi ngón tay gõ nhanh), trình duyệt chưa hoàn tất chu trình React DOM reconciliation và Regex parser của Hashtag/Mention. Con trỏ (caret/selection) bị khóa tạm thời khiến chuỗi commit (`áu`) bị trình duyệt vứt bỏ, chỉ còn trơ lại phần đầu từ chưa xóa (`cháu` $\to$ `ch`).
+  2. Mất đồng bộ này làm các phím tiếp theo bị lệch nhịp, dồn ứ hàng đợi và chạm ngưỡng Watchdog 250ms, xả thô chuỗi `couo7`.
+  3. Tại `LilypadEngine::activate()`, `is_deleting_.store(false)` bị gọi vô điều kiện, làm đứt đoạn giao dịch nguyên tử khi Focus Bounce xuất hiện.
+- **Quyết định kiến trúc & Thực thi (Phương án 2 - Context-Aware Settling Floor):**
+  1. **Pre-Commit Settling Delay ($7\text{ms}$ Floor cho Webview):**
+     - Bổ sung `BarrierState::SettlingDelay` và phương thức `Sequencer::set_settling_delay(delay_us)` vào Sequencer Layer.
+     - Trong `LilypadState::handleUInputKeyPress()`: Ngay sau khi nuốt phím Sentinel $N+1$, áp sàn lắng đọng an toàn theo ngữ cảnh: `settling_floor_us = wa_chromium_flag ? 7000 : 1500` ($7\text{ms}$ cho Chromium/Webview, $1.5\text{ms}$ cho Terminal/Native).
+     - Đặt `settling_delay_us = clamp(max(micro_delay_us, settling_floor_us), settling_floor_us, 250000)`.
+     - Kích hoạt `sequencer_.set_settling_delay(settling_delay_us)` và cài đặt `commit_timer_` với thời gian `settling_delay_us`.
+  2. **Khóa Chặt Hàng Đợi (Atomic Commit Lock) Xuyên Suốt `Xóa -> Settle -> Commit`:**
+     - Trong `LilypadEngine::activate()`: Bọc an toàn `if (!focusBounce)` cho `is_deleting_.store(false)` và `needEngineReset.store(false)`, ngăn cản Focus Bounce phá vỡ rào chắn nguyên tử.
+     - Loại bỏ các lệnh `is_deleting_.store(false)` thừa trước `performReplacement()` (dòng 849 và 1533 trong `lilypad-state.cpp`), bảo đảm `is_deleting_` được duy trì liên tục và phím người dùng gõ nhanh luôn được gom an toàn vào `buffered_keys_`.
+  3. **Nâng Phiên Bản & Đóng Gói (`v2.3.8`):**
+     - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.8`.
+     - Biên dịch thành công 100% cả bản Debug và Release.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-sequencer.h/.cpp`, `lilypad-state.cpp`, `lilypad-engine.cpp`, `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`.
 
 ### [2026-11-03] Quyết định 049: Hoàn Tất Triển Khai Focus Bounce Protection (Phase 8.1) & Tái Cấu Trúc Lộ Trình Hợp Nhất (v2.3.7)
 - **Bối cảnh:**

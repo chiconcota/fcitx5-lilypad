@@ -460,6 +460,7 @@ namespace fcitx {
                                 std::chrono::duration_cast<std::chrono::microseconds>(swallow_now - uinput_send_time_).count()
                             );
                         }
+                        last_swallow_duration_us_ = swallow_duration_us;
 
                         MicroStep step;
                         if (sequencer_.poll_next_step(step) && step.type == MicroStepType::CommitString) {
@@ -473,10 +474,14 @@ namespace fcitx {
 
                             uint64_t current_iki = (iki_sensor_ && *engine_->config().enableIkiAdaptive) ? iki_sensor_->get_ema_iki_ms() : 0;
                             uint64_t micro_delay_us = sequencer_.sensor() ? sequencer_.sensor()->get_micro_delay_us(bsCount, current_iki) : (6000 + static_cast<uint64_t>(bsCount * 4000));
-                            micro_delay_us = std::min<uint64_t>(micro_delay_us, 250000);
 
-                            LILYPAD_INFO("⚡ [DYNAMIC MICRO-PACING] Delay: " + std::to_string(micro_delay_us) + "us (swallow=" + std::to_string(swallow_duration_us) + "us, bsCount=" + std::to_string(bsCount) + ", EMA IKI=" + std::to_string(current_iki) + "ms)");
-                            auto  timeout_time = now_time + micro_delay_us;
+                            // Phase 8.3: Dynamic Heavy-DOM & Per-Tab Governor
+                            uint64_t settling_delay_us = calculateDynamicSettlingDelayUs(micro_delay_us, swallow_duration_us);
+
+                            sequencer_.set_settling_delay(settling_delay_us);
+
+                            LILYPAD_INFO("⚡ [SEQUENCER SETTLING DELAY] Delay: " + std::to_string(settling_delay_us) + "us (raw=" + std::to_string(micro_delay_us) + "us, swallow=" + std::to_string(swallow_duration_us) + "us, bsCount=" + std::to_string(bsCount) + ", EMA IKI=" + std::to_string(current_iki) + "ms, wa_chromium=" + std::to_string(wa_chromium_flag) + ")");
+                            auto  timeout_time = now_time + settling_delay_us;
                             std::string commitStr = step.text;
                             uint32_t serial = step.serial;
                             commit_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, timeout_time, 1, [this, commitStr, serial](EventSourceTime*, uint64_t) {
@@ -487,18 +492,8 @@ namespace fcitx {
                                 LILYPAD_INFO("Commit (Sequence Mode): " + commitStr);
                                 sequencer_.receive_ack(serial);
 
-                                // Post-Commit Settling Window:
-                                // Webview/Chromium apps (wa_chromium_flag) update DOM asynchronously (~50-70ms).
-                                // We keep is_deleting_ = true during this settling window so fast subsequent
-                                // keystrokes (like 'n' in 'thương') are safely held in buffered_keys_ in RAM.
-                                // This prevents premature micro-replacement backspaces from erasing preceding letters.
-                                uint64_t settle_delay_us = wa_chromium_flag ? 70000 : 300;
-                                if (!buffered_keys_.empty()) {
-                                    bool isSpace = (buffered_keys_.front().sym == ' ' || Key::keySymToUTF8(static_cast<KeySym>(buffered_keys_.front().sym)) == " ");
-                                    if (isSpace && settle_delay_us < 3000) {
-                                        settle_delay_us = 3000;
-                                    }
-                                }
+                                // Phase 8.3: Dynamic Post-Commit Settling Window (Per-Tab Adaptive Control)
+                                uint64_t settle_delay_us = calculateDynamicPostSettlingUs();
 
                                 LILYPAD_INFO("⏳ [POST-COMMIT SETTLING] Holding is_deleting_ for " + std::to_string(settle_delay_us) + "us (wa_chromium=" + std::to_string(wa_chromium_flag) + ")");
                                 auto& loop = engine_->instance()->eventLoop();
@@ -598,10 +593,10 @@ namespace fcitx {
             current_backspace_count_ = 0;
             is_deleting_.store(true, std::memory_order_release);
 
-            // Arm Hard Timeout Watchdog (Unified 250ms for all apps)
+            // Arm Hard Timeout Watchdog (Unified 300ms for all apps)
             auto& eventLoop = engine_->instance()->eventLoop();
             auto  now_time  = ::fcitx::now(CLOCK_MONOTONIC);
-            uint64_t hard_timeout_us = 250000;
+            uint64_t hard_timeout_us = 300000;
             auto  hard_timeout_time = now_time + hard_timeout_us;
             watchdog_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, hard_timeout_time, 1000, [this, hard_timeout_us](EventSourceTime*, uint64_t) {
                 if (is_deleting_.load(std::memory_order_acquire)) {
@@ -833,10 +828,6 @@ namespace fcitx {
                         ic_->commitString(rawKey);
                     }
                     return;
-                }
-
-                if (is_deleting_.load()) {
-                    is_deleting_.store(false, std::memory_order_release);
                 }
 
                 if (!wa_chromium_flag)
@@ -1202,7 +1193,7 @@ namespace fcitx {
         if (is_deleting_.load(std::memory_order_acquire)) {
             if (realMode == LilypadMode::Sequence) {
                 if (sequencer_.is_hard_timeout()) {
-                    LILYPAD_WARN("⚠️ [HARD TIMEOUT TRIGGERED] Elapsed time exceeded 250ms during keyEvent. Purging emergency!");
+                    LILYPAD_WARN("⚠️ [HARD TIMEOUT TRIGGERED] Elapsed time exceeded 300ms during keyEvent. Purging emergency!");
                     purgeContextEmergency();
                     processNormalKey(keyEvent, currentSym);
                     return;
@@ -1380,6 +1371,132 @@ namespace fcitx {
         deferredFocusOut_ = false;
     }
 
+    void LilypadState::recordFocusBounce() {
+        last_focus_bounce_time_ = std::chrono::steady_clock::now();
+        has_recent_focus_bounce_ = true;
+        LILYPAD_INFO("🎯 [DYNAMIC GOVERNOR] Recorded Focus Bounce event for context");
+    }
+
+    bool LilypadState::isTabLagging() const {
+        if (!wa_chromium_flag) {
+            return false;
+        }
+        auto now = std::chrono::steady_clock::now();
+
+        // Signal 1: Key queue pressure in RAM
+        if (!buffered_keys_.empty()) {
+            auto key_wait_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - buffered_keys_.front().enter_time
+            ).count();
+            if (key_wait_ms >= 15 || buffered_keys_.size() >= 2) {
+                return true;
+            }
+        }
+
+        // Signal 2: Measured swallow duration of uinput backspace loop
+        // Normal swallow on light tab is ~2ms - 6ms. If >= 12ms, DOM/renderer is lagging.
+        if (last_swallow_duration_us_ >= 12000) {
+            return true;
+        }
+
+        // Signal 3: Measured App ACK from sequencer sensor
+        if (sequencer_.sensor() && sequencer_.sensor()->get_last_measured_ack_ms() >= 30) {
+            return true;
+        }
+
+        // Signal 4: Recent focus bounce within last 3 seconds
+        if (has_recent_focus_bounce_) {
+            auto bounce_elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - last_focus_bounce_time_
+            ).count();
+            if (bounce_elapsed_ms < 3000) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    uint64_t LilypadState::calculateDynamicSettlingDelayUs(uint64_t micro_delay_us, uint64_t swallow_duration_us) {
+        if (!wa_chromium_flag) {
+            return 1500; // Zero-latency floor for native / terminal apps
+        }
+
+        bool lagging = isTabLagging();
+        if (!lagging) {
+            // Smooth Chromium Tab (Facebook, Docs, Antigravity IDE, Discord, etc.)
+            // Respect Sensor's micro_delay_us while enforcing 16ms (1 full 60Hz frame) hardware floor.
+            // When typing relaxed (e.g. IKI 220ms), delay scales naturally to ~33ms (2 frames), giving
+            // Chromium and rich editors plenty of time to clear DOM and unlock selection caret.
+            // When typing burst speed (e.g. IKI <= 50ms), delay clamps at 16ms for instant response.
+            uint64_t delay_us = std::clamp<uint64_t>(micro_delay_us, 16000, 35000);
+            LILYPAD_INFO("⚡ [DYNAMIC GOVERNOR] Smooth Tab detected (16ms Hardware Floor & Sensor Pacing) -> Pre-commit Settling Delay: " +
+                         std::to_string(delay_us) + "us (raw=" + std::to_string(micro_delay_us) +
+                         "us, swallow=" + std::to_string(swallow_duration_us) + "us)");
+            return delay_us;
+        }
+
+        // Heavy-DOM / Lagging Tab (TikTok 25K comments, AFFiNE Canvas, heavy rich text)
+        // Dynamic expansion: Scale based on measured swallow duration and queue pressure
+        uint64_t dynamic_floor_us = std::clamp<uint64_t>(
+            (swallow_duration_us > 0) ? (swallow_duration_us * 8 / 10) : 16000,
+            16000,
+            35000
+        );
+
+        // Queue pressure bonus: If keys are queuing in RAM, add safety margin
+        if (!buffered_keys_.empty()) {
+            dynamic_floor_us += std::min<uint64_t>(buffered_keys_.size() * 4000, 20000);
+        }
+
+        uint64_t delay_us = std::clamp<uint64_t>(
+            std::max(micro_delay_us, dynamic_floor_us),
+            dynamic_floor_us,
+            100000
+        );
+
+        LILYPAD_INFO("⏳ [DYNAMIC GOVERNOR] Heavy DOM / Lagging Tab detected -> Dynamic Settling Delay: " +
+                     std::to_string(delay_us) + "us (dynamic_floor=" + std::to_string(dynamic_floor_us) +
+                     "us, swallow=" + std::to_string(swallow_duration_us) + "us, queue=" +
+                     std::to_string(buffered_keys_.size()) + ")");
+        return delay_us;
+    }
+
+    uint64_t LilypadState::calculateDynamicPostSettlingUs() const {
+        if (!wa_chromium_flag) {
+            return 300; // Ultra-fast 0.3ms for Terminal / Qt / Native apps
+        }
+
+        bool lagging = isTabLagging();
+        uint64_t settle_delay_us = 0;
+
+        if (!lagging) {
+            // Smooth Tab (Facebook, Docs):
+            // Chromium multi-process rendering pipeline requires ~65ms - 70ms to commit characters into the DOM tree.
+            // Keeping is_deleting_ = true for 70ms safely buffers subsequent fast keystrokes in RAM
+            // to prevent chained replacements (e.g. 'thay' -> 'thây' -> 'thấy') from corrupting DOM.
+            settle_delay_us = 70000;
+        } else {
+            // Heavy DOM (TikTok 25K cmt, AFFiNE):
+            // Scale dynamically up to 100ms based on measured lag
+            uint64_t scaled = (last_swallow_duration_us_ > 0) ? (last_swallow_duration_us_ * 12 / 10) : 70000;
+            settle_delay_us = std::clamp<uint64_t>(scaled, 70000, 100000);
+        }
+
+        // Batch Replay protection: Nếu phím đầu tiên trong hàng đợi là Space, đảm bảo tối thiểu 3ms
+        if (!buffered_keys_.empty()) {
+            bool isSpace = (buffered_keys_.front().sym == ' ' || Key::keySymToUTF8(static_cast<KeySym>(buffered_keys_.front().sym)) == " ");
+            if (isSpace && settle_delay_us < 3000) {
+                settle_delay_us = 3000;
+            }
+        }
+
+        LILYPAD_INFO("⏳ [DYNAMIC GOVERNOR] Post-Commit Settling Window: " + std::to_string(settle_delay_us) +
+                     "us (lagging=" + std::to_string(lagging) + ", swallow=" + std::to_string(last_swallow_duration_us_) +
+                     "us, queue=" + std::to_string(buffered_keys_.size()) + ")");
+        return settle_delay_us;
+    }
+
     void LilypadState::commitBuffer() {
         switch (realMode) {
             case LilypadMode::Preedit: {
@@ -1523,10 +1640,6 @@ namespace fcitx {
                         continue;
                     }
 
-                    if (is_deleting_.load()) {
-                        is_deleting_.store(false, std::memory_order_release);
-                    }
-
                     // Re-buffer remaining keys for next replay cycle.
                     for (size_t j = i + 1; j < keys.size(); ++j) {
                         if (buffered_keys_.size() < MAX_BUFFERED_KEYS) {
@@ -1543,7 +1656,7 @@ namespace fcitx {
     }
 
     void LilypadState::purgeContextEmergency() {
-        LILYPAD_WARN("⚠️ [HARD TIMEOUT EMERGENCY] App freeze / Timeout (>250ms). Purging state & flushing buffered keys.");
+        LILYPAD_WARN("⚠️ [HARD TIMEOUT EMERGENCY] App freeze / Timeout (>300ms). Purging state & flushing buffered keys.");
         if (watchdog_timer_) {
             watchdog_timer_.reset();
         }

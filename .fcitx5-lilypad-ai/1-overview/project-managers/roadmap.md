@@ -98,21 +98,53 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
     - Nếu $\Delta t \ge 100\text{ms}$ (Người dùng chuyển ứng dụng thật): Thực thi xả nợ xóa (`flush_deferred_focus_out()`), làm sạch bộ đệm an toàn.
   - [x] Đảo ngược điều kiện lỗi `< 100` thành `>= 100` tại `activate()`. Nâng phiên bản lên `v2.3.7`.
 
-- [ ] **Phase 8.2: Sequencer Settling Delay & Khóa Chặt Hàng Đợi (Atomic Commit Lock) — *Ưu tiên số 1 phiên sau*:**
-  - [ ] Thêm khoảng nghỉ lắng đọng `settling_delay_us = 6000 ~ 8000` ($6\text{ms} \sim 8\text{ms}$) vào Sequencer giữa nhịp phát phím Backspace cuối cùng và nhịp phát lệnh Commit.
-  - [ ] Khóa cứng hàng đợi Sequencer (`is_deleting_ / lock`) trong toàn bộ chu trình Xóa $\to$ Settle $\to$ Commit để bảo đảm tính nguyên tử (Atomic Transaction).
-  - [ ] Cho phép luồng xử lý sự kiện của ứng dụng (DOM reconciliation / Hashtag & Mention parser của TikTok) ổn định vị trí con trỏ trước khi ký tự commit mới đáp xuống, khắc phục lỗi rụng dấu vỡ từ `couo7`.
+- [x] **Phase 8.2: Sequencer Settling Delay & Khóa Chặt Hàng Đợi (Atomic Commit Lock) (Hoàn tất - v2.3.8):**
+  - [x] Thêm khoảng nghỉ lắng đọng `settling_delay_us = 6000 ~ 8000` ($7\text{ms}$ context-aware floor) vào Sequencer giữa nhịp phát phím Backspace cuối cùng và nhịp phát lệnh Commit.
+  - [x] Bổ sung trạng thái `BarrierState::SettlingDelay` và phương thức `Sequencer::set_settling_delay()`.
+  - [x] Khóa cứng hàng đợi Sequencer (`is_deleting_ / lock`) trong toàn bộ chu trình Xóa $\to$ Settle $\to$ Commit để bảo đảm tính nguyên tử (Atomic Transaction), bọc an toàn `if (!focusBounce)` tại `activate()` và loại bỏ ngắt cờ xóa sớm.
+  - [x] Cho phép luồng xử lý sự kiện của ứng dụng (DOM reconciliation / Hashtag & Mention parser của TikTok) ổn định vị trí con trỏ trước khi ký tự commit mới đáp xuống, triệt tiêu lỗi nuốt commit `cháu` $\to$ `ch`.
 
-- [ ] **Phase 8.3: Bộ Nhận Diện Nghẽn DOM Động & Tự Động Điều Hòa $T_{\text{render}}$ (Dynamic Heavy-DOM Governor) — *Ưu tiên số 2 phiên sau*:**
-  - [ ] Gắn nhãn mốc thời gian cho phím đệm: `KeyEntry::enter_time`.
-  - [ ] Triển khai bộ nhận diện lag bằng 4 trụ cột cơ học:
-    1. **Tuổi thọ phím bị giam trong RAM:** $\text{Age} = \text{now} - \text{enter\_time} \ge 40\text{ms} \sim 50\text{ms}$.
-    2. **Thời gian rào chắn bị giam giữ:** $\Delta t_{\text{locked}} = \text{now} - uinput\_send\_time\_ \ge 40\text{ms}$.
-    3. **Độ sâu tích tụ hàng đợi:** `buffered_keys_.size() >= 2` (phím dồn ứ do DOM không kịp xả).
-    4. **Tương quan ngón tay & rào chắn:** `(is_deleting_ && current_iki >= 50ms)`.
-  - [ ] Tự động điều hòa Settling Delay:
-    - Khi `is_app_lagging == true` (TikTok 25K bình luận): Tự động dãn Settling Window lên mức an toàn ($70\text{ms} \sim 100\text{ms}$) cho đến khi xả sạch hàng đợi.
-    - Khi `is_app_lagging == false` (Terminal, App mượt, hoặc khi App đã hạ nhiệt): Co Settling Window về $0\text{ms} \sim 1\text{ms}$, trả lại tốc độ bàn thờ Zero-Latency.
+- [x] **Phase 8.3: Bộ Nhận Diện Nghẽn DOM Động & Tự Động Điều Hòa Hai Chiều Cho Sequencer Layer (Per-Tab Dynamic Heavy-DOM & Event-Loop Governor) (Hoàn tất triển khai mã nguồn - v2.3.9):**
+  - **Bối cảnh & Vấn đề thực tế (Bài học từ v2.3.8):**
+    - Mức sàn cố định $7\text{ms}$ Pre-Commit Settling Delay kết hợp $70\text{ms}$ Post-Commit Settling Window trên Chromium khiến các tab nhẹ (Facebook, Google Docs trống) bị giam phím tổng cộng $\approx 80\text{ms}$, gây cảm giác chữ nhả ra chậm.
+    - Ngược lại, trên các tab nặng (TikTok 25K bình luận, AFFiNE Canvas BlockSuite, Antigravity 2.0 DOM lớn), $7\text{ms}$ vẫn không đủ khi React DOM hoặc Editor re-render mất $30\text{ms} \sim 60\text{ms}$.
+    - Không thể phân biệt bằng `appName` vì cả Facebook, TikTok, AFFiNE Web đều chạy trong cùng tiến trình `google-chrome`. Do đó, cần cơ chế đo tải động theo từng tab thời gian thực (Per-Tab Real-time Adaptive Control).
+  - **4 Tín Hiệu Cơ Học Nhận Diện Tải Tại Runtime (Per-Context Mechanical Signals):**
+    1. **Tín hiệu 1 — Measured App ACK Latency (`last_measured_ack_ms_`):**
+       - Phản ánh trực tiếp tốc độ tiêu hóa phím của tab hiện tại.
+       - Tab nhẹ (Facebook/Docs): $\text{ACK} \le 15\text{ms} \sim 20\text{ms}$.
+       - Tab nặng (TikTok 25K cmt, AFFiNE): $\text{ACK}$ vọt lên $40\text{ms} \sim 70\text{ms}$ (thực tế đo được $60\text{ms}$).
+    2. **Tín hiệu 2 — Áp Lực Hàng Đợi Phím Đệm (`buffered_keys_.size()` & `KeyEntry::enter_time`):**
+       - `buffered_keys_.empty()` $\implies$ App bắt kịp tốc độ ngón tay, không nghẽn luồng.
+       - `buffered_keys_.size() \ge 1` và phím bị giam $\ge 25\text{ms} \sim 30\text{ms}$ $\implies$ Event Loop/DOM của app đang bị dồn ứ, chậm hơn tốc độ ngón tay.
+    3. **Tín hiệu 3 — Tốc Độ Vòng Lặp Nuốt Phím (`swallow_duration_us`):**
+       - Thời gian từ lúc uinput phát chuỗi xóa đến khi Fcitx5 nuốt xong toàn bộ Backspace dội về.
+    4. **Tín hiệu 4 — Tần Suất Nảy Tiêu Điểm Ảo (Focus Bounce Occurrences):**
+       - Đánh dấu các editor có cơ chế DOM reconciliation giật cục (TikTok, Slate, Lexical).
+  - **Cơ Chế Điều Hòa Đồng Bộ 2 Mắt Xích Sequencer:**
+    - **Mắt xích 1: Pre-Commit Settling Delay (`settling_delay_us`) trong Sequencer:**
+      - *Tab Mượt (Zero-Latency Mode - Facebook, Google Docs, Terminal):* Tự động co về mức cực tiểu $1.8\text{ms} \sim 2\text{ms}$ (hoặc $1.5\text{ms}$ cho non-Chromium). Chữ xuất hiện tức thì, triệt tiêu hoàn toàn cảm giác nhả chữ chậm.
+      - *Tab Lag / Heavy-DOM (Adaptive Pacing Mode - TikTok, AFFiNE, Antigravity):* Tự động dãn nở theo công thức thích ứng:
+        $$\text{settling\_delay\_us} = \text{clamp}(\text{last\_swallow\_duration} \times 0.6, 8\text{ms}, 35\text{ms})$$
+        Nếu hàng đợi có phím chờ (`buffered_keys_.size() \ge 1`), tự động cộng thêm buffer margin $+4\text{ms} \sim 15\text{ms}$ để bảo vệ tuyệt đối vị trí con trỏ DOM.
+    - **Mắt xích 2: Post-Commit Settling Window (`settle_timer_` / `is_deleting_` hold duration):**
+      - *Tab Mượt:* Tự động co từ $70\text{ms}$ xuống $12\text{ms}$, giải phóng hàng đợi phím ngay khi ký tự commit đã an tọa (nhanh gấp 6 lần).
+      - *Tab Lag:* Dãn nở động lên $60\text{ms} \sim 95\text{ms}$ tương ứng với độ trễ DOM, bảo vệ vòng lặp `deleteSurroundingText` không nuốt phím tiếp theo.
+    - **Cơ Chế Snapback Tức Thì (Zero-Latency Snapback):**
+      - Ngay khi hàng đợi phím được xả sạch (`buffered_keys_.empty()`) và nhịp ACK/swallow trở về mức bình thường ($\le 12\text{ms}$), toàn bộ hệ số trễ lập tức hạ về mức tối thiểu, không gây trễ dư thừa cho các từ tiếp theo.
+  - **Các Bước Triển Khai Cụ Thể (Sub-tasks):**
+    - [x] **Phase 8.3.1:** Thêm nhãn thời gian `enter_time` cho `KeyEntry` và trường theo dõi tải động trong `LilypadState` (`last_swallow_duration_us_`, `last_focus_bounce_time_`, `has_recent_focus_bounce_`).
+    - [x] **Phase 8.3.2:** Xây dựng các hàm tính toán trễ động hai chiều: `isTabLagging()`, `calculateDynamicSettlingDelayUs()` và `calculateDynamicPostSettlingUs()`.
+    - [x] **Phase 8.3.3:** Liên kết bộ tính trễ động vào `Sequencer::set_settling_delay()` và callback của `commit_timer_` / `settle_timer_` trong `lilypad-state.cpp`.
+    - [x] **Phase 8.3.4:** Triển khai cơ chế Snapback tức thì giải phóng ngay độ trễ khi hàng đợi rỗng.
+    - [x] **Phase 8.3.5:** Khắc phục lỗi nuốt chữ Rich-Text & Thay thế kép liên tiếp (v2.3.11 - v2.3.13):
+      * Khôi phục điều tốc cảm biến IKI `micro_delay_us` (tự dãn $33\text{ms} \sim 35\text{ms}$ khi gõ thong thả) kết hợp sàn phần cứng $16\text{ms}$ ($16000\mu\text{s}$ - 1 khung hình 60Hz) trên Chromium (v2.3.12 - sửa dứt điểm lỗi nuốt chữ `có` $\to$ `c`, `bạn` $\to$ `b`).
+      * Khôi phục mức sàn an toàn $70\text{ms}$ cho Post-Commit Settling Window trên Chromium (bảo vệ 100% các từ thay thế kép liên tiếp `thấy`, `thương`).
+      * Nâng trần an toàn Hard Timeout Watchdog & Sequencer Max ACK từ $250\text{ms}$ lên $300\text{ms}$ (v2.3.13 - chống false alarm khi Chromium V8 GC lag trên web nặng).
+    - [ ] **Phase 8.3.6:** Swallow Safety Timer (Bộ Cứu Hộ Nuốt Phím Rơi 20ms - 25ms):
+      * Giải quyết ca Compositor làm rơi phím Sentinel khi trình duyệt bị Focus Bounce (từ `thương` + `r` $\to$ `thưởng`).
+      * Nếu đã nuốt được $\ge N$ phím mà phím Sentinel quá $20\text{ms}$ chưa về $\implies$ Tự động commit ngay ký tự mới thay vì chờ $300\text{ms}$ Watchdog.
+    - [ ] **Phase 8.3.7:** Kiểm thử thực tế đối chứng toàn diện (Antigravity IDE, Facebook, TikTok 25K, AFFiNE).
 
 - [ ] **Phase 8.4: Thay Thế Sentinel Backspace (N+1) Bằng Hardware Barrier Key (`KEY_PAUSE` / `KEY_F24`):**
   - [ ] Khai tử phím Backspace thứ $N+1$ (nguồn gốc tiềm ẩn gây xóa lẹm vào lệnh Terminal và văn bản web khi có glitch).

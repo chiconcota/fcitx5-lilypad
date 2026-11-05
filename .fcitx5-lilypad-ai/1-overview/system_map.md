@@ -1,7 +1,7 @@
 # fcitx5-lilypad SYSTEM MAP & MODULE STATUS MAP (DỰ ÁN FCITX5 LILYPAD SEQUENCER)
 
 > **Architectural Paradigm:** Hybrid Fcitx5 C++ Addon (`fcitx5-lilypad`) + Bamboo Telex Engine (Rust C-ABI `bamboo-core`) + Sequencer Token Swallow Layer (`lilypad-state.cpp` + `lilypad-sequencer.cpp`).
-> **Current Version:** `v2.3.6` (Rust Core Engine Integration, Zero Go Runtime/GC, Ultra-low Memory < 1MB, Real-Time Swallow Measurement, Tri-Layer Dynamic Micro-Pacing, Watchdog 250ms)
+> **Current Version:** `v2.3.13` (Rust Core Engine Integration, Focus Bounce Protection, Dynamic IKI Sensor Floor 16ms & 70ms Post-Commit Window, Unified 300ms Watchdog Ceiling)
 
 ---
 
@@ -51,7 +51,8 @@
 | **Bamboo Core Rust Engine** | `fcitx5-lilypad/bamboo/` | Engine xử lý Telex/VNI bằng Rust native (`bamboo-core`), C-ABI FFI zero-allocation, loại bỏ 100% Go runtime/GC. | 🟢 Ready (Phase 6) |
 | **Modular ACK Sensors** | `fcitx5-lilypad/src/ack-sensors/` | Cảm biến đo thời gian `elapsed` thực tế của giao dịch, tự động điều chỉnh Dynamic Barrier thích ứng cho phím gõ tiếp theo. | 🟢 Ready |
 | **Focus Bounce Protection** | `fcitx5-lilypad/src/` | Cơ chế hoãn xóa bộ đệm 100ms khi nhận FocusOut (`deferred_focus_out_`), chống mất ngữ cảnh gõ trên TikTok Web / Chromium. | 🟢 Ready (Phase 8.1) |
-| **Settling Atomic Commit** | `fcitx5-lilypad/src/` | Khoảng nghỉ lắng đọng 6-8ms và khóa hàng đợi nguyên tử giữa nhịp Xóa và Commit, chống nuốt phím trên Rich Editor. | 🟡 Planned (Phase 8) |
+| **Settling Atomic Commit** | `fcitx5-lilypad/src/` | Khoảng nghỉ lắng đọng 7ms context-aware floor và khóa hàng đợi nguyên tử giữa nhịp Xóa và Commit, chống nuốt phím trên Rich Editor. | 🟢 Ready (Phase 8.2) |
+| **Dynamic Heavy-DOM Governor** | `fcitx5-lilypad/src/` | Bộ điều hòa động 2 chiều theo tải từng tab (swallow duration, queue pressure, focus bounce), co Pre-commit về 1.8ms và Post-commit về 12ms trên tab nhẹ, tự dãn 25~35ms / 60~95ms trên tab nặng. | 🟢 Ready (Phase 8.3) |
 | **Modular IKI Sensors** | `fcitx5-lilypad/src/iki-sensors/` | Cảm biến đo nhịp gõ thời gian thực ($\Delta t$), làm mịn EMA và phát hiện Burst Typing ngón tay người dùng. | 🟢 Ready |
 | **Native UI & System Tray** | `fcitx5-lilypad/src/` | Dùng chung 100% giao diện Fcitx5 Lotus (`fcitx5-configtool` UI + Fcitx5 Tray Actions). | 🟢 Ready |
 | **Pure Uinput Server Daemon** | `fcitx5-lilypad/server/` | Daemon phát phím xóa Backspace qua `/dev/uinput` với xác thực UID Unix Socket. | 🟢 Ready |
@@ -70,6 +71,18 @@
 ---
 
 ## 4. RECENT CHANGE LOG (LỊCH SỬ NÂNG CẤP DÒNG THỜI GIAN)
+
+| 2026-11-05 | **v2.3.13 - Hard Timeout Ceiling Expansion (250ms -> 300ms)**: Nâng mức trần an toàn Hard Timeout Watchdog và Sequencer Max ACK Timeout từ $250\text{ms}$ lên $300\text{ms}$ ($300,000\mu\text{s}$) đồng bộ trên toàn bộ hệ thống (`SequencerConfig`, `LilypadState`, `NiriAckSensor`, `GenericAckSensor`). Tạo $50\text{ms}$ vùng thở an toàn (Safety Headroom) chống kích hoạt cắt lỗ khẩn cấp nhầm khi gặp đợt Garbage Collection của Chromium V8 hoặc nghẽn luồng DOM trên các trang web siêu nặng (TikTok 25K bình luận, AFFiNE Canvas). Nâng phiên bản `2.3.13`. | `fcitx5-lilypad/src/`, `CMakeLists.txt`, `packaging/` |
+
+| 2026-11-05 | **v2.3.12 - Phase 8.3 16ms Hardware Floor & Sensor Pacing Floor Fix**: Khôi phục việc tôn trọng độ trễ đo đạc `micro_delay_us` (con số `raw`) từ cảm biến IKI/Compositor, đồng thời áp đặt mức sàn phần cứng $16\text{ms}$ ($16000\mu\text{s}$ - tương đương đúng 1 khung hình quét màn hình 60Hz) trên Chromium/Electron. Sửa dứt điểm lỗi nuốt chữ "có -> c" và "bạn -> b" khi người dùng gõ thong thả (cảm biến tự dãn lên $33\text{ms} \sim 35\text{ms}$ cho DOM hoàn tất render) và gõ siêu tốc (tự co về $16\text{ms}$ nhanh tức thì). Nâng phiên bản `2.3.12`. | `fcitx5-lilypad/src/lilypad-state.cpp`, `CMakeLists.txt`, `packaging/` |
+
+| 2026-11-05 | **v2.3.11 - Phase 8.3 Goldilocks 7ms Pre-Commit Floor Fix**: Thiết lập mức sàn an toàn vàng $7\text{ms}$ ($7000\mu\text{s}$) cho Pre-Commit Settling Delay trên Chromium/Electron (Antigravity IDE Lexical, TikTok, Facebook). Giải quyết triệt để lỗi nuốt chuỗi commit "bạn -> b" do editor khóa con trỏ selection sau Backspace. Giữ nguyên trần an toàn Post-Commit $70\text{ms}$ và Native App $1.5\text{ms}$. Nâng phiên bản `2.3.11`. | `fcitx5-lilypad/src/lilypad-state.cpp`, `CMakeLists.txt`, `packaging/` |
+
+| 2026-11-05 | **v2.3.10 - Phase 8.3 Asymmetric Dynamic Governor & Chained Replacement Fix**: Sửa dứt điểm lỗi mất chữ kép "thấy -> th" do Post-Commit Window $12\text{ms}$ quá ngắn. Khôi phục ngưỡng an toàn $70\text{ms}$ Post-Commit Settling Window trên Chromium để bảo vệ các ký tự commit liên tiếp. Tách độc lập Pre-Commit Settling Delay thích ứng động theo cú nuốt phím `swallow_duration_us * 0.8` (co về $1.8\text{ms} \sim 2\text{ms}$ trên tab mượt thay vì bị clamp $12\text{ms}$ bởi IKI), giúp chữ nổ ra tức thì và không bị khựng. Nâng phiên bản `2.3.10`. | `fcitx5-lilypad/src/lilypad-state.cpp`, `CMakeLists.txt`, `packaging/` |
+
+| 2026-11-04 | **v2.3.9 - Phase 8.3 Per-Tab Dynamic Heavy-DOM & Event-Loop Governor Complete**: Triển khai Bộ điều hòa động 2 chiều theo tải thời gian thực của từng tab (`isTabLagging()`, `calculateDynamicSettlingDelayUs()`, `calculateDynamicPostSettlingUs()`). Khắc phục triệt để cảm giác nhả chữ chậm trên các tab Chromium nhẹ (Facebook, Google Docs): co Pre-Commit Settling Delay về $1.8\text{ms} \sim 2\text{ms}$ và Post-Commit Settling Window về $12\text{ms}$ (nhanh gấp 6 lần). Tự động dãn Pre-Commit lên $25\text{ms} \sim 35\text{ms}$ và Post-Commit lên $60\text{ms} \sim 95\text{ms}$ khi phát hiện tab nặng / DOM lag (TikTok 25K bình luận, AFFiNE Canvas). Bổ sung nhãn `enter_time` vào `KeyEntry` và cơ chế Zero-Latency Snapback tức thì khi xả sạch hàng đợi. Nâng phiên bản `2.3.9`. | `fcitx5-lilypad/src/lilypad-utils.h`, `lilypad-state.h/.cpp`, `lilypad-engine.cpp`, `CMakeLists.txt`, `packaging/` |
+
+| 2026-11-04 | **v2.3.8 - Phase 8.2 Sequencer Settling Delay & Atomic Commit Lock Complete**: Triển khai cơ chế Pre-Commit Settling Delay ($7\text{ms}$ context-aware floor cho Chromium/TikTok, $1.5\text{ms}$ cho Terminal/Native) giữa nhịp nuốt phím Backspace cuối cùng và nhịp phát `commitString()`. Bổ sung trạng thái `BarrierState::SettlingDelay` và `set_settling_delay()` vào Sequencer. Khóa cứng hàng đợi Sequencer (`is_deleting_`) trong toàn bộ chu trình `Xóa -> Settle -> Commit`, bọc an toàn `if (!focusBounce)` tại `activate()` và loại bỏ ngắt cờ xóa sớm. Giải quyết dứt điểm lỗi nuốt chữ commit `cháu` $\to$ `ch` trên TikTok Web. Nâng phiên bản `2.3.8`. | `fcitx5-lilypad/src/lilypad-sequencer.h/.cpp`, `lilypad-state.cpp`, `lilypad-engine.cpp`, `CMakeLists.txt`, `packaging/` |
 
 | 2026-11-03 | **v2.3.7 - Phase 8.1 Focus Bounce Protection Complete**: Triển khai cơ chế hoãn xóa bộ đệm 100ms khi nhận `FocusOut` (`deferred_focus_out_`, `cancelDeferredFocusOut`, `flushDeferredFocusOut`, `resetNow`). Loại bỏ hiện tượng xóa nhầm Caret Buffer do React / Chromium Focus Bounce trên TikTok Web (`no` + `s` $\to$ `nos`). Đảo ngược điều kiện lỗi `< 100` thành `>= 100` an toàn. Nâng phiên bản `2.3.7`. | `fcitx5-lilypad/src/lilypad-engine.cpp`, `lilypad-state.h/.cpp`, `lilypad-utils.h`, `CMakeLists.txt`, `packaging/` |
 

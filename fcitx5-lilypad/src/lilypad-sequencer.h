@@ -33,12 +33,13 @@ namespace fcitx {
         Ready,
         WaitingMicroDelay,
         WaitingForAck,
-        AppLagHolding ///< App lag detected, holding keys in RAM
+        AppLagHolding, ///< App lag detected, holding keys in RAM
+        SettlingDelay  ///< Pre-commit settling delay for DOM/editor stabilization (Phase 8.2)
     };
 
     struct SequencerConfig {
         uint64_t min_delay_ms       = 5;   ///< 5ms micro-delay
-        uint64_t max_ack_timeout_ms = 250; ///< 250ms safety timeout for Wayland Frame ACK
+        uint64_t max_ack_timeout_ms = 300; ///< 300ms safety timeout for Wayland Frame ACK (Phase 8.3)
     };
 
     /**
@@ -71,6 +72,7 @@ namespace fcitx {
 
         void set_waiting_ack();
         void set_app_lag_holding();
+        void set_settling_delay(uint64_t delay_us);
         void clear_barrier() {
             barrier_ = BarrierState::Ready;
         }

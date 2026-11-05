@@ -87,6 +87,11 @@ namespace fcitx {
         void cancelDeferredFocusOut();
 
         /**
+         * @brief Records a Focus Bounce event to inform the dynamic DOM lag governor.
+         */
+        void recordFocusBounce();
+
+        /**
          * @brief Commits the current buffer.
          */
         void commitBuffer();
@@ -129,8 +134,28 @@ namespace fcitx {
         Sequencer               sequencer_;
         std::unique_ptr<EventSourceTime> commit_timer_;
         std::unique_ptr<EventSourceTime> settle_timer_;
-        std::unique_ptr<EventSourceTime> watchdog_timer_; ///< Hard timeout (250ms) emergency watchdog timer
+        std::unique_ptr<EventSourceTime> watchdog_timer_; ///< Hard timeout (300ms) emergency watchdog timer
         std::chrono::steady_clock::time_point uinput_send_time_{}; ///< Timestamp when uinput backspaces were emitted
+
+        // Phase 8.3: Dynamic Heavy-DOM & Per-Tab Governor
+        uint64_t                              last_swallow_duration_us_ = 0;
+        std::chrono::steady_clock::time_point last_focus_bounce_time_{};
+        bool                                  has_recent_focus_bounce_ = false;
+
+        /**
+         * @brief Checks if the current tab/context is experiencing heavy DOM or event-loop lag.
+         */
+        bool isTabLagging() const;
+
+        /**
+         * @brief Calculates dynamic pre-commit settling delay based on runtime DOM load.
+         */
+        uint64_t calculateDynamicSettlingDelayUs(uint64_t micro_delay_us, uint64_t swallow_duration_us);
+
+        /**
+         * @brief Calculates dynamic post-commit settling window based on runtime DOM load.
+         */
+        uint64_t calculateDynamicPostSettlingUs() const;
 
         /**
          * @brief Connects to the uinput server.
@@ -254,7 +279,7 @@ namespace fcitx {
         void replayBufferedKeys();
 
         /**
-         * @brief Emergency recovery when hard timeout (250ms) expires during replacement.
+         * @brief Emergency recovery when hard timeout (300ms) expires during replacement.
          *
          * Resets internal word buffers and forwards all queued keystrokes as raw input.
          */

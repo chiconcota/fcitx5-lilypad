@@ -15,6 +15,7 @@
 #define _FCITX5_LILYPAD_UTILS_H_
 
 #include <atomic>
+#include <chrono>
 #include <sys/un.h>
 #include <fcitx-utils/log.h>
 #include <fcitx/inputcontext.h>
@@ -115,8 +116,9 @@ std::string getFrontendName(fcitx::InputContext* ic);
  * @brief Key event entry for replay buffer.
  */
 struct KeyEntry {
-    uint32_t sym;   ///< Key symbol
-    uint32_t state; ///< Key state (modifiers)
+    uint32_t sym = 0;   ///< Key symbol
+    uint32_t state = 0; ///< Key state (modifiers)
+    std::chrono::steady_clock::time_point enter_time = std::chrono::steady_clock::now();
 };
 
 #endif // _FCITX5_LILYPAD_UTILS_H_
