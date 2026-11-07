@@ -4,13 +4,57 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `feat/sequencer-settling-atomic-lock`
-- **Tình trạng:** **HOÀN THÀNH TRIỂN KHAI v2.4.16 (Chromium/Electron 20ms Safe Frame Settling Floor & SetMode App Synchronization). KHẮC PHỤC TRIỆT ĐỂ LỖI NUỐT MẤT CHỮ TRÊN ANTIGRAVITY IDE VÀ LỖI BUNG PHÍM VNI `co6 thuo7g` TRÊN AFFINE THEO CHUẨN ĐỒNG BỘ LOTUS.**
+- **Nhánh Git làm việc:** `main` (commit `8bd5e54`, tag `v2.5.0`, đã push và đồng bộ 100% với `origin/main`).
+- **Tình trạng:** **HOÀN THÀNH 100% PHÁT HÀNH BẢN PHÁT HÀNH LỚN v2.5.0 (BAMBOO RUST CORE, F24 HARDWARE BARRIER SENTINEL, 20MS VSYNC SAFE DYNAMIC GOVERNOR, VIRTUAL FOCUS PINNING, PRODUCT SHOWCASE README & DEPENDENCIES ARCH / UBUNTU / FEDORA). TOÀN BỘ CODE, TAG VÀ 3 GÓI AUR ĐÃ ĐƯỢC XUẤT BẢN THÀNH CÔNG.**
 
-## 📋 Hướng Dẫn Kích Hoạt & Cài Đặt Bản Debug (v2.4.16):
+## 📋 Hướng Dẫn Cài Đặt & Sử Dụng Bản Chính Thức v2.5.0:
+
+### 1. Cài đặt trực tiếp từ AUR (Arch Linux / CachyOS / Manjaro):
 ```bash
-sudo cmake --install /home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/build && sudo systemctl restart fcitx5-lilypad-server@$USER.service && fcitx5-remote -s lilypad && fcitx5 -r -d
+yay -S fcitx5-lilypad        # Build từ nguồn GitHub Release v2.5.0
+# hoặc
+yay -S fcitx5-lilypad-bin    # Cài đặt nhị phân pre-built siêu tốc
 ```
+
+### 2. Biên dịch thủ công từ mã nguồn (Release Mode):
+```bash
+git checkout v2.5.0
+cmake -B build_release -S fcitx5-lilypad -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build build_release -j$(nproc)
+sudo cmake --install build_release
+sudo systemctl restart fcitx5-lilypad-server@$USER.service
+fcitx5-remote -s lilypad && fcitx5 -r -d
+```
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-07 - v2.5.0 Major Milestone Release & Cross-Distro Packaging):
+
+1. **Đóng Gói & Xuất Bản Phiên Bản Lớn v2.5.0:**
+   - **Hoàn thiện các bản vá cốt lõi (v2.4.16 $\to$ v2.5.0):**
+     - Sửa lỗi nuốt chữ Antigravity IDE (`a` $\to$ `""`) bằng việc đồng bộ hóa `wa_chromium_flag` và `waitAck_` trong `LilypadEngine::setMode()`.
+     - Chuẩn hóa sàn trễ Pre-commit Settling Delay lên $18\text{ms} \sim 22\text{ms}$ (khung hình VSync $16.6\text{ms} +$ biên an toàn theo Lotus) và $5\text{ms}$ Post-commit cho hàng đợi RAM. Triệt tiêu hoàn toàn lỗi bung phím thô VNI `co6 thuo7g` trên AFFiNE Canvas.
+     - Bảo toàn giới hạn file C++ nghiêm ngặt: mọi file trong `fcitx5-lilypad/src/` và `server/` đều $< 700$ dòng.
+   - **Tài liệu hóa Phong cách Giới thiệu Sản phẩm (Product Showcase):**
+     - Viết lại toàn bộ `README.md`, `fcitx5-lilypad/README.md`, và `fcitx5-lilypad/README.en.md` theo phong cách giới thiệu sản phẩm công nghệ cao, làm nổi bật các đột phá: Bamboo Rust Core C-ABI FFI zero-allocation, Hardware Barrier Key KEY_F24, Dynamic Adaptive Governor 20ms VSync, Virtual Focus Pinning, và Single FIFO Consolidated Batch Commit.
+     - Cập nhật `CHANGELOG.md` đầy đủ chi tiết cho bản phát hành `[2.5.0] - 2026-11-07`.
+   - **Chuẩn Hóa Danh Mục Dependencies Đa Distro (Ubuntu & Fedora):**
+     - Tài liệu hóa chính xác các gói phụ thuộc để người dùng kiểm thử cài đặt ở phiên sau:
+       - **Ubuntu 24.04 / 22.04 / Debian 12:** `sudo apt install -y git build-essential cmake extra-cmake-modules libfcitx5core-dev fcitx5 cargo rustc libacl1-dev libinput-dev libudev-dev pkg-config`
+       - **Fedora 40 / 41:** `sudo dnf install -y git gcc-c++ cmake extra-cmake-modules fcitx5-devel fcitx5 cargo rust libacl-devel libinput-devel systemd-devel`
+       - **Arch Linux:** `sudo pacman -S --needed git base-devel cmake extra-cmake-modules fcitx5 rust acl libinput systemd`
+   - **Biên Dịch Nhị Phân & Đóng Gói Tarball:**
+     - Tạo archive nhị phân độc lập: `fcitx5-lilypad-v2.5.0-x86_64-archlinux.tar.zst` (1.6MB, SHA256: `61e699a7521ddd3bd60de80c672d52357688d1874b05bbae5eb92798c183c6d1`).
+   - **Phát Hành GitHub & Xuất Bản AUR:**
+     - Commit `e120139` gắn tag `v2.5.0` và push lên GitHub remote `origin` (`main`, `feat/sequencer-settling-atomic-lock`, tag `v2.5.0`).
+     - Cập nhật PKGBUILD, `.SRCINFO` và đẩy thành công lên cả 3 repo AUR chính thức: `fcitx5-lilypad`, `fcitx5-lilypad-bin`, `fcitx5-lilypad-git`.
+     - Đồng bộ commit `8bd5e54` vào `main`.
+
+2. **Kế Hoạch & Việc Cần Làm Cho Phiên Làm Việc Tiếp Theo:**
+   - [ ] **Kiểm thử cài đặt trên Ubuntu và Fedora:** Chạy quy trình build thử nghiệm trên Ubuntu (24.04/22.04) và Fedora (40/41) để kiểm tra tính chính xác của bộ packages đã công bố trong README.
+   - [ ] **Đính kèm Asset Binary lên GitHub Release:** Kéo thả tệp `fcitx5-lilypad-v2.5.0-x86_64-archlinux.tar.zst` vào trang Web Release v2.5.0 trên GitHub nếu người dùng muốn hỗ trợ tải binary trực tiếp từ GitHub cho `fcitx5-lilypad-bin`.
+
+---
 
 ---
 

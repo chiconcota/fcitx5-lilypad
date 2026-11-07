@@ -1,11 +1,12 @@
 # MODULE: SEQUENCER LAYER (`src/sequencer/` & `fcitx5-lilypad/src/`)
 
-@status: STABLE (v2.4.13-single-fifo-batch-commit) | @last_update: 2026-11-07
+@status: PRODUCTION READY (v2.5.0-vsync-settling-bamboo-rust) | @last_update: 2026-11-07
 
-> **Ghi chú Kiến trúc:** Hệ thống sử dụng **Kiến trúc Cảm biến Vòng lặp Kép (Dual-Sensor Control Loop) & Single FIFO Consolidated Batch Commit (v2.4.13)**:
+> **Ghi chú Kiến trúc:** Hệ thống sử dụng **Kiến trúc Cảm biến Vòng lặp Kép (Dual-Sensor Control Loop), Hardware Barrier Sentinel F24 & Single FIFO Consolidated Batch Commit (v2.5.0)**:
 > 1. **`IAckSensor` (Cảm biến Đường truyền & Micro-Pacing):** Đo độ trễ vòng lặp Compositor/App roundtrip và tính toán độ trễ vi mô thích ứng `get_micro_delay_us(bsCount, iki_ms)` qua `fcitx5-lilypad/src/ack-sensors/`.
 > 2. **`IIkiSensor` (Cảm biến Ngón tay):** Đo nhịp gõ thời gian thực ($\Delta t$) ngón tay người dùng và tính EMA IKI qua `fcitx5-lilypad/src/iki-sensors/`. Nén độ trễ ngắt nhịp xuống $1.0\text{ms} \sim 2.5\text{ms}$ khi gõ lướt Burst Typing.
 > 3. **Consolidated Batch Commit Pipeline (v2.4.13):** Khi hoàn tất giao dịch xóa uinput + Hardware Barrier F24, toàn bộ các phím gõ đệm trong RAM (`buffered_keys_`) được gom thành một chuỗi duy nhất và xả 1 lần qua `ic_->commitString()`, loại bỏ các nhịp timer 2ms gây giật lag DOM trên Chromium/Electron.
+> 4. **Dynamic Settling Floor 20ms VSync (v2.5.0):** Sàn an toàn Pre-commit $18\text{ms} \sim 22\text{ms}$ (khớp chuẩn 1 VSync frame $16.6\text{ms}$) cho các ứng dụng nền Chromium/Electron (Antigravity IDE, AFFiNE, Chrome) và $5\text{ms}$ Post-commit settling window, triệt tiêu hoàn toàn race condition Backspace xóa đè commit.
 
 ---
 

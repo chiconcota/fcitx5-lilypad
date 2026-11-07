@@ -1,6 +1,6 @@
 # MODULE: ENGINE LAYER (`fcitx5-lilypad/src/lilypad-engine.h/.cpp` & `lilypad-state.h/.cpp`)
 
-@status: STABLE (v2.3.6-rust-bamboo-core) | @last_update: 2026-11-03
+@status: PRODUCTION READY (v2.5.0-rust-bamboo-core) | @last_update: 2026-11-07
 
 ---
 

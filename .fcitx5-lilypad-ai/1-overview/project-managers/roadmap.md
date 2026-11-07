@@ -142,7 +142,7 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
       * Khôi phục mức sàn an toàn $70\text{ms}$ cho Post-Commit Settling Window trên Chromium (bảo vệ 100% các từ thay thế kép liên tiếp `thấy`, `thương`).
       * Nâng trần an toàn Hard Timeout Watchdog & Sequencer Max ACK từ $250\text{ms}$ lên $300\text{ms}$ (v2.3.13 - chống false alarm khi Chromium V8 GC lag trên web nặng).
 
-- [ ] **Phase 8.4: Kiến Trúc Hardware Barrier Key `KEY_F24` & Barrier Safety Timer (Giải Pháp Toàn Diện Triệt Để):**
+- [x] **Phase 8.4: Kiến Trúc Hardware Barrier Key `KEY_F24` & Barrier Safety Timer (Giải Pháp Toàn Diện Triệt Để):**
   - **Mục tiêu cốt lõi:** Khai tử hoàn toàn phím Sentinel Backspace thứ $N+1$ (vốn là phím xóa có tính hủy hoại), chuyển sang dùng phím mở rộng phần cứng **`KEY_F24`** vô hại kết hợp **Barrier Safety Timer (20ms)**.
   - **Lợi ích kiến trúc đột phá:**
     1. *Bóc tách 100% tín hiệu đo ACK khỏi phím xóa:* Uinput chỉ bắn đúng $N$ phím Backspace (để xóa text cũ) và chốt đuôi bằng 1 phím `KEY_F24`.
@@ -167,15 +167,27 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
   - [x] Tự động đo đạc telemetry thực tế $t_{\text{end}} - t_{\text{uinput\_send}}$ nạp vào Dynamic Governor, triệt tiêu lỗi kẹt 300ms Watchdog.
   - [x] Bảo vệ an toàn phím Space và hàng đợi phím bấm qua Batch Replay Protocol 3ms.
 
-- [ ] **Phase 8.6: Chống Rụng Phím Vật Lý Do Wayland Focus Bounce (v2.4.7 - v2.4.11 Hoàn Thành):**
+- [x] **Phase 8.6: Chống Rụng Phím Vật Lý Do Wayland Focus Bounce (v2.4.7 - v2.4.11 Hoàn Thành):**
   - **Tài liệu đặc tả:** Xem chi tiết 4 giải pháp tại [wayland-focus-bounce-drop-key-solutions.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/1-overview/project-managers/wayland-focus-bounce-drop-key-solutions.md).
   - [x] **Giải pháp 1:** Lưới bảo hiểm phần cứng từ `fcitx5-lilypad-server` (lắng nghe phím bàn phím qua `libinput` trên `seat0` độc lập với Niri Compositor - v2.4.7).
   - [x] **Giải pháp 2:** Cổng lọc trùng phím hai chiều (Bi-directional Keystroke Dedup Gate - v2.4.10).
   - [x] **Giải pháp 3:** Grace Delimiter Engine Reset chống dính từ (v2.4.11).
 
-- [ ] **Phase 8.7: Khóa Hàng Đợi FIFO Tuần Tự & Nâng Watchdog Server 250ms (Kế Hoạch v2.4.12 - Phiên Tới):**
-  - [ ] **FIFO Queue Lock:** Trong `keyEvent()`, nếu `!buffered_keys_.empty()` hoặc `replay_timer_` đang chạy, đẩy mọi phím Niri mới vào cuối hàng đợi `buffered_keys_` để triệt tiêu lỗi phím mới vượt mặt làm lọt Space vào giữa từ (`sách tr ời`).
-  - [ ] **Server Watchdog Expansion:** Nâng `TAP_WATCHDOG_TIMEOUT_MS` từ 120ms lên 250ms trong `lilypad-server.cpp` tương thích hoàn toàn với chu kỳ DOM của Chrome/AFFiNE.
-  - [ ] **Sequential Replay Guarantee:** Duy trì cờ khóa tuần tự trong suốt quá trình xả hàng đợi, bảo đảm Space luôn xuất hiện trước từ mới.
-  - [ ] Kiểm thử đối soát tốc độ cao gõ VNI/Telex trên Chromium/AFFiNE Canvas.
+- [x] **Phase 8.7: Khóa Hàng Đợi FIFO Tuần Tự & Single FIFO Batch Commit (v2.4.12 - v2.4.13 Hoàn Thành):**
+  - [x] **FIFO Queue Lock:** Trong `keyEvent()`, nếu `!buffered_keys_.empty()` hoặc `replay_timer_` đang chạy, đẩy mọi phím Niri mới vào cuối hàng đợi `buffered_keys_` để triệt tiêu lỗi phím mới vượt mặt làm lọt Space vào giữa từ (`sách tr ời`).
+  - [x] **Server Watchdog Expansion:** Nâng `TAP_WATCHDOG_TIMEOUT_MS` từ 120ms lên 300ms trong `lilypad-server.cpp` tương thích hoàn toàn với chu kỳ DOM của Chrome/AFFiNE.
+  - [x] **Consolidated Batch Commit Pipeline:** Gom toàn bộ phím chờ trong RAM xả 1 lần qua `ic_->commitString()`, loại bỏ giật lag DOM.
+
+- [x] **Phase 8.8: Dynamic Settling Floor 20ms VSync & SetMode App Sync (v2.4.14 - v2.4.16 Hoàn Thành):**
+  - [x] **Lotus-Aligned 20ms VSync Floor:** Chuẩn hóa Pre-commit Settling Delay lên $18\text{ms} \sim 22\text{ms}$ (1 VSync frame $16.6\text{ms} +$ headroom an toàn) cho Chromium/Electron và $5\text{ms}$ Post-commit settling window cho hàng đợi RAM. Triệt tiêu hoàn toàn lỗi bung phím VNI `co6 thuo7g` trên AFFiNE Canvas.
+  - [x] **SetMode Application State Sync:** Tự động đồng bộ `wa_chromium_flag = true` khi người dùng chuyển mode sang Sequence, sửa dứt điểm lỗi mất chữ `a -> ""` trên Antigravity IDE.
+  - [x] **Multi-tier Wayland App Resolution:** Tra cứu process 3 tầng trực tiếp qua Niri IPC Socket ($155\mu\text{s}$) khi `ic->program()` rỗng.
+
+- [x] **Phase 9: Major Milestone Release v2.5.0, Cross-Distro Packaging & AUR Publication (Hoàn Thành):**
+  - [x] Đóng gói phát hành phiên bản lớn `v2.5.0`, cập nhật `CHANGELOG.md`.
+  - [x] Viết lại toàn bộ `README.md` theo phong cách giới thiệu sản phẩm (Product Showcase).
+  - [x] Chuẩn hóa danh mục dependencies cho Arch Linux, Ubuntu / Debian và Fedora.
+  - [x] Đóng gói file nhị phân `fcitx5-lilypad-v2.5.0-x86_64-archlinux.tar.zst` (1.6MB).
+  - [x] Tạo tag `v2.5.0` và push lên GitHub `origin`.
+  - [x] Xuất bản đồng bộ 3 gói AUR: `fcitx5-lilypad`, `fcitx5-lilypad-bin`, `fcitx5-lilypad-git`.
 

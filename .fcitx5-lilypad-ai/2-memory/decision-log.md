@@ -8,6 +8,42 @@
 
 ## 🎯 1. HỆ THỐNG CẢM BIẾN ADAPTIVE ACK, IKI & DYNAMIC LATENCY CONTROL
 
+### [2026-11-07] Quyết định 049: Major Milestone Release v2.5.0 (Bamboo Rust Core, Cross-Distro Packaging, Product Showcase & AUR Publication)
+- **Bối cảnh:**
+  1. Người dùng chỉ đạo đóng gói toàn bộ các cải tiến đột phá gần đây thành phiên bản phát hành lớn chính thức **`v2.5.0`**, xuất bản lên GitHub và Arch User Repository (AUR).
+  2. Viết lại toàn bộ tài liệu `README.md` theo phong cách giới thiệu sản phẩm (Product Showcase), không đi sâu vào chi tiết nội bộ từng phiên bản vá lỗi mà tập trung vào các tính năng đột phá, ma trận tương thích, trải nghiệm người dùng và hướng dẫn cài đặt chuẩn xác.
+  3. Yêu cầu đặc biệt quan trọng: Chuẩn hóa đầy đủ danh mục dependencies chính xác cho các bản phân phối Linux phổ biến (**Arch Linux**, **Ubuntu / Debian**, **Fedora**) để người dùng kiểm thử cài đặt ở phiên làm việc tiếp theo.
+- **Quyết định Kỹ thuật (v2.5.0):**
+  1. **Bamboo Engine Rust Native Core (C-ABI FFI):**
+     - Thay thế hoàn toàn engine Go cũ bằng thư viện Rust native zero-allocation (`bamboo-core`), loại bỏ 100% chi phí garbage collector ngầm và giảm thiểu độ trễ xử lý âm sắc tiếng Việt xuống dưới $10\mu\text{s}$.
+  2. **Non-destructive Hardware Barrier Sentinel (`KEY_F24`):**
+     - Đưa vào hoạt động rào chắn phần cứng sentinel `KEY_F24` kết hợp Barrier Safety Timer $20\text{ms}$. Đảm bảo uinput chỉ bắn đúng $N$ phím Backspace cần thiết mà không bao giờ xóa nhầm ký tự người dùng.
+  3. **Dynamic Adaptive Governor với sàn 1 VSync frame ($18\text{ms} \sim 22\text{ms}$):**
+     - Đồng bộ nhịp commit với chu kỳ render DOM của Electron/Chromium ($16.6\text{ms}$), triệt tiêu hoàn toàn lỗi nuốt chữ trên Antigravity IDE và bung phím VNI trên AFFiNE Canvas.
+  4. **Multi-tier Process Resolution & Virtual Focus Pinning:**
+     - Tự động nhận diện ứng dụng Wayland Webview qua Niri IPC Socket ($155\mu\text{s}$) và bảo toàn bộ đệm Bamboo khi có Focus Bounce.
+  5. **Chuẩn hóa Dependencies Cross-Distro:**
+     - *Ubuntu / Debian:* `build-essential`, `cmake`, `extra-cmake-modules`, `libfcitx5core-dev`, `cargo`, `rustc`, `libacl1-dev`.
+     - *Fedora:* `gcc-c++`, `cmake`, `extra-cmake-modules`, `fcitx5-devel`, `cargo`, `rust`, `libacl-devel`.
+     - *Arch Linux:* `base-devel`, `cmake`, `extra-cmake-modules`, `fcitx5`, `rust`, `acl`.
+  6. **Đóng Gói & Xuất Bản AUR:**
+     - Đóng gói tarball nhị phân `fcitx5-lilypad-v2.5.0-x86_64-archlinux.tar.zst` (1.6MB, SHA256: `61e699a7521ddd3bd60de80c672d52357688d1874b05bbae5eb92798c183c6d1`).
+     - Đẩy tag `v2.5.0` lên GitHub và xuất bản đồng bộ 3 gói AUR: `fcitx5-lilypad`, `fcitx5-lilypad-bin`, `fcitx5-lilypad-git`.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/`, `README.md`, `CHANGELOG.md`, `packaging/aur/`.
+
+### [2026-11-07] Quyết định 048: Chuẩn Hóa Nhịp Settling 20ms VSync Frame Cho Electron & Đồng Bộ `wa_chromium_flag` trong `setMode` (v2.4.16)
+- **Bối cảnh:**
+  1. Người dùng báo lỗi mất chữ trên Antigravity IDE (`a -> ""`) khi gõ phím biến dấu (`a` $\to$ `â`/`á`). Log phân tích cho thấy khi đổi chế độ gõ sang Sequence mode, `LilypadEngine::setMode()` được gọi nhưng không cập nhật `wa_chromium_flag` $\to$ cờ bị 0 $\to$ governor coi là Terminal native và ép Pre-commit delay xuống $1.5\text{ms}$. Lệnh commit ập vào ngay khi DOM Electron đang xử lý Backspace $\implies$ DOM bỏ rơi commit $\implies$ mất chữ.
+  2. Người dùng cung cấp ảnh đối chiếu giữa Lilypad (`co6 thuo7g`) và Lotus (`cô thương`) trên AFFiNE Canvas. Lotus sử dụng `defaultCommitInterval = 20ms` và `defaultBackspaceInterval = 5ms` đồng bộ với 1 khung hình VSync $16.6\text{ms}$. Sàn trễ thích ứng cũ ($3\text{ms} \sim 8\text{ms}$) của Lilypad làm rụng phím `n` khi gõ `thuo7ng` $\implies$ Bamboo AutoRestore bung phím thô VNI `thuo7g`.
+- **Quyết định Kỹ thuật (v2.4.16):**
+  1. **Đồng bộ hóa `wa_chromium_flag` trong `setMode()`:**
+     - Quét tên app qua bảng `ack_apps` khi gọi `setMode()`. Tự động kích hoạt `wa_chromium_flag = true` khi nhận app Electron/Chromium, đồng bộ trạng thái ngay cả khi chuyển mode qua UI hay phím tắt.
+  2. **Chuẩn hóa sàn trễ an toàn 20ms theo chuẩn Lotus:**
+     - Nâng sàn trễ Pre-commit tab mượt lên $18\text{ms} \sim 22\text{ms}$ (khung hình VSync 60Hz $16.6\text{ms} +$ biên an toàn).
+     - Đặt Post-commit Settling Window cho hàng đợi RAM lên $5\text{ms}$ (chuẩn `defaultBackspaceInterval = 5ms` của Lotus), ngăn chặn triệt để va chạm DOM giữa Backspace và phím tiếp theo.
+  3. **Kiểm soát dung lượng file:** Duy trì nghiêm ngặt toàn bộ các file C++ $< 700$ dòng.
+- **Mã nguồn thực thi:** `fcitx5-lilypad/src/lilypad-engine.cpp`, `fcitx5-lilypad/src/lilypad-state-governor.cpp`, `CMakeLists.txt`, `packaging/aur/`.
+
 ### [2026-11-07] Quyết định 047: Triệt Tiêu Ngưỡng Mù Focus Bounce & Nhận Diện Đa Tầng Process Webview Wayland (v2.4.15)
 - **Bối cảnh:**
   1. Hiện tượng lỗi hiện trường trên AFFiNE Canvas (`co6`, `thuo7g`, `nuuo7n`):
