@@ -26,3 +26,5 @@ __pycache__/
 *.tmp
 *.msi
 *.html
+*.tar.zst
+*.tar.gz
