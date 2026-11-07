@@ -137,7 +137,7 @@ sudo cmake --install build
 
 #### Bước 1: Cài đặt các gói phụ thuộc (Dependencies)
 ```bash
-sudo dnf install -y git gcc-c++ cmake extra-cmake-modules ninja-build \
+sudo dnf install -y git gcc-c++ make cmake extra-cmake-modules ninja-build \
     gettext pkgconf-pkg-config libX11-devel fcitx5-devel libinput-devel \
     systemd-devel cargo rust acl python3 python3-QtPy python3-qt5 \
     fcitx5 fcitx5-configtool fcitx5-autostart
@@ -163,14 +163,17 @@ Chế độ gõ **Sequence Mode** sử dụng dịch vụ daemon `fcitx5-lilypad
 # 1. Đảm bảo uinput kernel module được nạp
 sudo modprobe uinput
 
-# 2. Cập nhật quyền udev rules và nạp lại systemd
+# 2. Tạo user proxy hệ thống (uinput_proxy)
+sudo systemd-sysusers
+
+# 3. Cập nhật quyền udev rules và nạp lại systemd
 sudo udevadm control --reload-rules && sudo udevadm trigger
 sudo systemctl daemon-reload
 
-# 3. Kích hoạt Server Daemon chạy ngầm theo user của bạn:
+# 4. Kích hoạt Server Daemon chạy ngầm theo user của bạn:
 sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
 
-# 4. Khởi động lại Fcitx5:
+# 5. Khởi động lại Fcitx5:
 fcitx5 -r -d
 ```
 

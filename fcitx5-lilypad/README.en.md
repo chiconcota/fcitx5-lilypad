@@ -141,7 +141,7 @@ sudo cmake --install build
 
 #### Step 1: Install Build Dependencies
 ```bash
-sudo dnf install -y git gcc-c++ cmake extra-cmake-modules ninja-build \
+sudo dnf install -y git gcc-c++ make cmake extra-cmake-modules ninja-build \
     gettext pkgconf-pkg-config libX11-devel fcitx5-devel libinput-devel \
     systemd-devel cargo rust acl python3 python3-QtPy python3-qt5 \
     fcitx5 fcitx5-configtool fcitx5-autostart
@@ -167,14 +167,17 @@ sudo cmake --install build
 # 1. Load uinput module
 sudo modprobe uinput
 
-# 2. Reload udev rules & systemd
+# 2. Initialize proxy system user (uinput_proxy)
+sudo systemd-sysusers
+
+# 3. Reload udev rules & systemd
 sudo udevadm control --reload-rules && sudo udevadm trigger
 sudo systemctl daemon-reload
 
-# 3. Enable the user server daemon:
+# 4. Enable the user server daemon:
 sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
 
-# 4. Restart Fcitx5:
+# 5. Restart Fcitx5:
 fcitx5 -r -d
 ```
 
