@@ -20,7 +20,7 @@
       <img src="https://img.shields.io/github/v/release/chiconcota/fcitx5-lilypad?style=flat&color=success" alt="Release">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad">
-      <img src="https://img.shields.io/badge/version-2.5.0-blue.svg" alt="Version 2.5.0">
+      <img src="https://img.shields.io/badge/version-2.5.1-blue.svg" alt="Version 2.5.1">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/chiconcota/fcitx5-lilypad?style=flat&color=blue" alt="License">
@@ -66,9 +66,9 @@ Traditional Linux Vietnamese IMEs frequently suffer from notorious issues:
 - Multiple charsets: **Standard Unicode, TCVN3 (ABC), VNI Windows, VIQR**.
 - Intelligent **Smart Auto-Restore** for non-Vietnamese words and flexible diacritic placement (**Free Marking**).
 
-### ⚡ 2. Sequencer Architecture & Hardware Sentinel (`KEY_F24`)
+### ⚡ 2. Sequencer Architecture & Hardware Sentinel (`KEY_PAUSE`)
 - **Atomic Micro-Steps:** Clear separation of micro-deletion (Backspace) and text insertion (Commit).
-- **Non-destructive Hardware Barrier (`KEY_F24`):** Uses a dedicated hardware sentinel key as an atomic FIFO barrier, eliminating 100% of compositor race conditions without ever erasing preceding text.
+- **Non-destructive Hardware Barrier (`KEY_PAUSE`):** Uses a dedicated standard hardware sentinel key as an atomic FIFO barrier, eliminating 100% of compositor race conditions without ever erasing preceding text.
 - **Watchdog Hard Timeout 250ms:** Guarantees keyboard input never freezes by purging buffered context if an application hangs.
 
 ### 🧠 3. Dynamic Adaptive Governor
@@ -120,7 +120,7 @@ sudo cmake --install build
 #### Step 1: Install Build Dependencies
 ```bash
 sudo apt update
-sudo apt install -y build-essential cmake extra-cmake-modules ninja-build \
+sudo apt install -y git build-essential cmake extra-cmake-modules ninja-build \
     gettext pkg-config libx11-dev libfcitx5core-dev libfcitx5utils-dev \
     libfcitx5config-dev fcitx5-modules-dev libinput-dev libudev-dev \
     cargo rustc acl python3 python3-qtpy python3-pyqt5 fcitx5 fcitx5-config-qt
@@ -141,7 +141,7 @@ sudo cmake --install build
 
 #### Step 1: Install Build Dependencies
 ```bash
-sudo dnf install -y gcc-c++ cmake extra-cmake-modules ninja-build \
+sudo dnf install -y git gcc-c++ cmake extra-cmake-modules ninja-build \
     gettext pkgconf-pkg-config libX11-devel fcitx5-devel libinput-devel \
     systemd-devel cargo rust acl python3 python3-QtPy python3-qt5 \
     fcitx5 fcitx5-configtool fcitx5-autostart
@@ -196,7 +196,7 @@ fcitx5 -r -d
 * **`bamboo-core` Rust Implementation:** Special thanks to the [bamboo-vi/bamboo-core](https://github.com/bamboo-vi/bamboo-core) team for the zero-allocation Rust native core.
 * **`fcitx5-lotus` Project:** Thanks to [fcitx5-lotus](https://github.com/vnlilypad/fcitx5-lotus) and **thanhpy2009** for early architectural inspiration.
 * **Fcitx5 Framework:** Kudos to **Weng Xuetian (CSSlayer)** for developing the versatile Fcitx5 framework.
-* **Fcitx5 Lilypad:** **chiconcota** ([chiconcota](https://github.com/chiconcota)) — Author & Lead Architect of the Sequencer, Hardware Sentinel `KEY_F24`, Dynamic Adaptive Governor, and maintainer.
+* **Fcitx5 Lilypad:** **chiconcota** ([chiconcota](https://github.com/chiconcota)) — Author & Lead Architect of the Sequencer, Hardware Sentinel `KEY_PAUSE`, Dynamic Adaptive Governor, and maintainer.
 
 ---
 

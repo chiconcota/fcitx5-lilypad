@@ -482,7 +482,8 @@ namespace fcitx {
             dedup_buffer_.clear();
         }
         KeySym currentSym = keyEvent.rawKey().sym();
-        bool isAutomatedBackspace = is_deleting_.load(std::memory_order_acquire) && (isBackspace(currentSym) || currentSym == FcitxKey_F24);
+        bool isSentinelKey = (currentSym == FcitxKey_Pause || currentSym == FcitxKey_F24);
+        bool isAutomatedBackspace = is_deleting_.load(std::memory_order_acquire) && (isBackspace(currentSym) || isSentinelKey);
 
         if (iki_sensor_) {
             iki_sensor_->on_key_event(std::chrono::steady_clock::now(), isAutomatedBackspace);
@@ -521,14 +522,14 @@ namespace fcitx {
             realtextLen.store(ic_->surroundingText().cursor(), std::memory_order_release);
         }
 
-        if (currentSym == FcitxKey_F24) {
-            // Phase 8.4: Non-destructive hardware barrier key KEY_F24
+        if (isSentinelKey) {
+            // Phase 8.4: Non-destructive hardware barrier sentinel KEY_PAUSE / KEY_F24
             if (is_deleting_.load(std::memory_order_acquire)) {
                 handleUInputKeyPress(keyEvent, currentSym, 0);
             } else {
                 // Arrived late after safety timer or watchdog already released the barrier.
                 // Filter and swallow silently with diagnostic log.
-                LILYPAD_INFO("🛡️ [HARDWARE BARRIER KEY] Received late KEY_F24 hardware barrier sentinel after barrier released. Swallowed safely.");
+                LILYPAD_INFO("🛡️ [HARDWARE BARRIER KEY] Received late sentinel key (Pause/F24) after barrier released. Swallowed safely.");
                 keyEvent.filterAndAccept();
             }
             return;

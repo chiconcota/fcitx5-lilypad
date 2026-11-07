@@ -20,7 +20,7 @@
       <img src="https://img.shields.io/github/v/release/chiconcota/fcitx5-lilypad?style=flat&color=success" alt="Release">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad">
-      <img src="https://img.shields.io/badge/version-2.5.0-blue.svg" alt="Version 2.5.0">
+      <img src="https://img.shields.io/badge/version-2.5.1-blue.svg" alt="Version 2.5.1">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/chiconcota/fcitx5-lilypad?style=flat&color=blue" alt="License">
@@ -66,9 +66,9 @@ Nếu bạn từng cảm thấy bực bội vì các vấn đề cố hữu củ
 - Hỗ trợ đa dạng bảng mã: **Unicode chuẩn, TCVN3 (ABC), VNI Windows, VIQR**.
 - Cơ chế khôi phục từ sai chính tả thông minh (**Smart Auto-Restore**) và tự do đặt dấu thanh (**Free Marking**).
 
-### ⚡ 2. Kiến Trúc Sequencer & Hardware Sentinel (`KEY_F24`)
+### ⚡ 2. Kiến Trúc Sequencer & Hardware Sentinel (`KEY_PAUSE`)
 - **Nguyên tử hóa vi bước (Atomic Micro-Steps):** Tách bạch rõ ràng giữa vi bước phát phím xóa (Backspace) và chèn chuỗi ký tự mới (Commit).
-- **Phím chốt chặn phần cứng phi phá hủy (`KEY_F24`):** Sử dụng mã quét phần cứng độc quyền làm rào cản an toàn FIFO, loại bỏ $100\%$ race condition mà không bao giờ gây nguy cơ xóa lẹm văn bản trước đó của người dùng.
+- **Phím chốt chặn phần cứng phi phá hủy (`KEY_PAUSE`):** Sử dụng mã quét phần cứng tiêu chuẩn làm rào cản an toàn FIFO, loại bỏ $100\%$ race condition mà không bao giờ gây nguy cơ xóa lẹm văn bản trước đó của người dùng.
 - **Watchdog Hard Timeout 250ms:** Luôn bảo đảm bàn phím không bao giờ bị đơ hay treo cứng; tự động xả phím an toàn khi ứng dụng đích bị đóng băng.
 
 ### 🧠 3. Bộ Điều Phối Trễ Thích Ứng (Dynamic Adaptive Governor)
@@ -120,7 +120,7 @@ sudo cmake --install build
 #### Bước 1: Cài đặt các gói phụ thuộc (Dependencies)
 ```bash
 sudo apt update
-sudo apt install -y build-essential cmake extra-cmake-modules ninja-build \
+sudo apt install -y git build-essential cmake extra-cmake-modules ninja-build \
     gettext pkg-config libx11-dev libfcitx5core-dev libfcitx5utils-dev \
     libfcitx5config-dev fcitx5-modules-dev libinput-dev libudev-dev \
     cargo rustc acl python3 python3-qtpy python3-pyqt5 fcitx5 fcitx5-config-qt
@@ -141,7 +141,7 @@ sudo cmake --install build
 
 #### Bước 1: Cài đặt các gói phụ thuộc (Dependencies)
 ```bash
-sudo dnf install -y gcc-c++ cmake extra-cmake-modules ninja-build \
+sudo dnf install -y git gcc-c++ cmake extra-cmake-modules ninja-build \
     gettext pkgconf-pkg-config libX11-devel fcitx5-devel libinput-devel \
     systemd-devel cargo rust acl python3 python3-QtPy python3-qt5 \
     fcitx5 fcitx5-configtool fcitx5-autostart
@@ -211,7 +211,7 @@ Dự án **fcitx5-lilypad** xin gửi lời tri ân sâu sắc đến những t�
 * **Thư viện `bamboo-core` (Rust Native):** Chân thành cảm ơn dự án [bamboo-vi/bamboo-core](https://github.com/bamboo-vi/bamboo-core) — bản cài đặt Bamboo Core thuần Rust hiệu năng cao, zero-allocation và an toàn bộ nhớ.
 * **Dự án `fcitx5-lotus`:** Chân thành cảm ơn dự án [fcitx5-lotus](https://github.com/vnlilypad/fcitx5-lotus) và tác giả **thanhpy2009** — Nguồn cảm hứng mở đường và nền móng ban đầu cho hành trình xây dựng bộ gõ tiếng Việt trên Wayland Linux.
 * **Tác giả Fcitx5:** Chân thành cảm ơn **Weng Xuetian (CSSlayer)** đã tạo nên framework gõ phím Fcitx5 mạnh mẽ.
-* **Tác giả `fcitx5-lilypad`:** **chiconcota** ([chiconcota](https://github.com/chiconcota)) — Thiết kế kiến trúc Sequencer, Hardware Sentinel `KEY_F24`, Dynamic Adaptive Governor, và duy trì phát triển bộ gõ.
+* **Tác giả `fcitx5-lilypad`:** **chiconcota** ([chiconcota](https://github.com/chiconcota)) — Thiết kế kiến trúc Sequencer, Hardware Sentinel `KEY_PAUSE`, Dynamic Adaptive Governor, và duy trì phát triển bộ gõ.
 
 ---
 

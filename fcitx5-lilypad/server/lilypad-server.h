@@ -76,6 +76,7 @@ class UinputDevice {
 
     bool          initialize();
     void          send_backspace();
+    void          send_pause();
     void          send_f24();
     int           get_fd() const {
         return guard_.get();

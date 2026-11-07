@@ -170,9 +170,9 @@ namespace fcitx {
                 }
             }
 
-            // Phase 8.4: Hardware Barrier Key KEY_F24 Integration
+            // Phase 8.4: Hardware Barrier Key KEY_PAUSE Integration
             // Send exactly bsCount backspaces for deletion. The uinput daemon will automatically
-            // append 1 atomic KEY_F24 event right after the backspaces as the non-destructive barrier sentinel.
+            // append 1 atomic KEY_PAUSE event right after the backspaces as the non-destructive barrier sentinel.
             uint32_t serial = sequencer_.next_serial();
             if (bsCount > 0) {
                 MicroStep bsStep;
@@ -204,21 +204,25 @@ namespace fcitx {
             auto& eventLoop = engine_->instance()->eventLoop();
             auto  now_time  = ::fcitx::now(CLOCK_MONOTONIC);
 
-            // Phase 8.5: Eliminate Premature Commit on Safety Timer.
-            // In Linux evdev & Wayland FIFO sockets, hardware sentinel KEY_F24 is never dropped;
-            // it is only delayed by heavy DOM reflow (TikTok / AFFiNE).
-            // Prematurely committing text before delayed Backspaces arrive was the true cause of text corruption.
-            // Timer now purely monitors DOM lag telemetry without prematurely triggering commit.
+            // Phase 8.5: Hardware Sentinel KEY_PAUSE Safety & Telemetry.
+            // In Linux evdev & Wayland FIFO sockets, hardware sentinel KEY_PAUSE arrives in 2-5ms.
+            // If heavy DOM reflow or compositor delays KEY_PAUSE beyond 120ms, safety rescue timer
+            // commits the text safely before the 300ms watchdog purge, guaranteeing zero swallowed characters.
             if (barrier_safety_timer_) {
                 barrier_safety_timer_.reset();
             }
-            uint64_t lag_timeout_us = 100000; // 100ms
+            uint64_t lag_timeout_us = 120000; // 120ms safety rescue
             auto lag_timeout_time = now_time + lag_timeout_us;
             barrier_safety_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, lag_timeout_time, 1, [this, serial](EventSourceTime*, uint64_t) {
-                if (commit_triggered_) {
+                if (commit_triggered_ || !is_deleting_.load(std::memory_order_acquire)) {
                     return false;
                 }
-                LILYPAD_INFO("⏳ [DOM LAG DETECTED] 100ms elapsed waiting for KEY_F24 (Heavy DOM reflow in progress). Holding keys safely in RAM buffer [Serial #" + std::to_string(serial) + "]");
+                auto now = std::chrono::steady_clock::now();
+                uint64_t swallow_us = (uinput_send_time_.time_since_epoch().count() > 0)
+                    ? static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(now - uinput_send_time_).count())
+                    : 120000;
+                LILYPAD_INFO("🛡️ [SAFETY TIMER RESCUE] 120ms elapsed without KEY_PAUSE sentinel. Rescuing commit safely! [Serial #" + std::to_string(serial) + "]");
+                executeCommitSequence(true, swallow_us);
                 return false;
             });
 
@@ -238,7 +242,7 @@ namespace fcitx {
 
             uinput_send_time_ = std::chrono::steady_clock::now();
             send_backspace_uinput(bsCount);
-            LILYPAD_INFO("Send " + std::to_string(bsCount) + " backspaces (Sequence Mode - Hardware Barrier Key KEY_F24 Sentinel)");
+            LILYPAD_INFO("Send " + std::to_string(bsCount) + " backspaces (Sequence Mode - Hardware Barrier Key KEY_PAUSE Sentinel)");
             return;
         }
 

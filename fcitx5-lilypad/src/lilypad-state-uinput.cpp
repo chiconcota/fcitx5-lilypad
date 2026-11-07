@@ -230,9 +230,9 @@ namespace fcitx {
         void* active = g_active_deleting_state.load(std::memory_order_acquire);
         if (active != nullptr && active != static_cast<void*>(this)) {
             auto* activeState = static_cast<LilypadState*>(active);
-            if (currentSym == FcitxKey_F24) {
+            if (currentSym == FcitxKey_Pause || currentSym == FcitxKey_F24) {
                 event.filterAndAccept();
-                LILYPAD_INFO("🛡️ [CROSS-CONTEXT] KEY_F24 received on secondary context -> routed to active context");
+                LILYPAD_INFO("🛡️ [CROSS-CONTEXT] KEY_PAUSE received on secondary context -> routed to active context");
                 return activeState->handleUInputKeyPress(event, currentSym, sleepTime);
             }
             if (isBackspace(currentSym)) {
@@ -243,7 +243,7 @@ namespace fcitx {
         }
 
         if (realMode == LilypadMode::Sequence) {
-            if (currentSym == FcitxKey_F24) {
+            if (currentSym == FcitxKey_Pause || currentSym == FcitxKey_F24) {
                 event.filterAndAccept();
                 auto swallow_now = std::chrono::steady_clock::now();
                 uint64_t swallow_duration_us = 0;
@@ -252,7 +252,7 @@ namespace fcitx {
                         std::chrono::duration_cast<std::chrono::microseconds>(swallow_now - uinput_send_time_).count()
                     );
                 }
-                LILYPAD_INFO("🛡️ [HARDWARE BARRIER KEY] Received KEY_F24 hardware barrier sentinel! (swallow=" + std::to_string(swallow_duration_us) + "us)");
+                LILYPAD_INFO("🛡️ [HARDWARE BARRIER KEY] Received KEY_PAUSE hardware barrier sentinel! (swallow=" + std::to_string(swallow_duration_us) + "us)");
                 executeCommitSequence(false, swallow_duration_us);
                 return true;
             }

@@ -56,6 +56,7 @@ bool UinputDevice::initialize() {
 
     if (ioctl(fd, UI_SET_EVBIT, EV_KEY) < 0 ||
         ioctl(fd, UI_SET_KEYBIT, KEY_BACKSPACE) < 0 ||
+        ioctl(fd, UI_SET_KEYBIT, KEY_PAUSE) < 0 ||
         ioctl(fd, UI_SET_KEYBIT, KEY_F24) < 0) {
         return false;
     }
@@ -88,19 +89,23 @@ void UinputDevice::send_backspace() {
     write(guard_.get(), ev, sizeof(ev));
 }
 
-void UinputDevice::send_f24() {
+void UinputDevice::send_pause() {
     if (!guard_.is_valid())
         return;
     struct input_event ev[4]{};
     ev[0].type  = EV_KEY;
-    ev[0].code  = KEY_F24;
+    ev[0].code  = KEY_PAUSE;
     ev[0].value = 1; // Press
     // Zero-initialize ev[1] via {} set this event to SYN_REPORT
     ev[2].type  = EV_KEY;
-    ev[2].code  = KEY_F24;
+    ev[2].code  = KEY_PAUSE;
     ev[2].value = 0; // Release
     // Zero-initialize ev[3] via {} set this event to SYN_REPORT
     write(guard_.get(), ev, sizeof(ev));
+}
+
+void UinputDevice::send_f24() {
+    send_pause();
 }
 
 LibinputContext::LibinputContext(const struct libinput_interface* interface) : udev_(udev_new()) {
@@ -290,7 +295,7 @@ int main(int argc, char* argv[]) {
     FdGuard          addon_fd;
     FdGuard          kb_client_fd;
     int              pending_backspaces = 0;
-    bool             pending_f24        = false;
+    bool             pending_sentinel   = false;
 
     struct sigaction sa{};
     sa.sa_handler = signal_handler;
@@ -300,7 +305,7 @@ int main(int argc, char* argv[]) {
     sigaction(SIGINT, &sa, nullptr);
 
     while (g_running.load(std::memory_order_acquire)) {
-        int poll_timeout = (pending_backspaces > 0 || pending_f24) ? 1 : -1;
+        int poll_timeout = (pending_backspaces > 0 || pending_sentinel) ? 1 : -1;
         int ret = poll(fds.data(), fds.size(), poll_timeout);
 
         if (ret < 0) {
@@ -314,9 +319,9 @@ int main(int argc, char* argv[]) {
             if (pending_backspaces > 0) {
                 uinput.send_backspace();
                 --pending_backspaces;
-            } else if (pending_f24) {
-                uinput.send_f24();
-                pending_f24 = false;
+            } else if (pending_sentinel) {
+                uinput.send_pause();
+                pending_sentinel = false;
             }
         }
 
@@ -374,29 +379,29 @@ int main(int argc, char* argv[]) {
             } else if (static_cast<size_t>(n) == sizeof(LilypadIpcPacket)) {
                 if (packet.type == IPC_CMD_BACKSPACE) {
                     int count = static_cast<int>(packet.code);
-                    if (pending_backspaces == 0 && !pending_f24) {
+                    if (pending_backspaces == 0 && !pending_sentinel) {
                         if (count > 0) {
                             pending_backspaces = count - 1;
                             uinput.send_backspace();
                         }
-                        pending_f24 = true;
+                        pending_sentinel = true;
                     } else {
                         pending_backspaces += count;
-                        pending_f24 = true;
+                        pending_sentinel = true;
                     }
                     LilypadLogger::instance().info("Backspace burst queued (count=" + std::to_string(count) + ")");
                 }
             } else if (static_cast<size_t>(n) == sizeof(int)) { // Backward compatibility
                 int count = *reinterpret_cast<int*>(&packet);
-                if (pending_backspaces == 0 && !pending_f24) {
+                if (pending_backspaces == 0 && !pending_sentinel) {
                     if (count > 0) {
                         pending_backspaces = count - 1;
                         uinput.send_backspace();
                     }
-                    pending_f24 = true;
+                    pending_sentinel = true;
                 } else {
                     pending_backspaces += count;
-                    pending_f24 = true;
+                    pending_sentinel = true;
                 }
             }
         }

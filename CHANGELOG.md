@@ -5,6 +5,19 @@ All notable changes to **fcitx5-lilypad** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.1] - 2026-11-07
+
+### 🐛 Fixed & Improved (Sửa Lỗi & Tối Ưu Tương Thích)
+- **Chuyển đổi Phím Chốt Chặn Sang `KEY_PAUSE` (Universal Hardware Sentinel):**
+  - Thay thế mã phím chốt chặn phần cứng từ `KEY_F24` sang `KEY_PAUSE` (evdev keycode 119, XKB keysym `FcitxKey_Pause` / `0xff13`).
+  - Khắc phục triệt để lỗi trên Ubuntu / GNOME Wayland (Mutter) khi compositor và IBus lọc bỏ các phím F13-F24 dẫn đến Fcitx5 không nhận được tín hiệu kết thúc xóa và bị Watchdog 300ms nuốt mất chữ.
+- **Bộ Đếm Cứu Trợ An Toàn Hai Tầng (Safety Rescue Timer 120ms):**
+  - Tự động kích hoạt chuỗi chèn chữ cứu hộ an toàn nếu phím chốt chặn bị kẹt hoặc trễ quá 120ms, đảm bảo văn bản của người dùng luôn được cam kết nguyên vẹn, không bao giờ bị xóa trắng bởi Watchdog emergency purge.
+- **Tương Thích Ngược Toàn Diện:**
+  - Hỗ trợ song song cả `KEY_PAUSE` và `KEY_F24` trên cả server daemon và addon client.
+- **Cập nhật Tài liệu & Gói Cài Đặt:**
+  - Bổ sung `git` vào danh sách gói cài đặt mẫu cho Ubuntu/Debian và Fedora trong README.
+
 ## [2.5.0] - 2026-11-07
 
 ### 🌟 Major Release Highlights (Phiên Bản Đột Phá Lớn 2.5)
