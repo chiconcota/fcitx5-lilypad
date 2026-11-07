@@ -5,7 +5,7 @@
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
 - **Nhánh Git làm việc:** `main` (Phiên bản `v2.5.1`).
-- **Tình trạng:** **HOÀN THÀNH 100% BẢN VÁ v2.5.1 - UNIVERSAL HARDWARE SENTINEL (KEY_PAUSE) & DUAL-TIER SAFETY RESCUE TIMER. SỬA DỨT ĐIỂM LỖI NUỐT CHỮ TRÊN UBUNTU GNOME WAYLAND (MUTTER). BIÊN DỊCH VÀ KIỂM THỬ BUILD THÀNH CÔNG.**
+- **Tình trạng:** **HOÀN THÀNH 100% BẢN VÁ v2.5.1 - UNIVERSAL HARDWARE SENTINEL (KEY_PAUSE) & CLEAN FIFO ARCHITECTURE. SỬA DỨT ĐIỂM LỖI NUỐT CHỮ TRÊN UBUNTU GNOME WAYLAND (MUTTER). BIÊN DỊCH VÀ KIỂM THỬ BUILD THÀNH CÔNG.**
 
 ## 📋 Hướng Dẫn Cập Nhật & Kiểm Thử Trên Ubuntu VM:
 

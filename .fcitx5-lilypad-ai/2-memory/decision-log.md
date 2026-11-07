@@ -8,7 +8,7 @@
 
 ## 🎯 1. HỆ THỐNG CẢM BIẾN ADAPTIVE ACK, IKI & DYNAMIC LATENCY CONTROL
 
-### [2026-11-07] Quyết định 050: Universal Hardware Sentinel (KEY_PAUSE) & Dual-Tier Safety Rescue Timer (v2.5.1)
+### [2026-11-07] Quyết định 050: Universal Hardware Sentinel (KEY_PAUSE) & Clean FIFO Architecture (v2.5.1)
 - **Bối cảnh:**
   1. Người dùng kiểm thử bộ gõ trên máy ảo Ubuntu (`Standard-PC-Q35-ICH9-2009`, GNOME Wayland / Mutter, Fcitx5 5.1.8 qua IBus frontend).
   2. Ghi nhận lỗi nuốt mất chữ hoàn toàn khi gõ phím biến âm tiếng Việt:
@@ -18,12 +18,14 @@
      - Trên GNOME Wayland (Mutter) và IBus frontend, các phím chức năng mở rộng `KEY_F24` (evdev code 194) bị compositor Mutter ánh xạ sang `XF86TouchpadToggle` hoặc bị IBus nuốt/lọc bỏ trước khi chuyển tiếp về hàm `ProcessKeyEvent` của Fcitx5.
      - Addon Fcitx5 treo ở trạng thái chờ sentinel `KEY_F24` để kích hoạt `executeCommitSequence()`. Do `KEY_F24` không bao giờ đến, sau 300ms Watchdog kích hoạt `purgeContextEmergency()`, tẩy trắng toàn bộ chuỗi commit `pending_commit_string_` và bộ đệm ký tự $\implies$ người dùng bị mất chữ hoàn toàn.
   4. Người dùng chấp thuận và chỉ đạo thay thế phím chốt chặn sang `KEY_PAUSE`.
+  5. Người dùng chỉ đạo gỡ bỏ cơ chế cứu hộ commit 120ms (vừa dư thừa vừa có nguy cơ gây lỗi commit sớm khi DOM lag), giữ nguyên cơ chế bảo vệ tối thượng Watchdog Hard Timeout 300ms.
 - **Quyết định Kỹ thuật (v2.5.1):**
   1. **Chuyển đổi phím chốt chặn phần cứng sang `KEY_PAUSE`:**
      - Thay thế mã phím chốt chặn phần cứng trong `fcitx5-lilypad-server` sang `KEY_PAUSE` (evdev keycode 119, XKB keysym `FcitxKey_Pause` / `0xff13`).
      - `KEY_PAUSE` là phím tiêu chuẩn cổ điển trên mọi layout bàn phím PC, được hỗ trợ 100% không bị nuốt hay lọc bởi bất kỳ compositor nào (Mutter, KWin, Sway, Hyprland, Niri).
-  2. **Bộ đếm cứu trợ an toàn hai tầng (Safety Rescue Timer 120ms):**
-     - Nâng cấp `barrier_safety_timer_` từ cơ chế chỉ ghi log sang cơ chế cứu trợ an toàn: Nếu sau 120ms phím chốt chặn chưa đến (do compositor quá tải hoặc kẹt hàng đợi), timer lập tức kích hoạt `executeCommitSequence(true, 120000)` để chèn từ an toàn vào ứng dụng trước khi chạm ngưỡng 300ms watchdog purge.
+  2. **Bảo toàn Kiến trúc FIFO Phần Cứng Thuần Khiết:**
+     - `KEY_PAUSE` bám sát ngay sau Backspace, dội về Fcitx5 chỉ sau 2-5ms để tự kích hoạt commit tức thì.
+     - `barrier_safety_timer_` giữ đúng vai trò đo đạc telemetry cảnh báo DOM lag (100ms) mà không ép commit sớm, giao toàn quyền cắt lỗ app freeze cho Watchdog Hard Timeout 300ms.
   3. **Tương thích ngược song song:**
      - Addon và daemon server hỗ trợ đồng thời cả `KEY_PAUSE` và `KEY_F24`, bảo đảm không phá vỡ bất kỳ phiên bản nào.
   4. **Kiểm soát độ dài file:** Tất cả file C++ trong `src/` và `server/` tiếp tục duy trì nghiêm ngặt $< 700$ dòng.

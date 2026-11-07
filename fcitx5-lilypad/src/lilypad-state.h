@@ -140,11 +140,11 @@ namespace fcitx {
         std::unique_ptr<EventSourceTime> disarm_timer_; ///< Grace disarm timer for hardware tap
         std::unique_ptr<EventSourceTime> replay_timer_; ///< Micro-tick pacing timer for replaying buffered keys
         std::unique_ptr<EventSourceTime> watchdog_timer_; ///< Hard timeout (300ms) emergency watchdog timer
-        std::unique_ptr<EventSourceTime> barrier_safety_timer_; ///< Phase 8.4: Barrier safety timer for KEY_PAUSE sentinel
+        std::unique_ptr<EventSourceTime> barrier_safety_timer_; ///< Phase 8.4: DOM lag telemetry timer (100ms) for KEY_PAUSE sentinel
         std::unique_ptr<EventSourceTime> focus_settled_timer_; ///< Phase 8.5: Focus Settled Debounce timer for Chromium DOM reflow
         std::chrono::steady_clock::time_point uinput_send_time_{}; ///< Timestamp when uinput backspaces were emitted
 
-        // Phase 8.4: Hardware Barrier Key KEY_PAUSE & Safety Timer
+        // Phase 8.4: Hardware Barrier Key KEY_PAUSE & Lag Monitoring
         bool                                  commit_triggered_ = false;
         int                                   original_bs_count_ = 0;
 
@@ -160,8 +160,8 @@ namespace fcitx {
         void scheduleFocusSettledCommit(uint64_t debounce_us);
 
         /**
-         * @brief Phase 8.4: Executes commit sequence when KEY_PAUSE arrives or barrier safety timer fires.
-         * @param from_safety_timer True if triggered by safety timer rescue.
+         * @brief Phase 8.4: Executes commit sequence when KEY_PAUSE arrives.
+         * @param from_safety_timer True if triggered by fallback / focus settled timer.
          * @param swallow_duration_us Measured or fallback roundtrip latency in microseconds.
          */
         void executeCommitSequence(bool from_safety_timer, uint64_t swallow_duration_us);

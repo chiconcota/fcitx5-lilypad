@@ -204,25 +204,21 @@ namespace fcitx {
             auto& eventLoop = engine_->instance()->eventLoop();
             auto  now_time  = ::fcitx::now(CLOCK_MONOTONIC);
 
-            // Phase 8.5: Hardware Sentinel KEY_PAUSE Safety & Telemetry.
-            // In Linux evdev & Wayland FIFO sockets, hardware sentinel KEY_PAUSE arrives in 2-5ms.
-            // If heavy DOM reflow or compositor delays KEY_PAUSE beyond 120ms, safety rescue timer
-            // commits the text safely before the 300ms watchdog purge, guaranteeing zero swallowed characters.
+            // Phase 8.5: Eliminate Premature Commit on Safety Timer.
+            // In Linux evdev & Wayland FIFO sockets, hardware sentinel KEY_PAUSE is never dropped;
+            // it is only delayed by heavy DOM reflow (TikTok / AFFiNE).
+            // Prematurely committing text before delayed Backspaces arrive was the true cause of text corruption.
+            // Timer now purely monitors DOM lag telemetry without prematurely triggering commit.
             if (barrier_safety_timer_) {
                 barrier_safety_timer_.reset();
             }
-            uint64_t lag_timeout_us = 120000; // 120ms safety rescue
+            uint64_t lag_timeout_us = 100000; // 100ms
             auto lag_timeout_time = now_time + lag_timeout_us;
             barrier_safety_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, lag_timeout_time, 1, [this, serial](EventSourceTime*, uint64_t) {
-                if (commit_triggered_ || !is_deleting_.load(std::memory_order_acquire)) {
+                if (commit_triggered_) {
                     return false;
                 }
-                auto now = std::chrono::steady_clock::now();
-                uint64_t swallow_us = (uinput_send_time_.time_since_epoch().count() > 0)
-                    ? static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(now - uinput_send_time_).count())
-                    : 120000;
-                LILYPAD_INFO("🛡️ [SAFETY TIMER RESCUE] 120ms elapsed without KEY_PAUSE sentinel. Rescuing commit safely! [Serial #" + std::to_string(serial) + "]");
-                executeCommitSequence(true, swallow_us);
+                LILYPAD_INFO("⏳ [DOM LAG DETECTED] 100ms elapsed waiting for KEY_PAUSE (Heavy DOM reflow in progress). Holding keys safely in RAM buffer [Serial #" + std::to_string(serial) + "]");
                 return false;
             });
 
