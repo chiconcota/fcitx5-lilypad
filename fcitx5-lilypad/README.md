@@ -4,183 +4,217 @@
 
 <div align="center">
   <a href="https://github.com/chiconcota/fcitx5-lilypad">
-    <img src="data/fcitx-lilypad-README.svg" alt="Logo" width="80" height="80">
+    <img src="data/fcitx-lilypad-README.svg" alt="Logo" width="96" height="96">
   </a>
 
-<h2 align="center">Fcitx5 Lilypad</h2>
+  <h2>🍃 Fcitx5 Lilypad</h2>
 
-<p align="center">
-    <b>Bộ gõ tiếng Việt thế hệ mới cho Linux Wayland & X11</b>
+  <p>
+    <b>Bộ gõ Tiếng Việt thế hệ mới cho Linux Wayland & X11</b>
     <br />
-    <i>Kiến trúc Hybrid: Fcitx5 C++ Addon + IKI Adaptive Engine + Sentinel Barrier Protocol + Uinput Server Daemon</i>
-    <br />
-    <br />
+    <i>Siêu tốc • Không nuốt chữ • Triệt tiêu đơ phím • Tự động thích ứng Electron/Wayland</i>
+  </p>
+
+  <p>
     <a href="https://github.com/chiconcota/fcitx5-lilypad/releases">
       <img src="https://img.shields.io/github/v/release/chiconcota/fcitx5-lilypad?style=flat&color=success" alt="Release">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad">
-      <img src="https://img.shields.io/badge/version-2.3.6-blue.svg" alt="Version 2.3.6">
+      <img src="https://img.shields.io/badge/version-2.5.0-blue.svg" alt="Version 2.5.0">
     </a>
     <a href="https://github.com/chiconcota/fcitx5-lilypad/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/chiconcota/fcitx5-lilypad?style=flat&color=blue" alt="License">
     </a>
     <a href="https://github.com/niri-wm/niri">
-      <img src="https://img.shields.io/badge/tested_compositor-Niri-purple.svg" alt="Niri Tested">
+      <img src="https://img.shields.io/badge/Wayland-Niri%20%7C%20Hyprland%20%7C%20GNOME%20%7C%20KDE-purple.svg" alt="Wayland Tested">
     </a>
-    <a href="#cài-đặt--hướng-dẫn-sử-dụng">
-      <img src="https://img.shields.io/badge/target_packaging-AUR_Arch_Linux-blue.svg" alt="AUR Target">
-    </a>
-    <a href="https://github.com/chiconcota/fcitx5-lilypad/issues">
-      <img src="https://img.shields.io/github/issues/chiconcota/fcitx5-lilypad?style=flat&color=red" alt="Issues">
+    <a href="#-hướng-dẫn-cài-đặt-chi-tiết-theo-từng-distro">
+      <img src="https://img.shields.io/badge/Distros-Arch%20%7C%20Ubuntu%20%7C%20Fedora-blue.svg" alt="Distros">
     </a>
   </p>
 
-<p align="center">
-    <a href="#cài-đặt--hướng-dẫn-sử-dụng"><strong>Cài đặt »</strong></a>
-    ·
-    <a href="https://github.com/chiconcota/fcitx5-lilypad/issues/new">Báo lỗi</a>
-    ·
-    <a href="https://github.com/chiconcota/fcitx5-lilypad/issues/new">Yêu cầu tính năng</a>
+  <p>
+    <a href="#-giới-thiệu-tổng-quan"><strong>Giới thiệu</strong></a> ·
+    <a href="#-tính-năng-nổi-bật"><strong>Tính năng</strong></a> ·
+    <a href="#-hướng-dẫn-cài-đặt-chi-tiết-theo-từng-distro"><strong>Cài đặt</strong></a> ·
+    <a href="#-kích-hoạt--sử-dụng"><strong>Kích hoạt</strong></a> ·
+    <a href="#-lời-cảm-ơn-credits"><strong>Tác giả & Tri ân</strong></a>
   </p>
 </div>
 
-<br />
+---
 
-## 💡 Điểm Đột Phá Kiến Trúc (`v2.3.6 - Adaptive Dynamic Micro-Pacing & Tri-Layer Protection`)
+## 🌟 Giới Thiệu Tổng Quan
 
-`fcitx5-lilypad` v2.3.6 là giải pháp toàn diện loại bỏ triệt để các hạn chế cố hữu của bộ gõ Tiếng Việt trên Wayland/X11:
+**Fcitx5 Lilypad** là bộ gõ tiếng Việt hiện đại được thiết kế từ đầu dành riêng cho hệ điều hành Linux (hỗ trợ hoàn hảo cả Wayland thế hệ mới lẫn X11 truyền thống). 
 
-### 1. Đo Đạc Nuốt Phím Thực Tế ($\Delta T_{\text{swallow}}$) & Bảo Vệ 3 Tầng (Tri-Layer Protection)
-- **Đo thời gian thực qua uinput loop:** Bấm giờ chính xác từ lúc phát $N+1$ phím xóa cho tới khi phím Sentinel quay về Fcitx5 để thu được thời gian thực tế $\Delta T_{\text{swallow}}$.
-- **Công thức điều hòa vi trễ 3 tầng an toàn:**
-  $$\text{per\_bs\_us} = \max\Big(\text{min\_per\_bs\_us}, \; \text{ema\_swallow\_us}, \; T_{\text{measured}}\Big)$$
-  - **Terminal / App nhẹ:** Nén vi trễ về mức sàn vật lý **$1.0\text{ms} \sim 2.5\text{ms}$** (Zero-Latency tức thì, gõ siêu nhạy).
-  - **Web DOM / Electron:** Vi trễ tự động co giãn theo thời gian tiêu thụ DOM thực tế, chống đè rác chữ và nuốt chữ.
-- **Cold Start Safe Baseline ($>50\text{ms}$):** Khi gõ từ đầu tiên lúc chưa có dữ liệu lịch sử $\text{IKI}$ và $\text{App ACK}$, hệ thống áp dụng ngưỡng an toàn $50\text{ms} \sim 80\text{ms}$ bảo đảm 100% không nuốt chữ.
+Nếu bạn từng cảm thấy bực bội vì các vấn đề cố hữu của bộ gõ tiếng Việt trên Linux như:
+- ❌ **Nuốt chữ, mất chữ âm ghép** khi gõ nhanh trên trình duyệt và các ứng dụng Electron (`thương` $\to$ `tương`, `thành` $\to$ `th`).
+- ❌ **Đơ, kẹt bàn phím** khi ứng dụng bị khựng hoặc giật lag.
+- ❌ **Bung phím số thô** khi gõ VNI (`co6 thuo7g`) hoặc lặp ký tự trong Telex (`nuuo7n rẫy`) trên các ứng dụng phức tạp (AFFiNE, Notion, Antigravity IDE, VS Code).
+- ❌ **Đảo dấu cách, mất chữ** khi gõ cạnh dấu câu hoặc sau khi dán văn bản (Paste).
 
-### 2. Giao Thức Uinput Sentinel Barrier $N+1$ & Post-Commit Settling Window
-- Khi xóa $N$ ký tự cũ, daemon bắn $N+1$ phím xóa `KEY_BACKSPACE` qua `/dev/uinput`:
-  - $N$ phím đầu xóa sạch text cũ trong ứng dụng.
-  - Phím thứ $N+1$ được Fcitx5 nuốt trọn (`filterAndAccept`) làm chốt chặn an toàn (Sentinel).
-- **Post-Commit Settling Window (70ms):** Đối với các ứng dụng nền Chromium/Electron, giữ phím gõ nhanh trong RAM trong $70\text{ms}$ để DOM cập nhật hoàn tất ký tự vừa commit, loại bỏ $100\%$ lỗi nuốt chữ âm ghép ("thương" $\to$ "tương").
-
-### 3. Watchdog Hard Timeout (250ms) Chuẩn Hóa & Clean Code
-- **Watchdog Hard Timeout (250ms):** Main Event Loop cài đặt timer $250\text{ms}$ độc lập. Nếu ứng dụng treo quá 250ms, hệ thống tự động kích hoạt `purgeContextEmergency()` xả toàn bộ phím thô an toàn, **không bao giờ đơ/kẹt bàn phím**.
-- **Loại bỏ nợ kỹ thuật:** Gỡ bỏ các cờ can thiệp cứng, quy chuẩn toàn bộ ứng dụng Chromium/Electron về cơ chế chung qua danh mục `ack_apps`.
+👉 **Fcitx5 Lilypad sinh ra để giải quyết triệt để tất cả các vấn đề trên!** Bằng cách kết hợp lõi xử lý âm tiết **Bamboo Core (Rust Native)** cùng kiến trúc **Micro-Step Sequencer** và **Dynamic Adaptive Governor**, Lilypad đem lại trải nghiệm gõ phím tiếng Việt mượt mà, chính xác và tự nhiên như đang gõ trên bàn phím phần cứng.
 
 ---
 
-## 💖 Lời Cảm Ơn (Acknowledgments)
+## 🚀 Tính Năng Nổi Bật
 
-Dự án **fcitx5-lilypad** xin gửi lời triân sâu sắc đến những đóng góp quý giá đã đặt nền móng cho bộ gõ:
+### 🦀 1. Lõi Âm Tiết Bamboo Native Core (Thuần Rust C-ABI)
+- Tích hợp trực tiếp engine [bamboo-core](https://github.com/bamboo-vi/bamboo-core) viết bằng Rust nguyên bản, an toàn bộ nhớ tuyệt đối (Zero Memory Leak, Zero Garbage Collection).
+- Hỗ trợ đầy đủ các kiểu gõ thông dụng: **Telex, VNI, VIQR, Microsoft Layout, Telex 2, Telex W, VNI Bàn phím tiếng Pháp**.
+- Hỗ trợ đa dạng bảng mã: **Unicode chuẩn, TCVN3 (ABC), VNI Windows, VIQR**.
+- Cơ chế khôi phục từ sai chính tả thông minh (**Smart Auto-Restore**) và tự do đặt dấu thanh (**Free Marking**).
 
-* **Tác giả Engine Bamboo:** Chân thành cảm ơn tác giả **Luật Nguyễn** ([BambooEngine](https://github.com/BambooEngine/bamboo-core)) đã phát triển bộ engine Bamboo mã nguồn mở tuyệt vời — trái tim thuật toán xử lý biến âm Tiếng Việt tự nhiên và chuẩn xác.
-* **Tác giả bộ gõ VMK:** Chân thành cảm ơn tác giả **thanhpy2009** ([VMK](https://github.com/thanhpy2009/VMK)) đã phát triển bộ gõ VMK, đặt nền móng và ý tưởng kỹ thuật ban đầu cho dự án.
-* **Dự án `fcitx5-lotus`:** Chân thành cảm ơn dự án [fcitx5-lotus](https://github.com/vnlilypad/fcitx5-lotus) — Nguồn cảm hứng mở đường và nền móng vững chắc ban đầu cho hành trình xây dựng bộ gõ tiếng Việt hiện đại trên Wayland Linux.
-* **Tác giả bộ gõ `fcitx5-lilypad`:** **chiconcota** ([chiconcota](https://github.com/chiconcota)) — Tác giả phát triển, duy trì và nâng cấp toàn bộ hệ thống Sequencer, Sentinel Barrier $N+1$, Uinput Server Daemon, Cảm biến IKI Adaptive và cơ chế điều hòa vi trễ Tri-Layer Protection.
+### ⚡ 2. Kiến Trúc Sequencer & Hardware Sentinel (`KEY_F24`)
+- **Nguyên tử hóa vi bước (Atomic Micro-Steps):** Tách bạch rõ ràng giữa vi bước phát phím xóa (Backspace) và chèn chuỗi ký tự mới (Commit).
+- **Phím chốt chặn phần cứng phi phá hủy (`KEY_F24`):** Sử dụng mã quét phần cứng độc quyền làm rào cản an toàn FIFO, loại bỏ $100\%$ race condition mà không bao giờ gây nguy cơ xóa lẹm văn bản trước đó của người dùng.
+- **Watchdog Hard Timeout 250ms:** Luôn bảo đảm bàn phím không bao giờ bị đơ hay treo cứng; tự động xả phím an toàn khi ứng dụng đích bị đóng băng.
+
+### 🧠 3. Bộ Điều Phối Trễ Thích Ứng (Dynamic Adaptive Governor)
+- **Terminal & Native GUI (Alacritty, Kitty, Foot, Kate, Text Editor):** Sàn trễ Pre-commit siêu tốc **$1.5\text{ms}$** ($1500\mu\text{s}$) và Post-commit **$0.3\text{ms}$** ($300\mu\text{s}$), cho tốc độ phản hồi tức thì với độ trễ gần như bằng 0.
+- **Chromium & Electron (Chrome, Brave, Edge, VS Code, Discord, Slack, AFFiNE):** Tự động đồng bộ chuẩn nhịp **1 khung hình VSync ($18\text{ms} \sim 22\text{ms}$)** (chuẩn an toàn của Lotus). Cung cấp đủ thời gian cho Virtual DOM của Electron hoàn tất chu kỳ xóa con trỏ trước khi ký tự mới xuất hiện, chấm dứt hoàn toàn hiện tượng nuốt chữ hay bung phím thô VNI.
+
+### 🛡️ 4. Virtual Focus Pinning & Focus Bounce Protection
+- Tự động nhận diện và bảo vệ đệm từ dở dang khi các ứng dụng web phức tạp (như AFFiNE Canvas, Notion, Antigravity IDE) liên tục phát các sự kiện FocusOut/FocusIn giả lập do cập nhật DOM.
+- Tích hợp IPC trực tiếp qua Socket của Compositor (`$NIRI_SOCKET`) truy vấn `app_id` trong $155\mu\text{s}$, nhận diện chuẩn xác các ứng dụng Wayland chạy trong container / iframe.
+
+### 🎮 5. Chế Độ Gõ Đa Dạng Theo Nhu Cầu
+- **Sequence Mode (Khuyên dùng):** Phát phím xóa qua Linux Kernel `/dev/uinput` riêng biệt, gõ mượt mà trực tiếp trong văn bản như Unikey trên Windows.
+- **Preedit Mode:** Chế độ hiển thị thanh gạch chân truyền thống của Fcitx5, tương thích tối đa trên mọi ứng dụng lạ.
+- **Minecraft Mode:** Tối ưu hóa phím xóa chuyên biệt cho Minecraft và các tựa game full-screen.
 
 ---
 
-## 🎯 Trạng Thái Hiện Tại & Môi Trường Thử Nghiệm
+## 📦 Hướng Dẫn Cài Đặt Chi Tiết Theo Từng Distro
 
-| Window Compositor | Trạng thái | Ghi chú | Nhu cầu đóng góp |
-| :--- | :---: | :--- | :---: |
-| **Niri** | 🟢 **Sẵn sàng** | Tích hợp `NiriAckSensor` + IKI Adaptive + Sentinel Barrier | Kiểm thử liên tục |
-| **Hyprland** | 🟢 **Sẵn sàng** | Chạy vạn năng qua `GenericAckSensor` | Tester & Feedback |
-| **Sway** | 🟢 **Sẵn sàng** | Hỗ trợ qua Wayland `zwp_input_method_v1/v2` | Tester & Feedback |
-| **KDE Plasma (Wayland)**| 🟢 **Sẵn sàng** | Chạy qua KWin Wayland IME API | Tester & Feedback |
-| **GNOME (Wayland)** | 🟢 **Sẵn sàng** | Chạy qua Mutter Wayland Input API | Tester & Feedback |
-| **X11 (Generic)** | 🟢 **Sẵn sàng** | Fallback qua Fcitx5 X11 Frontend + `GenericAckSensor` | Tester & Feedback |
+### 1. Arch Linux / Manjaro / CachyOS / EndeavourOS
 
----
+Người dùng Arch Linux có thể cài đặt trực tiếp từ AUR:
 
-## 📦 Cài Đặt & Hướng Dẫn Sử Dụng
-
-### Cài đặt qua AUR (Arch Linux / Manjaro / EndeavourOS)
-
-**Bước 1: Cài đặt gói bộ gõ:**
 ```bash
-# 1. Bản Binary phát hành chính thức - Cài tức thì 1s, TẮT LOG 100% (Khuyên dùng cho người dùng cuối):
+# Cách 1: Cài bản binary chính thức (Khuyên dùng - Cài ngay không cần build):
 yay -S fcitx5-lilypad-bin
 
-# 2. Bản Source phát hành chính thức - Tự biên dịch từ Release Tarball, TẮT LOG:
+# Cách 2: Cài bản tự biên dịch từ mã nguồn phát hành:
 yay -S fcitx5-lilypad
 
-# 3. Bản Git mới nhất - Tự động cập nhật theo commit nhánh main, BẬT FULL LOG (Dành cho Dev & Tester):
+# Cách 3: Cài bản git phát triển mới nhất:
 yay -S fcitx5-lilypad-git
 ```
 
-**Bước 2: Kích hoạt Uinput Daemon Service & Khởi động lại Fcitx5:**
+Hoặc biên dịch thủ công:
 ```bash
-# Kích hoạt daemon chạy ngầm theo user (chỉ cần thực hiện 1 lần duy nhất):
-sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
-
-# Khởi động lại Fcitx5 để nhận diện bộ gõ:
-fcitx5 -r -d
-```
-
-### Biên dịch từ Mã Nguồn (Build from Source)
-
-#### Bước 0: Cài đặt các gói phụ thuộc (Dependencies)
-
-- **Ubuntu / Debian:**
-  ```bash
-  sudo apt update && sudo apt install -y git fcitx5 fcitx5-config-qt libfcitx5core-dev libfcitx5utils-dev libfcitx5config-dev fcitx5-modules-dev libinput-dev libudev-dev extra-cmake-modules build-essential cmake gettext cargo rustc libx11-dev python3 python3-qtpy python3-pyqt5
-  ```
-
-- **Arch Linux:**
-  ```bash
-  sudo pacman -S --needed git base-devel cmake extra-cmake-modules fcitx5 fcitx5-configtool fcitx5-qt fcitx5-gtk gettext fmt rust libx11 libinput systemd python python-qtpy python-pyqt5
-  ```
-
-- **Fedora:**
-  ```bash
-  sudo dnf install -y git gcc-c++ cmake extra-cmake-modules fcitx5 fcitx5-devel fcitx5-configtool fcitx5-autostart fcitx5-gtk fcitx5-qt5 fcitx5-qt6 gettext-devel rust cargo libX11-devel libinput-devel systemd-devel python3 python3-QtPy python3-qt5
-  ```
-
-#### Bước 1: Clone và Biên dịch
-
-```bash
-# 1. Clone repository
+sudo pacman -S --needed base-devel cmake extra-cmake-modules ninja fcitx5 fcitx5-configtool git rust libx11 libinput systemd acl python python-qtpy python-pyqt5
 git clone https://github.com/chiconcota/fcitx5-lilypad.git
 cd fcitx5-lilypad/fcitx5-lilypad
-
-# 2. Biên dịch C++ Addon
-mkdir -p build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=/usr ..
-make -j$(nproc)
-sudo make install
-```
-
-#### Bước 2: Nạp Uinput & Kích hoạt Daemon Service
-
-```bash
-# 3. Kiểm tra uinput module, reload systemd, user proxy & udev rules (/dev/uinput)
-ls /dev/uinput || sudo modprobe uinput
-sudo systemd-sysusers
-sudo udevadm control --reload-rules && sudo udevadm trigger
-sudo systemctl daemon-reload
-
-# 4. Kích hoạt Server Daemon qua Systemd
-sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
-
-# 5. Khởi động lại Fcitx5
-fcitx5 -r -d
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -GNinja
+cmake --build build -j$(nproc)
+sudo cmake --install build
 ```
 
 ---
 
-## 🤝 Kêu Gọi Cộng Đồng Đóng Góp (Call for Testers)
+### 2. Ubuntu / Debian / Linux Mint / Pop!_OS
 
-Nếu bạn đang sử dụng **Hyprland, Sway, KDE, GNOME, Fedora, Ubuntu, NixOS, Void...**, hãy giúp bộ gõ hoàn thiện hơn bằng cách:
+#### Bước 1: Cài đặt các gói phụ thuộc (Dependencies)
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake extra-cmake-modules ninja-build \
+    gettext pkg-config libx11-dev libfcitx5core-dev libfcitx5utils-dev \
+    libfcitx5config-dev fcitx5-modules-dev libinput-dev libudev-dev \
+    cargo rustc acl python3 python3-qtpy python3-pyqt5 fcitx5 fcitx5-config-qt
+```
 
-1. **Thử nghiệm bộ gõ** trên môi trường của bạn.
-2. **Báo cáo sự cố (Issue)** nếu gặp lỗi lặp chữ, đơ chữ hoặc kẹt bộ đệm.
-3. **Gửi Log thời gian thực**: Sử dụng script [scripts/read_logs.sh](file:///home/chiconcota/Documents/vnlilypad-lotus/scripts/read_logs.sh) để đính kèm log chi tiết khi báo lỗi.
-4. **Đóng góp Code (Pull Request)**: Viết thêm Cảm biến ACK riêng (`IAckSensor`) cho các compositor chuyên biệt.
+#### Bước 2: Tải mã nguồn và biên dịch
+```bash
+git clone https://github.com/chiconcota/fcitx5-lilypad.git
+cd fcitx5-lilypad/fcitx5-lilypad
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -GNinja
+cmake --build build -j$(nproc)
+sudo cmake --install build
+```
+
+---
+
+### 3. Fedora / RHEL / AlmaLinux
+
+#### Bước 1: Cài đặt các gói phụ thuộc (Dependencies)
+```bash
+sudo dnf install -y gcc-c++ cmake extra-cmake-modules ninja-build \
+    gettext pkgconf-pkg-config libX11-devel fcitx5-devel libinput-devel \
+    systemd-devel cargo rust acl python3 python3-QtPy python3-qt5 \
+    fcitx5 fcitx5-configtool fcitx5-autostart
+```
+
+#### Bước 2: Tải mã nguồn và biên dịch
+```bash
+git clone https://github.com/chiconcota/fcitx5-lilypad.git
+cd fcitx5-lilypad/fcitx5-lilypad
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -GNinja
+cmake --build build -j$(nproc)
+sudo cmake --install build
+```
+
+---
+
+## ⚙️ Kích Hoạt & Cấu Hình Sau Khi Cài Đặt
+
+Chế độ gõ **Sequence Mode** sử dụng dịch vụ daemon `fcitx5-lilypad-server` để phát phím xóa vi mô qua `/dev/uinput`. Bạn cần kích hoạt dịch vụ 1 lần duy nhất:
+
+### Bước 1: Kích hoạt quyền Uinput và Service Daemon (Áp dụng cho mọi Distro)
+```bash
+# 1. Đảm bảo uinput kernel module được nạp
+sudo modprobe uinput
+
+# 2. Cập nhật quyền udev rules và nạp lại systemd
+sudo udevadm control --reload-rules && sudo udevadm trigger
+sudo systemctl daemon-reload
+
+# 3. Kích hoạt Server Daemon chạy ngầm theo user của bạn:
+sudo systemctl enable --now fcitx5-lilypad-server@$USER.service
+
+# 4. Khởi động lại Fcitx5:
+fcitx5 -r -d
+```
+
+### Bước 2: Thêm Lilypad vào danh sách bộ gõ Fcitx5
+1. Mở công cụ cấu hình Fcitx5:
+   ```bash
+   fcitx5-configtool
+   ```
+2. Bỏ tích ô *"Only Show Current Language"* (Chỉ hiển thị ngôn ngữ hiện tại).
+3. Tìm kiếm **`Lilypad`** và bấm nút mũi tên sang phải `>` để thêm vào danh sách Input Method.
+4. Đặt Lilypad dưới bàn phím tiếng Anh mặc định (ví dụ: `Keyboard - English (US)`).
+5. Sử dụng phím tắt chuyển bộ gõ mặc định (thường là `Ctrl + Space` hoặc `Super + Space`) để bắt đầu gõ tiếng Việt!
+
+---
+
+## 📊 Ma Trận Tương Thích (Desktop & Compositor)
+
+| Môi trường / Compositor | Giao thức | Trạng thái | Ghi chú |
+| :--- | :---: | :---: | :--- |
+| **Niri** | Wayland | 🟢 Hoàn hảo | Hỗ trợ chuyên sâu qua `NiriAckSensor` + IPC Socket |
+| **Hyprland** | Wayland | 🟢 Hoàn hảo | Chạy mượt mà qua `GenericAckSensor` |
+| **Sway** | Wayland | 🟢 Hoàn hảo | Tích hợp qua `zwp_input_method_v2` |
+| **KDE Plasma (Wayland / X11)** | Wayland / X11 | 🟢 Hoàn hảo | Hoạt động trơn tru qua KWin IME |
+| **GNOME (Wayland / X11)** | Wayland / X11 | 🟢 Hoàn hảo | Tích hợp Mutter Wayland Input API |
+| **XFCE / i3 / bspwm / Openbox** | X11 | 🟢 Hoàn hảo | Chạy qua Fcitx5 X11 Frontend chuẩn |
+
+---
+
+## 💖 Lời Cảm Ơn (Credits)
+
+Dự án **fcitx5-lilypad** xin gửi lời tri ân sâu sắc đến những tác giả và dự án mã nguồn mở đã tạo nền móng:
+
+* **Tác giả Bamboo Engine:** Chân thành cảm ơn tác giả **Luật Nguyễn** ([BambooEngine](https://github.com/BambooEngine/bamboo-core)) — tác giả bộ engine Bamboo mã nguồn mở thuật toán xử lý âm tiết tiếng Việt tự nhiên và chuẩn xác.
+* **Thư viện `bamboo-core` (Rust Native):** Chân thành cảm ơn dự án [bamboo-vi/bamboo-core](https://github.com/bamboo-vi/bamboo-core) — bản cài đặt Bamboo Core thuần Rust hiệu năng cao, zero-allocation và an toàn bộ nhớ.
+* **Dự án `fcitx5-lotus`:** Chân thành cảm ơn dự án [fcitx5-lotus](https://github.com/vnlilypad/fcitx5-lotus) và tác giả **thanhpy2009** — Nguồn cảm hứng mở đường và nền móng ban đầu cho hành trình xây dựng bộ gõ tiếng Việt trên Wayland Linux.
+* **Tác giả Fcitx5:** Chân thành cảm ơn **Weng Xuetian (CSSlayer)** đã tạo nên framework gõ phím Fcitx5 mạnh mẽ.
+* **Tác giả `fcitx5-lilypad`:** **chiconcota** ([chiconcota](https://github.com/chiconcota)) — Thiết kế kiến trúc Sequencer, Hardware Sentinel `KEY_F24`, Dynamic Adaptive Governor, và duy trì phát triển bộ gõ.
 
 ---
 
 ## 📄 Giấy Phép (License)
 
-Phân phối dưới Giấy phép **GPL-3.0-or-later**. Xem `LICENSE` để biết thêm chi tiết.
+Dự án được phân phối dưới Giấy phép **GPL-3.0-or-later**. Xem chi tiết tại [LICENSE](../LICENSE).

@@ -1,3 +1,11 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Lý Tất Thành
+ * SPDX-FileCopyrightText: 2026 Antigravity
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ */
+
 #ifndef LILYPAD_SEQUENCER_H
 #define LILYPAD_SEQUENCER_H
 

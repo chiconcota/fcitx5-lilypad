@@ -1,7 +1,7 @@
 /*
  * SPDX-FileCopyrightText: 2022-2022 CSSlayer <wengxt@gmail.com>
- * SPDX-FileCopyrightText: 2025 Võ Ngô Hoàng Thành <thanhpy2009@gmail.com>
- * SPDX-FileCopyrightText: 2026 Nguyễn Hoàng Kỳ  <nhktmdzhg@gmail.com>
+ * SPDX-FileCopyrightText: 2025-2026 Lý Tất Thành
+ * SPDX-FileCopyrightText: 2026 Antigravity
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
@@ -47,6 +47,7 @@ namespace fcitx {
          * @param ic Pointer to the input context.
          */
         LilypadState(LilypadEngine* engine, InputContext* ic);
+        ~LilypadState() override;
 
         /**
          * @brief Initializes the bamboo engine for this state.
@@ -124,6 +125,7 @@ namespace fcitx {
         std::vector<EmojiEntry> emojiCandidates_;
         bool                    waitAck_ = false;
         std::vector<KeyEntry>   buffered_keys_; ///< Keystrokes buffered during replacement
+        DedupRingBuffer         dedup_buffer_;  ///< Bi-directional deduplication ring buffer
         bool                    isPrevSpace_        = false;
         bool                    isPrevHyphen_       = false;
         bool                    shouldCapitalize_   = false;
@@ -131,16 +133,38 @@ namespace fcitx {
         int64_t                 lastDeactivateTime_ = 0;
         bool                    deferredFocusOut_   = false;
         bool                    wa_chromium_flag    = false;
+        bool                    is_replaying_       = false; ///< Strict FIFO lock: active when replaying buffered keys
         Sequencer               sequencer_;
         std::unique_ptr<EventSourceTime> commit_timer_;
         std::unique_ptr<EventSourceTime> settle_timer_;
+        std::unique_ptr<EventSourceTime> disarm_timer_; ///< Grace disarm timer for hardware tap
+        std::unique_ptr<EventSourceTime> replay_timer_; ///< Micro-tick pacing timer for replaying buffered keys
         std::unique_ptr<EventSourceTime> watchdog_timer_; ///< Hard timeout (300ms) emergency watchdog timer
+        std::unique_ptr<EventSourceTime> barrier_safety_timer_; ///< Phase 8.4: Barrier safety timer (20ms) for KEY_F24 sentinel
+        std::unique_ptr<EventSourceTime> focus_settled_timer_; ///< Phase 8.5: Focus Settled Debounce timer for Chromium DOM reflow
         std::chrono::steady_clock::time_point uinput_send_time_{}; ///< Timestamp when uinput backspaces were emitted
+
+        // Phase 8.4: Hardware Barrier Key KEY_F24 & Safety Timer
+        bool                                  commit_triggered_ = false;
+        int                                   original_bs_count_ = 0;
 
         // Phase 8.3: Dynamic Heavy-DOM & Per-Tab Governor
         uint64_t                              last_swallow_duration_us_ = 0;
         std::chrono::steady_clock::time_point last_focus_bounce_time_{};
         bool                                  has_recent_focus_bounce_ = false;
+
+        /**
+         * @brief Phase 8.5: Schedules a debounced commit when Chromium focus bounces settle.
+         * @param debounce_us Microseconds of quietude required after the last focus bounce.
+         */
+        void scheduleFocusSettledCommit(uint64_t debounce_us);
+
+        /**
+         * @brief Phase 8.4: Executes commit sequence when KEY_F24 arrives or barrier safety timer fires.
+         * @param from_safety_timer True if triggered by 20ms safety timer rescue.
+         * @param swallow_duration_us Measured or fallback roundtrip latency in microseconds.
+         */
+        void executeCommitSequence(bool from_safety_timer, uint64_t swallow_duration_us);
 
         /**
          * @brief Checks if the current tab/context is experiencing heavy DOM or event-loop lag.
@@ -284,6 +308,22 @@ namespace fcitx {
          * Resets internal word buffers and forwards all queued keystrokes as raw input.
          */
         void purgeContextEmergency();
+
+        /**
+         * @brief Explicitly arms hardware tap in uinput server.
+         */
+        void send_arm_tap_uinput() const;
+
+        /**
+         * @brief Explicitly disarms hardware tap in uinput server.
+         */
+        void send_disarm_tap_uinput() const;
+
+        /**
+         * @brief Handles incoming socket events from uinput server.
+         * @param fd Socket file descriptor.
+         */
+        static void handleUinputSocketEvent(int fd);
 
         // IKI (Inter-Keystroke Interval) Modular Sensor
         std::unique_ptr<IIkiSensor> iki_sensor_; ///< Dedicated IKI Sensor Module

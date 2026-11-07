@@ -141,18 +141,41 @@ Biến `fcitx5-lotus` thành bộ gõ Tiếng Việt Telex mượt nhất, nhanh
       * Khôi phục điều tốc cảm biến IKI `micro_delay_us` (tự dãn $33\text{ms} \sim 35\text{ms}$ khi gõ thong thả) kết hợp sàn phần cứng $16\text{ms}$ ($16000\mu\text{s}$ - 1 khung hình 60Hz) trên Chromium (v2.3.12 - sửa dứt điểm lỗi nuốt chữ `có` $\to$ `c`, `bạn` $\to$ `b`).
       * Khôi phục mức sàn an toàn $70\text{ms}$ cho Post-Commit Settling Window trên Chromium (bảo vệ 100% các từ thay thế kép liên tiếp `thấy`, `thương`).
       * Nâng trần an toàn Hard Timeout Watchdog & Sequencer Max ACK từ $250\text{ms}$ lên $300\text{ms}$ (v2.3.13 - chống false alarm khi Chromium V8 GC lag trên web nặng).
-    - [ ] **Phase 8.3.6:** Swallow Safety Timer (Bộ Cứu Hộ Nuốt Phím Rơi 20ms - 25ms):
-      * Giải quyết ca Compositor làm rơi phím Sentinel khi trình duyệt bị Focus Bounce (từ `thương` + `r` $\to$ `thưởng`).
-      * Nếu đã nuốt được $\ge N$ phím mà phím Sentinel quá $20\text{ms}$ chưa về $\implies$ Tự động commit ngay ký tự mới thay vì chờ $300\text{ms}$ Watchdog.
-    - [ ] **Phase 8.3.7:** Kiểm thử thực tế đối chứng toàn diện (Antigravity IDE, Facebook, TikTok 25K, AFFiNE).
 
-- [ ] **Phase 8.4: Thay Thế Sentinel Backspace (N+1) Bằng Hardware Barrier Key (`KEY_PAUSE` / `KEY_F24`):**
-  - [ ] Khai tử phím Backspace thứ $N+1$ (nguồn gốc tiềm ẩn gây xóa lẹm vào lệnh Terminal và văn bản web khi có glitch).
-  - [ ] Mở keycode `KEY_PAUSE` (hoặc `KEY_F24`) trong uinput driver làm rào cản đồng bộ phần cứng ở đuôi chuỗi Backspace: `[BS_1 ... BS_N] + [KEY_PAUSE]`.
-  - [ ] Fcitx5 chặn `KEY_PAUSE` làm mốc chốt đo ACK chính xác 100%, bóc tách hoàn toàn tín hiệu đo thời gian ra khỏi luồng phím xóa văn bản. Nếu xảy ra sự cố, `KEY_PAUSE` lọt xuống app cũng hoàn toàn vô hại (Non-destructive).
+- [ ] **Phase 8.4: Kiến Trúc Hardware Barrier Key `KEY_F24` & Barrier Safety Timer (Giải Pháp Toàn Diện Triệt Để):**
+  - **Mục tiêu cốt lõi:** Khai tử hoàn toàn phím Sentinel Backspace thứ $N+1$ (vốn là phím xóa có tính hủy hoại), chuyển sang dùng phím mở rộng phần cứng **`KEY_F24`** vô hại kết hợp **Barrier Safety Timer (20ms)**.
+  - **Lợi ích kiến trúc đột phá:**
+    1. *Bóc tách 100% tín hiệu đo ACK khỏi phím xóa:* Uinput chỉ bắn đúng $N$ phím Backspace (để xóa text cũ) và chốt đuôi bằng 1 phím `KEY_F24`.
+    2. *Tuyệt đối không bao giờ xóa nhầm chữ:* Vì `KEY_F24` là phím vô hại, không có bất kỳ app hay trình nghe nhạc/game nào gán phím F24. Kể cả khi có lag hay lọt xuống app thì app cũng hoàn toàn phớt lờ.
+    3. *Không bao giờ bị đơ 300ms:* Nếu Compositor làm rơi packet `KEY_F24` do Focus Bounce của TikTok/AFFiNE, Barrier Safety Timer (20ms) tự động kích hoạt xả rào chắn và commit chữ ngay lập tức.
+  - **Các bước triển khai cụ thể:**
+    - [x] **Phase 8.4.1 (Kernel Uinput Server Daemon):**
+      * Trong `fcitx5-lilypad/server/lilypad-server.cpp`: Mở thêm capability `ioctl(fd, UI_SET_KEYBIT, KEY_F24)` khi khởi tạo uinput device.
+      * Thêm hàm `send_f24()` phát cặp sự kiện nguyên tử `KEY_F24` (Press + Release + SYN_REPORT).
+      * Cập nhật vòng lặp uinput: Sau khi bắn sạch $N$ phím `KEY_BACKSPACE`, tự động phát 1 phím chốt `KEY_F24`.
+    - [x] **Phase 8.4.2 (Addon Sequencer & State Core):**
+      * Trong `lilypad-state.cpp`: Khi phát lệnh thay thế (`performReplacement`), đặt `expected_backspaces_ = bsCount` (chỉ đúng $N$ phím xóa).
+      * Trong `handleUInputKeyPress`: Bắt sự kiện phím `KEY_F24` (`event.key().check(FcitxKey_F24)`), nuốt trọn (`event.filterAndAccept()`), đo thời gian thực tế `swallow_duration_us`, giải phóng rào chắn và chuyển sang chu kỳ Settling Delay $\to$ Commit.
+    - [x] **Phase 8.4.3 (Tích Hợp Barrier Safety Timer 20ms):**
+      * Cài đặt timer an toàn $20\text{ms}$ ngay khi bắn uinput. Nếu phím `KEY_F24` bị Compositor làm rơi do Focus Bounce $\implies$ Timer tự động giải phóng rào chắn và commit ngay lập tức, triệt tiêu thời gian chờ vô ích $300\text{ms}$ của Watchdog.
+    - [x] **Phase 8.4.4 (Biên Dịch & Cập Nhật Systemd Service):**
+      * Biên dịch cả `fcitx5-lilypad` và daemon `fcitx5-lilypad-server` thành công 100% cả bản Debug và Release (v2.3.14).
+      * Khởi động lại service và reload `fcitx5`.
 
-- [ ] **Phase 8.5: Kiểm Thử Thực Địa & Xác Nhận Toàn Diện:**
-  - [ ] Kiểm thử trên TikTok Web (Khung bình luận 25K+ comments): Gõ câu dài nhiều từ có dấu liên tiếp, xác nhận không rụng từ thành `couo7`.
-  - [ ] Kiểm thử trên TikTok Web (Khung caption video): Gõ `cháu` $\to$ ra đúng `cháu`, không bị nuốt mất thành `ch`.
-  - [ ] Kiểm thử trên Terminal/CLI (Ghostty / Kitty / Alacritty): Xác nhận gõ lướt siêu tốc $1\text{ms}$ mượt mà và không xóa lẹm prompt.
+- [x] **Phase 8.5: Focus Settled Debounce Cho Chromium (v2.4.6):**
+  - [x] Thiết lập bộ đếm lắng dịu 35ms tại `LilypadEngine::activate()` khi có Focus Bounce trong lúc xóa vi mô.
+  - [x] Tự động đo đạc telemetry thực tế $t_{\text{end}} - t_{\text{uinput\_send}}$ nạp vào Dynamic Governor, triệt tiêu lỗi kẹt 300ms Watchdog.
+  - [x] Bảo vệ an toàn phím Space và hàng đợi phím bấm qua Batch Replay Protocol 3ms.
+
+- [ ] **Phase 8.6: Chống Rụng Phím Vật Lý Do Wayland Focus Bounce (v2.4.7 - v2.4.11 Hoàn Thành):**
+  - **Tài liệu đặc tả:** Xem chi tiết 4 giải pháp tại [wayland-focus-bounce-drop-key-solutions.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/1-overview/project-managers/wayland-focus-bounce-drop-key-solutions.md).
+  - [x] **Giải pháp 1:** Lưới bảo hiểm phần cứng từ `fcitx5-lilypad-server` (lắng nghe phím bàn phím qua `libinput` trên `seat0` độc lập với Niri Compositor - v2.4.7).
+  - [x] **Giải pháp 2:** Cổng lọc trùng phím hai chiều (Bi-directional Keystroke Dedup Gate - v2.4.10).
+  - [x] **Giải pháp 3:** Grace Delimiter Engine Reset chống dính từ (v2.4.11).
+
+- [ ] **Phase 8.7: Khóa Hàng Đợi FIFO Tuần Tự & Nâng Watchdog Server 250ms (Kế Hoạch v2.4.12 - Phiên Tới):**
+  - [ ] **FIFO Queue Lock:** Trong `keyEvent()`, nếu `!buffered_keys_.empty()` hoặc `replay_timer_` đang chạy, đẩy mọi phím Niri mới vào cuối hàng đợi `buffered_keys_` để triệt tiêu lỗi phím mới vượt mặt làm lọt Space vào giữa từ (`sách tr ời`).
+  - [ ] **Server Watchdog Expansion:** Nâng `TAP_WATCHDOG_TIMEOUT_MS` từ 120ms lên 250ms trong `lilypad-server.cpp` tương thích hoàn toàn với chu kỳ DOM của Chrome/AFFiNE.
+  - [ ] **Sequential Replay Guarantee:** Duy trì cờ khóa tuần tự trong suốt quá trình xả hàng đợi, bảo đảm Space luôn xuất hiện trước từ mới.
+  - [ ] Kiểm thử đối soát tốc độ cao gõ VNI/Telex trên Chromium/AFFiNE Canvas.
 

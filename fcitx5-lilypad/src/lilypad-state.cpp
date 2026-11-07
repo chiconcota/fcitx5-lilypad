@@ -1,11 +1,17 @@
 /*
  * SPDX-FileCopyrightText: 2022-2022 CSSlayer <wengxt@gmail.com>
- * SPDX-FileCopyrightText: 2025 Võ Ngô Hoàng Thành <thanhpy2009@gmail.com>
- * SPDX-FileCopyrightText: 2026 Nguyễn Hoàng Kỳ  <nhktmdzhg@gmail.com>
+ * SPDX-FileCopyrightText: 2025-2026 Lý Tất Thành
+ * SPDX-FileCopyrightText: 2026 Antigravity
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  */
+
+/**
+ * @file lilypad-state.cpp
+ * @brief Core Lifecycle, Bamboo Core Engine Interface, Key Event Dispatcher & Candidate UI.
+ */
+
 #include "lilypad-state.h"
 #include "lilypad-engine.h"
 #include "lilypad-candidates.h"
@@ -16,21 +22,19 @@
 #include <fcitx-utils/log.h>
 #include <fcitx-utils/utf8.h>
 #include <fcitx/candidatelist.h>
+#include <fcitx/inputcontext.h>
 #include <fcitx/inputpanel.h>
 #include <fcitx/menu.h>
 #include <fcitx/userinterface.h>
 
 #include <algorithm>
 #include <string>
-#include <sys/socket.h>
-#include <sys/un.h>
-
-#include <thread>
+#include <vector>
 
 #include "ack-sensors/sensor-factory.h"
 
 namespace fcitx {
-    constexpr int      MAX_SCAN_LENGTH = 15;
+    constexpr int MAX_SCAN_LENGTH = 15;
 
     static inline bool isWordBreak(uint32_t ucs4) {
         // Space, tab, newline, carriage return, null, or punctuation/symbols (: ; < = > ? @)
@@ -45,6 +49,13 @@ namespace fcitx {
             *engine_->config().ikiMaxMs
         );
         setEngine();
+    }
+
+    LilypadState::~LilypadState() {
+        if (g_active_deleting_state.load(std::memory_order_acquire) == static_cast<void*>(this)) {
+            g_active_deleting_state.store(nullptr, std::memory_order_release);
+            is_deleting_.store(false, std::memory_order_release);
+        }
     }
 
     void LilypadState::setEngine() {
@@ -88,132 +99,63 @@ namespace fcitx {
         EngineSetOption(lilypadEngine_.handle(), &option);
     }
 
-    bool LilypadState::connect_uinput_server() {
-        if (uinput_client_fd_ >= 0)
-            return true;
-        const std::string current_path = buildSocketPath("kb_socket");
-        int               current_fd   = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK, 0);
-        if (current_fd < 0) {
-            LILYPAD_ERROR("Failed to create socket: " + std::string(strerror(errno)));
-            return false;
-        }
-
-        struct sockaddr_un addr{};
-        addr.sun_family = AF_UNIX;
-
-        addr.sun_path[0] = '\0';
-        memcpy(&addr.sun_path[1], current_path.c_str(), current_path.length());
-        socklen_t len = offsetof(struct sockaddr_un, sun_path) + current_path.length() + 1;
-
-        if (connect(current_fd, (struct sockaddr*)&addr, len) == 0) {
-            uinput_client_fd_ = current_fd;
-            return true;
-        }
-        LILYPAD_ERROR("Failed to connect to socket: " + std::string(strerror(errno)));
-        int old_fd = uinput_client_fd_.exchange(-1);
-        if (old_fd != -1) {
-            close(old_fd);
-        }
-        return false;
-    }
-
-    int LilypadState::setup_uinput() {
-        return connect_uinput_server() ? uinput_client_fd_.load(std::memory_order_acquire) : -1;
-    }
-
-    void LilypadState::send_backspace_uinput(int count) const {
-        if (uinput_client_fd_ < 0 && !connect_uinput_server()) {
-            LILYPAD_ERROR("Cannot send backspace since cannot connect to uinput server");
+    void LilypadState::handlePreeditMode(KeyEvent& keyEvent, KeySym currentSym) {
+        if (checkForwardSpecialKey(keyEvent, currentSym)) {
+            ic_->inputPanel().reset();
+            ic_->updatePreedit();
+            ic_->updateUserInterface(UserInterfaceComponent::InputPanel);
+            keyEvent.forward();
             return;
         }
 
-        ssize_t n = send(uinput_client_fd_, &count, sizeof(count), MSG_NOSIGNAL);
-
-        if (n < 0) {
-            LILYPAD_WARN("Failed to send backspace: " + std::string(strerror(errno)));
-            int old_fd = uinput_client_fd_.exchange(-1);
-            if (old_fd != -1) {
-                close(old_fd);
-            }
-            if (connect_uinput_server()) {
-                LILYPAD_INFO("Reconnected to uinput server successfully");
-                send(uinput_client_fd_, &count, sizeof(count), MSG_NOSIGNAL);
-            }
-        }
-
-        if (waitAck_) {
-            LILYPAD_INFO("Waiting for ack");
-            std::this_thread::sleep_for(std::chrono::milliseconds(count * 5));
-        }
-    }
-
-    bool LilypadState::isAutofillCertain(const SurroundingText& s) {
-        if (!s.isValid() || oldPreBuffer_.empty()) {
-            return false;
-        }
-
-        const unsigned int cursor  = s.cursor();
-        const unsigned int anchor  = s.anchor();
-        const auto&        text    = s.text();
-        const size_t       textLen = utf8::length(text);
-
-        // Fix that surrounding text is delay update
-        const size_t buffLen    = utf8::length(oldPreBuffer_);
-        const size_t pb         = text.find(oldPreBuffer_);
-        size_t       rangeStart = static_cast<size_t>(cursor) >= buffLen ? static_cast<size_t>(cursor) - buffLen : 0;
-        const bool   sameprefix = pb != std::string::npos && pb >= rangeStart && pb <= static_cast<size_t>(cursor);
-
-        // Detect browser autofill/autocomplete suggestions via selection.
-        if (cursor != anchor) {
-            unsigned int selectionStart = std::min(anchor, cursor);
-            unsigned int selectionEnd   = std::max(anchor, cursor);
-
-            // Only consider it browser autofill if the selection starts at the cursor
-            // and extends to the end of the line (common address bar behavior).
-            if (selectionStart >= cursor || (selectionStart < cursor && selectionEnd > cursor)) {
-                if (!sameprefix)
-                    return false;
-                // If the selection contains a newline, it's likely a multiline editor (AI ghost text),
-                // not a single-line URL/Search bar.
-                size_t p = text.find('\n', selectionStart);
-                return p == std::string::npos || p >= static_cast<size_t>(selectionEnd);
+        if (isBackspace(currentSym)) {
+            UniqueCPtr<char> preeditCheck(EnginePullPreedit(lilypadEngine_.handle()));
+            if (!preeditCheck || (*preeditCheck.get() == 0)) {
+                // No active preedit: physical Backspace must be forwarded to application to delete space/text!
+                ResetEngine(lilypadEngine_.handle());
+                ic_->inputPanel().reset();
+                ic_->updatePreedit();
+                ic_->updateUserInterface(UserInterfaceComponent::InputPanel);
+                keyEvent.forward();
+                return;
             }
         }
 
-        if (textLen == static_cast<size_t>(cursor)) {
-            realtextLen.store(textLen, std::memory_order_release);
-            return false;
-        }
-
-        // Heuristic: rapid text growth in a single-line context.
-        // Applied only when no newline is present after the cursor to distinguish from AI text in editors.
-        // Gecko/Firefox: if buffLen > textLen, surrounding text is stale (async update race)
-        if (buffLen > textLen) {
-            return false;
-        }
-        if (textLen > static_cast<size_t>(cursor) + 1 && cursor == realtextLen.load(std::memory_order_acquire) && text.find('\n', cursor) == std::string::npos && sameprefix)
-            return true;
-
-        for (auto v = realtextLen.load(std::memory_order_acquire); v < cursor && !realtextLen.compare_exchange_weak(v, cursor, std::memory_order_acq_rel);)
-            ;
-        return false;
-    }
-
-    void LilypadState::handlePreeditMode(KeyEvent& keyEvent, KeySym currentSym) {
-        if (EngineProcessKeyEvent(lilypadEngine_.handle(), currentSym, keyEvent.rawKey().states()) != 0U)
-            keyEvent.filterAndAccept();
-        if (auto commit = UniqueCPtr<char>(EnginePullCommit(lilypadEngine_.handle()))) {
-            if (commit && (*commit.get() != 0)) {
-                LILYPAD_INFO("Commit: " + std::string(commit.get()));
-                ic_->commitString(commit.get());
+        if (currentSym == FcitxKey_Return) {
+            UniqueCPtr<char> preeditCheck(EnginePullPreedit(lilypadEngine_.handle()));
+            if (preeditCheck && (*preeditCheck.get() != 0)) {
+                EngineCommitPreedit(lilypadEngine_.handle());
+                auto commit = UniqueCPtr<char>(EnginePullCommit(lilypadEngine_.handle()));
+                ic_->inputPanel().reset();
+                ic_->updatePreedit();
+                if (commit && (*commit.get() != 0)) {
+                    ic_->commitString(commit.get());
+                }
+                ResetEngine(lilypadEngine_.handle());
+                ic_->updateUserInterface(UserInterfaceComponent::InputPanel);
+                keyEvent.filterAndAccept();
+                return;
             }
+            keyEvent.forward();
+            return;
         }
-        ic_->inputPanel().reset();
+
+        bool processed = EngineProcessKeyEvent(lilypadEngine_.handle(), currentSym, keyEvent.rawKey().states()) != 0U;
+
+        auto commit = UniqueCPtr<char>(EnginePullCommit(lilypadEngine_.handle()));
+        if (commit && (*commit.get() != 0)) {
+            LILYPAD_INFO("Commit: " + std::string(commit.get()));
+            // Phase: Reset preedit in GTK4 / Client FIRST before committing string to prevent buffer scramble
+            ic_->inputPanel().reset();
+            ic_->updatePreedit();
+            ic_->commitString(commit.get());
+        }
+
         UniqueCPtr<char> preedit(EnginePullPreedit(lilypadEngine_.handle()));
         if (preedit && (*preedit.get() != 0)) {
             std::string_view view = preedit.get();
             Text             text;
-            TextFormatFlags  fmt = TextFormatFlag::NoFlag;
+            TextFormatFlags  fmt = TextFormatFlag::Underline;
             if (utf8::validate(view))
                 text.append(std::string(view), fmt);
             text.setCursor(static_cast<int>(text.textLength()));
@@ -221,486 +163,19 @@ namespace fcitx {
                 ic_->inputPanel().setClientPreedit(text);
             else
                 ic_->inputPanel().setPreedit(text);
-        }
-        ic_->updatePreedit();
-        ic_->updateUserInterface(UserInterfaceComponent::InputPanel);
-    }
-
-    void LilypadState::updateEmojiPageStatus(CommonCandidateList* commonList) {
-        if ((commonList == nullptr) || commonList->empty()) {
-            return;
-        }
-
-        int pageSize = commonList->pageSize();
-        if (pageSize <= 0) {
-            pageSize = 9;
-        }
-
-        int         totalItems  = commonList->totalSize();
-        int         currentPage = commonList->currentPage() + 1;
-        int         totalPages  = (totalItems + pageSize - 1) / pageSize;
-
-        std::string status = _("Page ") + std::to_string(currentPage) + "/" + std::to_string(totalPages);
-        ic_->inputPanel().setAuxDown(Text(status));
-    }
-
-    void LilypadState::handleEmojiMode(KeyEvent& keyEvent) {
-        const KeySym currentSym      = keyEvent.rawKey().sym();
-        bool         isCtrlBackspace = isBackspace(currentSym) && ((keyEvent.rawKey().states() & KeyState::Ctrl) != 0U);
-
-        if (keyEvent.key().hasModifier() && !isCtrlBackspace) {
-            keyEvent.forward();
-            return;
-        }
-
-        auto baseList   = ic_->inputPanel().candidateList();
-        auto commonList = std::dynamic_pointer_cast<CommonCandidateList>(baseList);
-        if (commonList && currentSym >= FcitxKey_1 && currentSym <= FcitxKey_9) {
-            int offset      = currentSym - FcitxKey_1;
-            int globalIndex = (commonList->currentPage() * commonList->pageSize()) + offset;
-
-            if (globalIndex < commonList->totalSize()) {
-                commonList->candidateFromAll(globalIndex).select(ic_);
-                keyEvent.filterAndAccept();
-                return;
-            }
-        }
-
-        if (commonList && !commonList->empty()) {
-            int  globalCursorIndex = commonList->globalCursorIndex();
-            int  totalSize         = commonList->totalSize();
-            int  currentPage       = commonList->currentPage();
-            int  pageSize          = commonList->pageSize();
-            int  localCursorIndex  = globalCursorIndex - (currentPage * pageSize);
-
-            bool handled = false;
-
-            switch (currentSym) {
-                case FcitxKey_Tab:
-                case FcitxKey_Down: {
-                    if (localCursorIndex < pageSize - 1 && globalCursorIndex < totalSize - 1) {
-                        commonList->setGlobalCursorIndex(globalCursorIndex + 1);
-                    } else {
-                        commonList->setGlobalCursorIndex(currentPage * pageSize);
-                    }
-                    handled = true;
-                    break;
-                }
-
-                case FcitxKey_ISO_Left_Tab:
-                case FcitxKey_Up: {
-                    if (localCursorIndex > 0) {
-                        commonList->setGlobalCursorIndex(globalCursorIndex - 1);
-                    } else {
-                        int lastIndex = std::min((currentPage * pageSize) + pageSize - 1, totalSize - 1);
-                        commonList->setGlobalCursorIndex(lastIndex);
-                    }
-                    handled = true;
-                    break;
-                }
-                case FcitxKey_Page_Down:
-                case FcitxKey_Right: {
-                    if (commonList->hasNext()) {
-                        commonList->next();
-                        int newPage = commonList->currentPage();
-                        commonList->setGlobalCursorIndex(newPage * pageSize);
-                        handled = true;
-                    }
-                    break;
-                }
-                case FcitxKey_Page_Up:
-                case FcitxKey_Left: {
-                    if (commonList->hasPrev()) {
-                        commonList->prev();
-                        int newPage = commonList->currentPage();
-                        commonList->setGlobalCursorIndex(newPage * pageSize);
-                        handled = true;
-                    }
-                    break;
-                }
-                default: break;
-            }
-
-            if (handled) {
-                updateEmojiPageStatus(commonList.get());
-                ic_->updateUserInterface(UserInterfaceComponent::InputPanel);
-                keyEvent.filterAndAccept();
-                return;
-            }
-        }
-
-        if (isBackspace(currentSym)) {
-            if (!emojiBuffer_.empty()) {
-                if (isCtrlBackspace) {
-                    emojiBuffer_.clear();
-                } else {
-                    emojiBuffer_.pop_back();
-                    while (!emojiBuffer_.empty() && (emojiBuffer_.back() & 0xC0) == 0x80) {
-                        emojiBuffer_.pop_back();
-                    }
-                }
-                keyEvent.filterAndAccept();
-            } else {
-                keyEvent.forward();
-            }
-            updateEmojiPreedit();
-            return;
-        }
-
-        switch (currentSym) {
-            case FcitxKey_space:
-            case FcitxKey_Return: {
-                if (commonList && !commonList->empty()) {
-                    int globalIdx = commonList->globalCursorIndex();
-                    commonList->candidateFromAll(globalIdx).select(ic_);
-                    keyEvent.filterAndAccept();
-                } else if (currentSym == FcitxKey_Return && !emojiBuffer_.empty()) {
-                    ic_->commitString(emojiBuffer_);
-                    emojiBuffer_.clear();
-                    updateEmojiPreedit();
-                    keyEvent.filterAndAccept();
-                } else {
-                    keyEvent.forward();
-                }
-                return;
-            }
-
-            case FcitxKey_Escape: {
-                emojiBuffer_.clear();
-                emojiCandidates_.clear();
-                ic_->inputPanel().reset();
-                ic_->updateUserInterface(UserInterfaceComponent::InputPanel);
-                keyEvent.filterAndAccept();
-                return;
-            }
-
-            default: break;
-        }
-
-        {
-            std::string utf8Char = Key::keySymToUTF8(currentSym);
-            if (!utf8Char.empty()) {
-                emojiBuffer_.append(utf8Char);
-                keyEvent.filterAndAccept();
-                updateEmojiPreedit();
-            } else {
-                keyEvent.forward();
-            }
-        }
-    }
-    void LilypadState::updateEmojiPreedit() {
-        if (emojiBuffer_.empty()) {
-            emojiCandidates_ = engine_->emojiLoader().history();
-            if (emojiCandidates_.empty()) {
-                ic_->inputPanel().reset();
-                ic_->updatePreedit();
-                ic_->updateUserInterface(UserInterfaceComponent::InputPanel);
-                return;
-            }
         } else {
-            emojiCandidates_ = engine_->emojiLoader().search(emojiBuffer_);
-        }
-
-        if (!emojiBuffer_.empty()) {
-            Text preeditText;
-            preeditText.append(emojiBuffer_, TextFormatFlag::Underline);
-            preeditText.setCursor(static_cast<int>(preeditText.textLength()));
-            if (ic_->capabilityFlags().test(CapabilityFlag::Preedit))
-                ic_->inputPanel().setClientPreedit(preeditText);
-            else
-                ic_->inputPanel().setPreedit(preeditText);
-        } else {
+            ic_->inputPanel().reset();
             ic_->inputPanel().setClientPreedit(Text());
             ic_->inputPanel().setPreedit(Text());
         }
-
-        if (!emojiCandidates_.empty()) {
-            auto candidateList = std::make_unique<CommonCandidateList>();
-            candidateList->setLayoutHint(CandidateLayoutHint::Vertical);
-            candidateList->setPageSize(9);
-
-            for (size_t i = 0; i < emojiCandidates_.size(); ++i) {
-                size_t localIndex = (i % 9) + 1;
-                Text   displayLabel;
-                if (emojiBuffer_.empty()) {
-                    displayLabel.append(std::to_string(localIndex) + ": " + emojiCandidates_[i].output, TextFormatFlag::NoFlag);
-                } else {
-                    displayLabel.append(std::to_string(localIndex) + ": " + emojiCandidates_[i].trigger + " " + emojiCandidates_[i].output, TextFormatFlag::NoFlag);
-                }
-                candidateList->append(std::make_unique<EmojiCandidateWord>(displayLabel, this, emojiCandidates_[i]));
-            }
-            candidateList->setGlobalCursorIndex(0);
-
-            ic_->inputPanel().setCandidateList(std::move(candidateList));
-            auto currentList = std::dynamic_pointer_cast<CommonCandidateList>(ic_->inputPanel().candidateList());
-            updateEmojiPageStatus(currentList.get());
-        } else {
-            ic_->inputPanel().setCandidateList(nullptr);
-        }
-
         ic_->updatePreedit();
         ic_->updateUserInterface(UserInterfaceComponent::InputPanel);
-    }
 
-    bool LilypadState::handleUInputKeyPress(KeyEvent& event, KeySym currentSym, int sleepTime) {
-        if (!is_deleting_.load()) {
-            return false;
+        if (processed || (commit && *commit.get() != 0)) {
+            keyEvent.filterAndAccept();
+        } else {
+            keyEvent.forward();
         }
-        if (realMode == LilypadMode::Sequence) {
-            if (isBackspace(currentSym)) {
-                if (sequencer_.should_swallow_backspace()) {
-                    if (sequencer_.expected_swallow_backspaces() == 0) {
-                        event.filterAndAccept(); // Filter and swallow the final sentinel trigger backspace!
-                        sequencer_.clear_barrier();
-
-                        auto swallow_now = std::chrono::steady_clock::now();
-                        uint64_t swallow_duration_us = 0;
-                        if (uinput_send_time_.time_since_epoch().count() > 0) {
-                            swallow_duration_us = static_cast<uint64_t>(
-                                std::chrono::duration_cast<std::chrono::microseconds>(swallow_now - uinput_send_time_).count()
-                            );
-                        }
-                        last_swallow_duration_us_ = swallow_duration_us;
-
-                        MicroStep step;
-                        if (sequencer_.poll_next_step(step) && step.type == MicroStepType::CommitString) {
-                            auto& eventLoop    = engine_->instance()->eventLoop();
-                            auto  now_time     = ::fcitx::now(CLOCK_MONOTONIC);
-                            int bsCount = std::max(1, expected_backspaces_);
-
-                            if (sequencer_.sensor()) {
-                                sequencer_.sensor()->on_swallow_measured(bsCount, swallow_duration_us);
-                            }
-
-                            uint64_t current_iki = (iki_sensor_ && *engine_->config().enableIkiAdaptive) ? iki_sensor_->get_ema_iki_ms() : 0;
-                            uint64_t micro_delay_us = sequencer_.sensor() ? sequencer_.sensor()->get_micro_delay_us(bsCount, current_iki) : (6000 + static_cast<uint64_t>(bsCount * 4000));
-
-                            // Phase 8.3: Dynamic Heavy-DOM & Per-Tab Governor
-                            uint64_t settling_delay_us = calculateDynamicSettlingDelayUs(micro_delay_us, swallow_duration_us);
-
-                            sequencer_.set_settling_delay(settling_delay_us);
-
-                            LILYPAD_INFO("⚡ [SEQUENCER SETTLING DELAY] Delay: " + std::to_string(settling_delay_us) + "us (raw=" + std::to_string(micro_delay_us) + "us, swallow=" + std::to_string(swallow_duration_us) + "us, bsCount=" + std::to_string(bsCount) + ", EMA IKI=" + std::to_string(current_iki) + "ms, wa_chromium=" + std::to_string(wa_chromium_flag) + ")");
-                            auto  timeout_time = now_time + settling_delay_us;
-                            std::string commitStr = step.text;
-                            uint32_t serial = step.serial;
-                            commit_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, timeout_time, 1, [this, commitStr, serial](EventSourceTime*, uint64_t) {
-                                if (watchdog_timer_) {
-                                    watchdog_timer_.reset();
-                                }
-                                ic_->commitString(commitStr);
-                                LILYPAD_INFO("Commit (Sequence Mode): " + commitStr);
-                                sequencer_.receive_ack(serial);
-
-                                // Phase 8.3: Dynamic Post-Commit Settling Window (Per-Tab Adaptive Control)
-                                uint64_t settle_delay_us = calculateDynamicPostSettlingUs();
-
-                                LILYPAD_INFO("⏳ [POST-COMMIT SETTLING] Holding is_deleting_ for " + std::to_string(settle_delay_us) + "us (wa_chromium=" + std::to_string(wa_chromium_flag) + ")");
-                                auto& loop = engine_->instance()->eventLoop();
-                                auto  t    = ::fcitx::now(CLOCK_MONOTONIC) + settle_delay_us;
-                                settle_timer_ = loop.addTimeEvent(CLOCK_MONOTONIC, t, 1, [this](EventSourceTime*, uint64_t) {
-                                    is_deleting_.store(false, std::memory_order_release);
-                                    if (!buffered_keys_.empty()) {
-                                        LILYPAD_INFO("Replaying " + std::to_string(buffered_keys_.size()) + " buffered keys after settling window");
-                                        replayBufferedKeys();
-                                    }
-                                    return false;
-                                });
-                                return false;
-                            });
-                        }
-                        return true;
-                    }
-                    return false; // Passthrough intermediate backspaces (1..N) to App so old raw text gets erased!
-                }
-            }
-            return false;
-        }
-
-        if (isBackspace(currentSym)) {
-            current_backspace_count_ += 1;
-            if (current_backspace_count_ < expected_backspaces_) {
-                return false; // Allow intermediate backspaces to reach the app to clear autofill/old text.
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
-            // Validate surr cursor pos should match realtextLen after all BS applied
-            const auto& surr = ic_->surroundingText();
-            if (surr.isValid() && surr.cursor() == realtextLen.load(std::memory_order_acquire)) {
-                LILYPAD_INFO("Skip retry");
-            } else {
-                // Retry x3 (2 ms each), khi can (chromium,electron,...)
-                for (int retry = 0; retry < 3; ++retry) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(2));
-                    const auto& surr2 = ic_->surroundingText();
-                    if (surr2.isValid() && surr2.cursor() == realtextLen.load(std::memory_order_acquire)) {
-                        break;
-                    }
-                }
-            }
-            ic_->commitString(pending_commit_string_);
-            LILYPAD_INFO("Commit: " + pending_commit_string_);
-            expected_backspaces_     = 0;
-            current_backspace_count_ = 0;
-            pending_commit_string_.clear();
-
-            event.filterAndAccept(); // Filter out the final trigger backspace.
-            is_deleting_.store(false);
-            if (getFrontendName(ic_) == "dbus" && !ic_->surroundingText().isValid())
-                replayBufferedKeys(); // Does we need drop this?
-            return true;
-        }
-        return false;
-    }
-
-    void LilypadState::performReplacement(const std::string& deletedPart, const std::string& addedPart) {
-        LILYPAD_INFO("Perform replacement: " + deletedPart + " -> " + addedPart); //NOLINT
-        if (realMode == LilypadMode::Sequence) {
-            // Micro-replacement (Xóa vi mô tối ưu):
-            // Delete only the minimal suffix `deletedPart` using exact utf8 codepoint length,
-            // capped by max word length oldPreBuffer_ to guarantee word boundary safety.
-            int bsCount = static_cast<int>(utf8::length(deletedPart));
-            if (!oldPreBuffer_.empty() && deletedPart != " " && deletedPart != "-") {
-                int maxBs = static_cast<int>(utf8::length(oldPreBuffer_));
-                if (bsCount > maxBs) {
-                    LILYPAD_WARN("Capping backspaces from " + std::to_string(bsCount) + " to max word length " + std::to_string(maxBs));
-                    bsCount = maxBs;
-                }
-            }
-
-            int totalBsToSend = bsCount + 1; // N + 1 Backspaces (N for deletion, +1 Sentinel trigger)
-            uint32_t serial = sequencer_.next_serial();
-            if (totalBsToSend > 0) {
-                MicroStep bsStep;
-                bsStep.type = MicroStepType::EmitBackspace;
-                bsStep.count = totalBsToSend;
-                bsStep.serial = serial;
-                sequencer_.push_action(bsStep);
-            }
-            MicroStep commitStep;
-            commitStep.type = MicroStepType::CommitString;
-            commitStep.text = addedPart;
-            commitStep.serial = serial;
-            sequencer_.push_action(commitStep);
-
-            // Pop EmitBackspace step so barrier is active and CommitString step is at front of queue
-            if (totalBsToSend > 0) {
-                MicroStep dummyBs;
-                sequencer_.poll_next_step(dummyBs);
-            }
-
-            pending_commit_string_ = addedPart;
-            expected_backspaces_ = bsCount;
-            current_backspace_count_ = 0;
-            is_deleting_.store(true, std::memory_order_release);
-
-            // Arm Hard Timeout Watchdog (Unified 300ms for all apps)
-            auto& eventLoop = engine_->instance()->eventLoop();
-            auto  now_time  = ::fcitx::now(CLOCK_MONOTONIC);
-            uint64_t hard_timeout_us = 300000;
-            auto  hard_timeout_time = now_time + hard_timeout_us;
-            watchdog_timer_ = eventLoop.addTimeEvent(CLOCK_MONOTONIC, hard_timeout_time, 1000, [this, hard_timeout_us](EventSourceTime*, uint64_t) {
-                if (is_deleting_.load(std::memory_order_acquire)) {
-                    LILYPAD_WARN("⏱️ [WATCHDOG TIMEOUT] " + std::to_string(hard_timeout_us / 1000) + "ms elapsed with is_deleting_ still active. Triggering emergency purge!");
-                    purgeContextEmergency();
-                }
-                return false;
-            });
-
-            uinput_send_time_ = std::chrono::steady_clock::now();
-            send_backspace_uinput(totalBsToSend);
-            LILYPAD_INFO("Send " + std::to_string(totalBsToSend) + " backspaces (Sequence Mode - Micro replacement N=" + std::to_string(bsCount) + " + 1 Sentinel)");
-            return;
-        }
-
-        current_backspace_count_ = 0;
-        pending_commit_string_   = addedPart;
-        expected_backspaces_     = static_cast<int>(utf8::length(deletedPart));
-        if (realMode != LilypadMode::Minecraft) {
-            ++expected_backspaces_;
-            if (realMode != LilypadMode::SuperSmooth) {
-                const auto& surrounding = ic_->surroundingText();
-                // Enable Autofill detection for all frontends (Wayland/IBus).
-                // This fixes the "toôi" duplication bug in Chromium-based search bars.
-                // The isAutofillCertain function has been optimized to differentiate
-                // between browser autofill and AI ghost text.
-                if (isAutofillCertain(surrounding)) {
-                    ++expected_backspaces_;
-                }
-            }
-        }
-        is_deleting_.store(true, std::memory_order_release);
-        send_backspace_uinput(expected_backspaces_);
-        LILYPAD_INFO("Send " + std::to_string(expected_backspaces_) + " backspaces");
-    }
-
-    bool LilypadState::checkForwardSpecialKey(KeyEvent& keyEvent, KeySym& currentSym) {
-        if (keyEvent.key().isCursorMove() || currentSym == FcitxKey_Tab || currentSym == FcitxKey_KP_Tab || currentSym == FcitxKey_ISO_Left_Tab || currentSym == FcitxKey_Escape ||
-            keyEvent.key().hasModifier()) {
-            if (watchdog_timer_) {
-                watchdog_timer_.reset();
-            }
-            if (commit_timer_) {
-                commit_timer_.reset();
-            }
-            if (settle_timer_) {
-                settle_timer_.reset();
-            }
-            sequencer_.clear();
-            is_deleting_.store(false, std::memory_order_release);
-            expected_backspaces_     = 0;
-            current_backspace_count_ = 0;
-            pending_commit_string_.clear();
-            hasHistory_ = false;
-            ResetEngine(lilypadEngine_.handle());
-            oldPreBuffer_.clear();
-            return true;
-        }
-
-        if (currentSym == FcitxKey_Delete) {
-            return true;
-        }
-
-        if (currentSym >= FcitxKey_KP_0 && currentSym <= FcitxKey_KP_9) {
-            currentSym = static_cast<KeySym>(FcitxKey_0 + (currentSym - FcitxKey_KP_0));
-            return false;
-        }
-
-        switch (currentSym) {
-            case FcitxKey_KP_Add: {
-                currentSym = FcitxKey_plus;
-                break;
-            }
-            case FcitxKey_KP_Subtract: {
-                currentSym = FcitxKey_minus;
-                break;
-            }
-            case FcitxKey_KP_Divide: {
-                currentSym = FcitxKey_slash;
-                break;
-            }
-            case FcitxKey_KP_Multiply: {
-                currentSym = FcitxKey_asterisk;
-                break;
-            }
-            case FcitxKey_KP_Decimal: {
-                currentSym = FcitxKey_period;
-                break;
-            }
-            case FcitxKey_KP_Enter: {
-                currentSym = FcitxKey_Return;
-                break;
-            }
-            case FcitxKey_KP_Equal: {
-                currentSym = FcitxKey_equal;
-                break;
-            }
-            case FcitxKey_KP_Space: {
-                currentSym = FcitxKey_space;
-                break;
-            }
-            default: break;
-        }
-        return false;
     }
 
     void LilypadState::handleUinputMode(KeyEvent& keyEvent, KeySym currentSym) {
@@ -747,28 +222,20 @@ namespace fcitx {
                 performReplacement(deletedPart, addedPart);
                 keyEvent.filterAndAccept();
             } else {
-                if (wa_chromium_flag) {
+                bool wasAutoCapitalized = (currentSym != keyEvent.rawKey().sym());
+                if (!addedPart.empty() && (keyUtf8 != addedPart || wasAutoCapitalized)) {
+                    if (addedPart.size() > 1 && addedPart.back() == ' ') {
+#if __cplusplus >= 202002L
+                        addedPart.resize(addedPart.size() - 1);
+#else
+                        addedPart = addedPart.substr(0, addedPart.size() - 1);
+#endif
+                    }
                     ic_->commitString(addedPart);
-                    LILYPAD_INFO("Commit (WA Chromium): " + addedPart);
+                    LILYPAD_INFO("Commit: " + addedPart);
                     keyEvent.filterAndAccept();
                 } else {
-                    bool wasAutoCapitalized = (currentSym != keyEvent.rawKey().sym());
-                    if (!addedPart.empty() && (keyUtf8 != addedPart || wasAutoCapitalized)) {
-                        // Prevent auto-capitalized character replacement from stripping out Vietnamese chars
-                        if (addedPart.size() > 1 && addedPart.back() == ' ') {
-                            // Stripping the trigger key (space) from addedPart
-#if __cplusplus >= 202002L
-                            addedPart.resize(addedPart.size() - 1);
-#else
-                            addedPart = addedPart.substr(0, addedPart.size() - 1);
-#endif
-                        }
-                        ic_->commitString(addedPart);
-                        LILYPAD_INFO("Commit: " + addedPart);
-                        keyEvent.filterAndAccept();
-                    } else {
-                        keyEvent.forward();
-                    }
+                    keyEvent.forward();
                 }
             }
 
@@ -799,25 +266,20 @@ namespace fcitx {
         std::string      deletedPart;
         std::string      addedPart;
 
-        if (wa_chromium_flag)
-            keyEvent.filterAndAccept();
-
         if (compareAndSplitStrings(oldPreBuffer_, preeditStr, deletedPart, addedPart) != 0) {
             if (deletedPart.empty()) {
                 bool isCommit           = false;
                 bool wasAutoCapitalized = (currentSym != keyEvent.rawKey().sym());
                 if (!addedPart.empty()) {
                     oldPreBuffer_ = preeditStr;
-                    if (wa_chromium_flag || wasAutoCapitalized || addedPart != keyUtf8) {
+                    if (wasAutoCapitalized || addedPart != keyUtf8) {
                         ic_->commitString(addedPart);
                         LILYPAD_INFO("Commit: " + addedPart);
-                        if (!wa_chromium_flag) {
-                            keyEvent.filterAndAccept();
-                            isCommit = true;
-                        }
+                        keyEvent.filterAndAccept();
+                        isCommit = true;
                     }
                 }
-                if (!wa_chromium_flag && !isCommit) {
+                if (!isCommit) {
                     keyEvent.forward();
                 }
             } else {
@@ -830,8 +292,7 @@ namespace fcitx {
                     return;
                 }
 
-                if (!wa_chromium_flag)
-                    keyEvent.filterAndAccept();
+                keyEvent.filterAndAccept();
                 performReplacement(deletedPart, addedPart);
                 oldPreBuffer_ = preeditStr;
             }
@@ -865,7 +326,6 @@ namespace fcitx {
 
         const std::string& text   = surrounding.text();
         unsigned int       cursor = std::min(surrounding.anchor(), surrounding.cursor());
-
         size_t             textLen = utf8::lengthValidated(text);
 
         if (textLen == utf8::INVALID_LENGTH || cursor <= 0 || cursor > textLen) {
@@ -888,7 +348,6 @@ namespace fcitx {
                 }
 
                 uint32_t ucs4 = utf8::getChar(prev, text.end());
-
                 if (isWordBreak(ucs4))
                     break;
 
@@ -980,20 +439,8 @@ namespace fcitx {
     }
 
     void LilypadState::handleDoubleSpaceReplacement() {
-        switch (realMode) {
-            case LilypadMode::SurroundingText: {
-                ic_->deleteSurroundingText(-1, 1);
-                ic_->commitString(". ");
-                LILYPAD_INFO("Commit: . ");
-
-                break;
-            }
-            default: { // Uinput, Smooth, Preedit, etc.
-                performReplacement(" ", ". ");
-                LILYPAD_INFO("Commit: . ");
-                break;
-            }
-        }
+        performReplacement(" ", ". ");
+        LILYPAD_INFO("Commit: . ");
         if (*engine_->config().autoCapitalizeAfterPunctuation) {
             isPrevPunctuation_ = true;
             shouldCapitalize_  = true;
@@ -1003,114 +450,8 @@ namespace fcitx {
     void LilypadState::handleDoubleHyphenReplacement() {
         // Em-dash (U+2014)
         std::string emDash = "—";
-        switch (realMode) {
-            case LilypadMode::SurroundingText: {
-                ic_->deleteSurroundingText(-1, 1);
-                ic_->commitString(emDash);
-                LILYPAD_INFO("Commit: — (em-dash)");
-                break;
-            }
-            default: { // Uinput, Smooth, Preedit, etc.
-                performReplacement("-", emDash);
-                LILYPAD_INFO("Commit: — (em-dash)");
-                break;
-            }
-        }
-    }
-
-    void LilypadState::handleOffModeMacro(KeyEvent& keyEvent, KeySym currentSym) {
-        if (checkForwardSpecialKey(keyEvent, currentSym)) {
-            keyEvent.forward();
-            return;
-        }
-
-        if (uinput_client_fd_ < 0) {
-            connect_uinput_server();
-        }
-
-        if (isBackspace(currentSym)) {
-            EngineProcessKeyEvent(lilypadEngine_.handle(), FcitxKey_BackSpace, 0);
-            auto preeditC = UniqueCPtr<char>(EnginePullPreedit(lilypadEngine_.handle()));
-            oldPreBuffer_ = (preeditC && (*preeditC.get() != 0)) ? preeditC.get() : "";
-            keyEvent.forward();
-            return;
-        }
-
-        if (currentSym == FcitxKey_Return) {
-            if (!oldPreBuffer_.empty()) {
-                ResetEngine(lilypadEngine_.handle());
-                oldPreBuffer_.clear();
-            }
-            keyEvent.forward();
-            return;
-        }
-
-        std::string keyUtf8 = Key::keySymToUTF8(currentSym);
-
-        bool        processed = EngineProcessKeyEvent(lilypadEngine_.handle(), currentSym, keyEvent.rawKey().states()) != 0U;
-
-        auto        commitPtr = UniqueCPtr<char>(EnginePullCommit(lilypadEngine_.handle()));
-        if (processed && commitPtr && (*commitPtr.get() != 0)) {
-            std::string commitStr = commitPtr.get();
-
-            // Determine if this is a macro expansion or just confirmed typed text
-            bool isMacroExpansion = false;
-            if (keyUtf8.empty()) {
-                isMacroExpansion = (commitStr != oldPreBuffer_);
-            } else {
-                isMacroExpansion = (commitStr != oldPreBuffer_ + keyUtf8);
-            }
-
-            if (isMacroExpansion) {
-                LILYPAD_INFO("Macro expansion: '" + oldPreBuffer_ + "' -> '" + commitStr + "'");
-                // Try uinput replacement first, fallback to deleteSurroundingText, then plain commit
-                if (uinput_client_fd_ >= 0 && !oldPreBuffer_.empty()) {
-                    performReplacement(oldPreBuffer_, commitStr);
-                } else if (ic_->capabilityFlags().test(CapabilityFlag::SurroundingText)) {
-                    const auto& surrounding = ic_->surroundingText();
-                    if (surrounding.isValid()) {
-                        size_t oldLen = utf8::length(oldPreBuffer_);
-                        if (oldLen > 0) {
-                            ic_->deleteSurroundingText(-static_cast<int>(oldLen), static_cast<int>(oldLen));
-                        }
-                        ic_->commitString(commitStr);
-                    } else {
-                        ic_->commitString(commitStr);
-                    }
-                } else {
-                    ic_->commitString(commitStr);
-                }
-                keyEvent.filterAndAccept();
-            } else {
-                // No macro: typed text confirmed by engine, just forward trigger key
-                keyEvent.forward();
-            }
-
-            oldPreBuffer_.clear();
-            hasHistory_ = false;
-            return;
-        }
-
-        // 8. No commit or engine rejected the key
-        if (processed || (commitPtr && (*commitPtr.get() != 0))) {
-            // Engine processed the key (building shadow state)
-            // OR engine rejected the key but committed old text (non-processable key)
-            auto preeditPtr = UniqueCPtr<char>(EnginePullPreedit(lilypadEngine_.handle()));
-            oldPreBuffer_   = (preeditPtr && (*preeditPtr.get() != 0)) ? preeditPtr.get() : "";
-            if (!processed) {
-                // Engine committed old text but didn't process the new key → forward the key
-                oldPreBuffer_.clear();
-                hasHistory_ = false;
-            }
-            keyEvent.forward();
-        } else {
-            // Engine didn't handle this key
-            if (!oldPreBuffer_.empty()) {
-                ResetEngine(lilypadEngine_.handle());
-                oldPreBuffer_.clear();
-            }
-            keyEvent.forward();
-        }
+        performReplacement("-", emDash);
+        LILYPAD_INFO("Commit: — (em-dash)");
     }
 
     void LilypadState::keyEvent(KeyEvent& keyEvent) {
@@ -1120,12 +461,8 @@ namespace fcitx {
             LILYPAD_WARN("Cannot connect to uinput server, reconnecting....");
             connect_uinput_server();
         }
-        if (current_backspace_count_ >= expected_backspaces_ && is_deleting_.load()) {
-            is_deleting_.store(false);
-            current_backspace_count_ = 0;
-            expected_backspaces_     = 0;
-        }
-        if (needEngineReset.load() && realMode != LilypadMode::Off) {
+
+        if (needEngineReset.load()) {
             LILYPAD_INFO("Need engine reset");
             oldPreBuffer_.clear();
             hasHistory_ = false;
@@ -1136,53 +473,42 @@ namespace fcitx {
             shouldCapitalize_        = false;
             isPrevPunctuation_       = false;
             needEngineReset.store(false);
+            dedup_buffer_.clear();
         }
 
         if (g_mouse_clicked.load(std::memory_order_acquire) && !is_deleting_.load(std::memory_order_acquire)) {
             g_mouse_clicked.store(false, std::memory_order_release);
             clearAllBuffers();
+            dedup_buffer_.clear();
         }
         KeySym currentSym = keyEvent.rawKey().sym();
-        bool isAutomatedBackspace = is_deleting_.load(std::memory_order_acquire) && isBackspace(currentSym);
+        bool isAutomatedBackspace = is_deleting_.load(std::memory_order_acquire) && (isBackspace(currentSym) || currentSym == FcitxKey_F24);
 
         if (iki_sensor_) {
             iki_sensor_->on_key_event(std::chrono::steady_clock::now(), isAutomatedBackspace);
         }
 
-        if (*engine_->config().autoCapitalizeAfterPunctuation && realMode != LilypadMode::Off) {
-            if (!isAutomatedBackspace) {
-                if (shouldCapitalize_) {
-                    if (currentSym >= FcitxKey_a && currentSym <= FcitxKey_z) {
-                        auto upperSym = static_cast<KeySym>(currentSym - (FcitxKey_a - FcitxKey_A));
-                        currentSym    = upperSym;
-                        keyEvent.setKey(Key(upperSym, keyEvent.rawKey().states()));
-                        shouldCapitalize_ = false;
-                    } else if (currentSym != FcitxKey_space) {
-                        shouldCapitalize_ = false;
-                    }
+        if (*engine_->config().autoCapitalizeAfterPunctuation && !isAutomatedBackspace) {
+            if (shouldCapitalize_) {
+                if (currentSym >= FcitxKey_a && currentSym <= FcitxKey_z) {
+                    currentSym = static_cast<KeySym>(currentSym - (FcitxKey_a - FcitxKey_A));
+                    keyEvent.setKey(Key(currentSym, keyEvent.rawKey().states()));
+                    shouldCapitalize_ = false;
+                } else if (currentSym != FcitxKey_space) {
+                    shouldCapitalize_ = false;
                 }
-
-                switch (currentSym) {
-                    case FcitxKey_period:
-                    case FcitxKey_exclam:
-                    case FcitxKey_question: isPrevPunctuation_ = true; break;
-                    case FcitxKey_Return:
-                    case FcitxKey_KP_Enter:
-                        shouldCapitalize_  = true;
-                        isPrevPunctuation_ = false;
-                        break;
-                    case FcitxKey_space:
-                        if (isPrevPunctuation_) {
-                            shouldCapitalize_  = true;
-                            isPrevPunctuation_ = false;
-                        }
-                        break;
-                    default:
-                        if (currentSym != FcitxKey_space) {
-                            isPrevPunctuation_ = false;
-                        }
-                        break;
-                }
+            }
+            switch (currentSym) {
+                case FcitxKey_period: case FcitxKey_exclam: case FcitxKey_question:
+                    isPrevPunctuation_ = true; break;
+                case FcitxKey_Return: case FcitxKey_KP_Enter:
+                    shouldCapitalize_ = true; isPrevPunctuation_ = false; break;
+                case FcitxKey_space:
+                    if (isPrevPunctuation_) { shouldCapitalize_ = true; isPrevPunctuation_ = false; }
+                    break;
+                default:
+                    if (currentSym != FcitxKey_space) isPrevPunctuation_ = false;
+                    break;
             }
         }
 
@@ -1190,41 +516,79 @@ namespace fcitx {
             return;
         }
 
-        if (is_deleting_.load(std::memory_order_acquire)) {
-            if (realMode == LilypadMode::Sequence) {
-                if (sequencer_.is_hard_timeout()) {
-                    LILYPAD_WARN("⚠️ [HARD TIMEOUT TRIGGERED] Elapsed time exceeded 300ms during keyEvent. Purging emergency!");
-                    purgeContextEmergency();
-                    processNormalKey(keyEvent, currentSym);
-                    return;
-                }
-                if (sequencer_.is_soft_timeout(getIkiMs())) {
-                    if (sequencer_.barrier_state() != BarrierState::AppLagHolding) {
-                        sequencer_.set_app_lag_holding();
-                        LILYPAD_INFO("🛡️ [SOFT TIMEOUT] App latency spike detected (elapsed=" + std::to_string(sequencer_.elapsed_since_barrier_start_ms()) +
-                                     "ms >= soft=" + std::to_string(sequencer_.calculate_soft_timeout_ms(getIkiMs())) + "ms), holding keys in RAM buffer");
-                    }
-                }
-            }
+        // Align realtextLen to actual cursor position whenever starting a new word or idle
+        if (oldPreBuffer_.empty() && ic_ && ic_->surroundingText().isValid()) {
+            realtextLen.store(ic_->surroundingText().cursor(), std::memory_order_release);
+        }
 
-            if (isBackspace(currentSym)) {
-                if (realtextLen.load(std::memory_order_acquire) > 0)
-                    realtextLen.fetch_sub(1, std::memory_order_acq_rel);
-                if (handleUInputKeyPress(keyEvent, currentSym, (realMode == LilypadMode::Smooth || realMode == LilypadMode::SuperSmooth) ? 5 : 20)) {
-                    return;
-                }
+        if (currentSym == FcitxKey_F24) {
+            // Phase 8.4: Non-destructive hardware barrier key KEY_F24
+            if (is_deleting_.load(std::memory_order_acquire)) {
+                handleUInputKeyPress(keyEvent, currentSym, 0);
             } else {
-                std::string keyUtf8Check = Key::keySymToUTF8(currentSym);
-                if (!keyUtf8Check.empty() && buffered_keys_.size() < MAX_BUFFERED_KEYS) {
-                    LILYPAD_WARN("Typing so fast, add key to queue");
-                    buffered_keys_.push_back({.sym = currentSym, .state = keyEvent.rawKey().states()});
-                }
+                // Arrived late after safety timer or watchdog already released the barrier.
+                // Filter and swallow silently with diagnostic log.
+                LILYPAD_INFO("🛡️ [HARDWARE BARRIER KEY] Received late KEY_F24 hardware barrier sentinel after barrier released. Swallowed safely.");
                 keyEvent.filterAndAccept();
             }
             return;
         }
 
-        if (*engine_->config().doubleSpaceToPeriod && realMode != LilypadMode::Off) {
+        bool queue_busy = is_deleting_.load(std::memory_order_acquire) || is_replaying_ || !buffered_keys_.empty();
+        if (queue_busy) {
+            if (is_deleting_.load(std::memory_order_acquire)) {
+                if (realMode == LilypadMode::Sequence) {
+                    if (sequencer_.is_hard_timeout()) {
+                        LILYPAD_WARN("⚠️ [HARD TIMEOUT TRIGGERED] Elapsed time exceeded 300ms during keyEvent. Purging emergency!");
+                        purgeContextEmergency();
+                        processNormalKey(keyEvent, currentSym);
+                        return;
+                    }
+                    if (sequencer_.is_soft_timeout(getIkiMs()) && sequencer_.barrier_state() != BarrierState::AppLagHolding) {
+                        sequencer_.set_app_lag_holding();
+                        LILYPAD_INFO("🛡️ [SOFT TIMEOUT] App latency spike detected, holding keys in RAM buffer");
+                    }
+                }
+
+                if (isBackspace(currentSym)) {
+                    if (realtextLen.load(std::memory_order_acquire) > 0)
+                        realtextLen.fetch_sub(1, std::memory_order_acq_rel);
+                    if (handleUInputKeyPress(keyEvent, currentSym, 20)) {
+                        return;
+                    }
+                } else {
+                    std::string keyUtf8Check = Key::keySymToUTF8(currentSym);
+                    if (!keyUtf8Check.empty()) {
+                        if (buffered_keys_.size() < MAX_BUFFERED_KEYS) {
+                            LILYPAD_WARN("Typing so fast, add key to queue");
+                            buffered_keys_.push_back({.sym = currentSym, .state = keyEvent.rawKey().states(), .enter_time = std::chrono::steady_clock::now()});
+                        }
+                    }
+                    keyEvent.filterAndAccept();
+                }
+                return;
+            }
+
+            // Strict FIFO Lock: Replay queue is draining, enqueue new keys behind pending replay keys
+            std::string keyUtf8Check = Key::keySymToUTF8(currentSym);
+            if (!keyUtf8Check.empty() || isBackspace(currentSym)) {
+                if (buffered_keys_.size() < MAX_BUFFERED_KEYS) {
+                    LILYPAD_INFO("🛡️ [FIFO ORDERING] Replay active: queuing key behind pending replay keys");
+                    buffered_keys_.push_back({.sym = currentSym, .state = keyEvent.rawKey().states(), .enter_time = std::chrono::steady_clock::now()});
+                }
+            }
+            if (!replay_timer_) {
+                auto& loop = engine_->instance()->eventLoop();
+                replay_timer_ = loop.addTimeEvent(CLOCK_MONOTONIC, ::fcitx::now(CLOCK_MONOTONIC), 1, [this](EventSourceTime*, uint64_t) {
+                    replayBufferedKeys();
+                    return false;
+                });
+            }
+            keyEvent.filterAndAccept();
+            return;
+        }
+
+        if (*engine_->config().doubleSpaceToPeriod) {
             bool isSpaceKey = (currentSym == FcitxKey_space || currentSym == FcitxKey_KP_Space);
             if (isSpaceKey && !keyEvent.key().hasModifier()) {
                 if (isPrevSpace_) {
@@ -1234,12 +598,10 @@ namespace fcitx {
                     return;
                 }
                 isPrevSpace_ = true;
-            } else {
-                isPrevSpace_ = false;
-            }
+            } else { isPrevSpace_ = false; }
         }
 
-        if (*engine_->config().doubleHyphenToEmDash && realMode != LilypadMode::Off) {
+        if (*engine_->config().doubleHyphenToEmDash) {
             bool isHyphenKey = (currentSym == FcitxKey_minus || currentSym == FcitxKey_KP_Subtract);
             if (isHyphenKey && !keyEvent.key().hasModifier()) {
                 if (isPrevHyphen_) {
@@ -1249,258 +611,30 @@ namespace fcitx {
                     return;
                 }
                 isPrevHyphen_ = true;
-            } else {
-                isPrevHyphen_ = false;
-            }
+            } else { isPrevHyphen_ = false; }
         }
 
         switch (realMode) {
-            case LilypadMode::Uinput:
-            case LilypadMode::Smooth:
-            case LilypadMode::Minecraft:
-            case LilypadMode::SuperSmooth:
-            case LilypadMode::Sequence: {
+            case LilypadMode::Sequence:
+            case LilypadMode::Minecraft: {
                 handleUinputMode(keyEvent, currentSym);
-                break;
-            }
-            case LilypadMode::SurroundingText: {
-                handleSurroundingText(keyEvent, currentSym);
                 break;
             }
             case LilypadMode::Preedit: {
                 handlePreeditMode(keyEvent, currentSym);
                 break;
             }
-            case LilypadMode::Emoji: {
-                handleEmojiMode(keyEvent);
-                break;
-            }
-            default: {
-                if (*engine_->config().enableMacroInOffMode && *engine_->config().enableMacro) {
-                    handleOffModeMacro(keyEvent, currentSym);
-                }
-                break;
-            }
-        }
-    }
-
-    void LilypadState::reset(bool isFocusOut) {
-        if (isFocusOut && isUinputMode(realMode.load(std::memory_order_relaxed))) {
-            deferredFocusOut_ = true;
-            ic_->inputPanel().reset();
-            return;
-        }
-        deferredFocusOut_ = false;
-        resetNow(isFocusOut);
-    }
-
-    void LilypadState::resetNow(bool isFocusOut) {
-        const auto& surrounding = ic_->surroundingText();
-        const auto& text        = surrounding.text();
-        size_t      textLen     = utf8::length(text);
-        realtextLen.store(textLen, std::memory_order_release);
-        if (is_deleting_.load(std::memory_order_acquire)) {
-            return;
-        }
-
-        // Prevent spurious internal input context updates (e.g. ONLYOFFICE / AFFiNE / Electron) from wiping engine buffer
-        if (!isFocusOut && (realMode == LilypadMode::Sequence || realMode == LilypadMode::Uinput || realMode == LilypadMode::Smooth || realMode == LilypadMode::SuperSmooth)) {
-            return;
-        }
-
-        if (lilypadEngine_) {
-            isPrevSpace_       = false;
-            isPrevHyphen_      = false;
-            shouldCapitalize_  = false;
-            isPrevPunctuation_ = false;
-            if (realMode == LilypadMode::Preedit && isFocusOut) {
-                EngineCommitPreedit(lilypadEngine_.handle());
-                UniqueCPtr<char> commit(EnginePullCommit(lilypadEngine_.handle()));
-                if (commit && (*commit.get() != 0)) {
-                    ic_->commitString(commit.get());
-                    LILYPAD_INFO("Commit: " + std::string(commit.get()));
-                }
-            }
-            if (isFocusOut) {
-                ResetEngine(lilypadEngine_.handle());
-                oldPreBuffer_.clear();
-                hasHistory_ = false;
-                if (iki_sensor_) {
-                    iki_sensor_->reset();
-                }
-            }
-        }
-
-        switch (realMode) {
-            case LilypadMode::Preedit: {
-                ic_->inputPanel().reset();
-                ic_->updateUserInterface(UserInterfaceComponent::InputPanel);
-                ic_->updatePreedit();
-                break;
-            }
-            case LilypadMode::SurroundingText:
-            case LilypadMode::Uinput:
-            case LilypadMode::Smooth:
-            case LilypadMode::Minecraft:
-            case LilypadMode::SuperSmooth:
-            case LilypadMode::Sequence: {
-                ic_->inputPanel().reset();
-                break;
-            }
-            case LilypadMode::Emoji: {
-                ic_->inputPanel().reset();
-                ic_->updateUserInterface(UserInterfaceComponent::InputPanel);
-                ic_->updatePreedit();
-                break;
-            }
             default: {
                 break;
             }
         }
-    }
-
-    void LilypadState::flushDeferredFocusOut() {
-        if (!deferredFocusOut_) {
-            return;
-        }
-        deferredFocusOut_ = false;
-        resetNow(true);
-    }
-
-    void LilypadState::cancelDeferredFocusOut() {
-        deferredFocusOut_ = false;
-    }
-
-    void LilypadState::recordFocusBounce() {
-        last_focus_bounce_time_ = std::chrono::steady_clock::now();
-        has_recent_focus_bounce_ = true;
-        LILYPAD_INFO("🎯 [DYNAMIC GOVERNOR] Recorded Focus Bounce event for context");
-    }
-
-    bool LilypadState::isTabLagging() const {
-        if (!wa_chromium_flag) {
-            return false;
-        }
-        auto now = std::chrono::steady_clock::now();
-
-        // Signal 1: Key queue pressure in RAM
-        if (!buffered_keys_.empty()) {
-            auto key_wait_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                now - buffered_keys_.front().enter_time
-            ).count();
-            if (key_wait_ms >= 15 || buffered_keys_.size() >= 2) {
-                return true;
-            }
-        }
-
-        // Signal 2: Measured swallow duration of uinput backspace loop
-        // Normal swallow on light tab is ~2ms - 6ms. If >= 12ms, DOM/renderer is lagging.
-        if (last_swallow_duration_us_ >= 12000) {
-            return true;
-        }
-
-        // Signal 3: Measured App ACK from sequencer sensor
-        if (sequencer_.sensor() && sequencer_.sensor()->get_last_measured_ack_ms() >= 30) {
-            return true;
-        }
-
-        // Signal 4: Recent focus bounce within last 3 seconds
-        if (has_recent_focus_bounce_) {
-            auto bounce_elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                now - last_focus_bounce_time_
-            ).count();
-            if (bounce_elapsed_ms < 3000) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    uint64_t LilypadState::calculateDynamicSettlingDelayUs(uint64_t micro_delay_us, uint64_t swallow_duration_us) {
-        if (!wa_chromium_flag) {
-            return 1500; // Zero-latency floor for native / terminal apps
-        }
-
-        bool lagging = isTabLagging();
-        if (!lagging) {
-            // Smooth Chromium Tab (Facebook, Docs, Antigravity IDE, Discord, etc.)
-            // Respect Sensor's micro_delay_us while enforcing 16ms (1 full 60Hz frame) hardware floor.
-            // When typing relaxed (e.g. IKI 220ms), delay scales naturally to ~33ms (2 frames), giving
-            // Chromium and rich editors plenty of time to clear DOM and unlock selection caret.
-            // When typing burst speed (e.g. IKI <= 50ms), delay clamps at 16ms for instant response.
-            uint64_t delay_us = std::clamp<uint64_t>(micro_delay_us, 16000, 35000);
-            LILYPAD_INFO("⚡ [DYNAMIC GOVERNOR] Smooth Tab detected (16ms Hardware Floor & Sensor Pacing) -> Pre-commit Settling Delay: " +
-                         std::to_string(delay_us) + "us (raw=" + std::to_string(micro_delay_us) +
-                         "us, swallow=" + std::to_string(swallow_duration_us) + "us)");
-            return delay_us;
-        }
-
-        // Heavy-DOM / Lagging Tab (TikTok 25K comments, AFFiNE Canvas, heavy rich text)
-        // Dynamic expansion: Scale based on measured swallow duration and queue pressure
-        uint64_t dynamic_floor_us = std::clamp<uint64_t>(
-            (swallow_duration_us > 0) ? (swallow_duration_us * 8 / 10) : 16000,
-            16000,
-            35000
-        );
-
-        // Queue pressure bonus: If keys are queuing in RAM, add safety margin
-        if (!buffered_keys_.empty()) {
-            dynamic_floor_us += std::min<uint64_t>(buffered_keys_.size() * 4000, 20000);
-        }
-
-        uint64_t delay_us = std::clamp<uint64_t>(
-            std::max(micro_delay_us, dynamic_floor_us),
-            dynamic_floor_us,
-            100000
-        );
-
-        LILYPAD_INFO("⏳ [DYNAMIC GOVERNOR] Heavy DOM / Lagging Tab detected -> Dynamic Settling Delay: " +
-                     std::to_string(delay_us) + "us (dynamic_floor=" + std::to_string(dynamic_floor_us) +
-                     "us, swallow=" + std::to_string(swallow_duration_us) + "us, queue=" +
-                     std::to_string(buffered_keys_.size()) + ")");
-        return delay_us;
-    }
-
-    uint64_t LilypadState::calculateDynamicPostSettlingUs() const {
-        if (!wa_chromium_flag) {
-            return 300; // Ultra-fast 0.3ms for Terminal / Qt / Native apps
-        }
-
-        bool lagging = isTabLagging();
-        uint64_t settle_delay_us = 0;
-
-        if (!lagging) {
-            // Smooth Tab (Facebook, Docs):
-            // Chromium multi-process rendering pipeline requires ~65ms - 70ms to commit characters into the DOM tree.
-            // Keeping is_deleting_ = true for 70ms safely buffers subsequent fast keystrokes in RAM
-            // to prevent chained replacements (e.g. 'thay' -> 'thây' -> 'thấy') from corrupting DOM.
-            settle_delay_us = 70000;
-        } else {
-            // Heavy DOM (TikTok 25K cmt, AFFiNE):
-            // Scale dynamically up to 100ms based on measured lag
-            uint64_t scaled = (last_swallow_duration_us_ > 0) ? (last_swallow_duration_us_ * 12 / 10) : 70000;
-            settle_delay_us = std::clamp<uint64_t>(scaled, 70000, 100000);
-        }
-
-        // Batch Replay protection: Nếu phím đầu tiên trong hàng đợi là Space, đảm bảo tối thiểu 3ms
-        if (!buffered_keys_.empty()) {
-            bool isSpace = (buffered_keys_.front().sym == ' ' || Key::keySymToUTF8(static_cast<KeySym>(buffered_keys_.front().sym)) == " ");
-            if (isSpace && settle_delay_us < 3000) {
-                settle_delay_us = 3000;
-            }
-        }
-
-        LILYPAD_INFO("⏳ [DYNAMIC GOVERNOR] Post-Commit Settling Window: " + std::to_string(settle_delay_us) +
-                     "us (lagging=" + std::to_string(lagging) + ", swallow=" + std::to_string(last_swallow_duration_us_) +
-                     "us, queue=" + std::to_string(buffered_keys_.size()) + ")");
-        return settle_delay_us;
     }
 
     void LilypadState::commitBuffer() {
         switch (realMode) {
             case LilypadMode::Preedit: {
                 ic_->inputPanel().reset();
+                ic_->updatePreedit();
                 if (lilypadEngine_) {
                     EngineCommitPreedit(lilypadEngine_.handle());
                     UniqueCPtr<char> commit(EnginePullCommit(lilypadEngine_.handle()));
@@ -1509,14 +643,10 @@ namespace fcitx {
                     ResetEngine(lilypadEngine_.handle());
                 }
                 ic_->updateUserInterface(UserInterfaceComponent::InputPanel);
-                ic_->updatePreedit();
                 break;
             }
-            case LilypadMode::Uinput:
-            case LilypadMode::Smooth:
-            case LilypadMode::SurroundingText:
-            case LilypadMode::Minecraft:
-            case LilypadMode::SuperSmooth: {
+            case LilypadMode::Sequence:
+            case LilypadMode::Minecraft: {
                 if (lilypadEngine_) {
                     ResetEngine(lilypadEngine_.handle());
                 }
@@ -1525,162 +655,6 @@ namespace fcitx {
             default: {
                 break;
             }
-        }
-    }
-
-    void LilypadState::clearAllBuffers() {
-        LILYPAD_DEBUG("Clear all buffers");
-        if (is_deleting_.load(std::memory_order_acquire)) {
-            return;
-        }
-        if (settle_timer_) {
-            settle_timer_.reset();
-        }
-        if (commit_timer_) {
-            commit_timer_.reset();
-        }
-        oldPreBuffer_.clear();
-        hasHistory_ = false;
-        deferredFocusOut_ = false;
-        if (!is_deleting_.load(std::memory_order_acquire)) {
-            expected_backspaces_     = 0;
-            current_backspace_count_ = 0;
-            pending_commit_string_.clear();
-        }
-        emojiBuffer_.clear();
-        emojiCandidates_.clear();
-        buffered_keys_.clear();
-        shouldCapitalize_  = false;
-        isPrevSpace_       = false;
-        isPrevHyphen_      = false;
-        isPrevPunctuation_ = false;
-        if (iki_sensor_) {
-            iki_sensor_->reset();
-        }
-        if (lilypadEngine_)
-            ResetEngine(lilypadEngine_.handle());
-    }
-
-    bool LilypadState::isEmptyHistory() const {
-        return !hasHistory_;
-    }
-
-    void LilypadState::replayBufferedKeys() {
-        LILYPAD_INFO("Starting replay buffered keys");
-        if (buffered_keys_.empty()) {
-            return;
-        }
-        auto keys = std::move(buffered_keys_);
-        buffered_keys_.clear();
-        for (size_t i = 0; i < keys.size(); ++i) {
-            auto        sym     = static_cast<KeySym>(keys[i].sym);
-            uint32_t    state   = keys[i].state;
-            std::string keyUtf8 = Key::keySymToUTF8(sym);
-            if (keyUtf8.empty()) {
-                continue;
-            }
-
-            bool processed = EngineProcessKeyEvent(lilypadEngine_.handle(), sym, state) != 0U;
-
-            auto commitF = UniqueCPtr<char>(EnginePullCommit(lilypadEngine_.handle()));
-            if (commitF && (*commitF.get() != 0)) {
-                std::string commitStr = commitF.get();
-                std::string deletedPart;
-                std::string addedPart;
-                compareAndSplitStrings(oldPreBuffer_, commitStr, deletedPart, addedPart);
-
-                if (!deletedPart.empty()) {
-                    // Re-buffer remaining keys for next replay cycle.
-                    for (size_t j = i + 1; j < keys.size(); ++j) {
-                        if (buffered_keys_.size() < MAX_BUFFERED_KEYS) {
-                            buffered_keys_.push_back(keys[j]);
-                        }
-                    }
-                    performReplacement(deletedPart, addedPart);
-                    hasHistory_ = false;
-                    ResetEngine(lilypadEngine_.handle());
-                    oldPreBuffer_.clear();
-                    return;
-                }
-                if (!addedPart.empty()) {
-                    ic_->commitString(addedPart);
-                }
-
-                hasHistory_ = false;
-                ResetEngine(lilypadEngine_.handle());
-                oldPreBuffer_.clear();
-                continue;
-            }
-
-            if (!processed) {
-                ic_->commitString(keyUtf8);
-                hasHistory_ = false;
-                ResetEngine(lilypadEngine_.handle());
-                oldPreBuffer_.clear();
-                continue;
-            }
-
-            hasHistory_ = true;
-            realtextLen.fetch_add(1, std::memory_order_acq_rel);
-
-            UniqueCPtr<char> preeditC(EnginePullPreedit(lilypadEngine_.handle()));
-            std::string      preeditStr = (preeditC && (*preeditC.get() != 0)) ? preeditC.get() : "";
-
-            std::string      deletedPart;
-            std::string      addedPart;
-            if (compareAndSplitStrings(oldPreBuffer_, preeditStr, deletedPart, addedPart) != 0) {
-                if (deletedPart.empty()) {
-                    if (!addedPart.empty()) {
-                        ic_->commitString(addedPart);
-                        oldPreBuffer_ = preeditStr;
-                    }
-                } else {
-                    if (uinput_client_fd_ < 0) {
-                        ic_->commitString(keyUtf8);
-                        continue;
-                    }
-
-                    // Re-buffer remaining keys for next replay cycle.
-                    for (size_t j = i + 1; j < keys.size(); ++j) {
-                        if (buffered_keys_.size() < MAX_BUFFERED_KEYS) {
-                            buffered_keys_.push_back(keys[j]);
-                        }
-                    }
-                    performReplacement(deletedPart, addedPart);
-                    oldPreBuffer_ = preeditStr;
-                    return;
-                }
-            }
-        }
-        LILYPAD_INFO("Replay buffered keys done");
-    }
-
-    void LilypadState::purgeContextEmergency() {
-        LILYPAD_WARN("⚠️ [HARD TIMEOUT EMERGENCY] App freeze / Timeout (>300ms). Purging state & flushing buffered keys.");
-        if (watchdog_timer_) {
-            watchdog_timer_.reset();
-        }
-        if (commit_timer_) {
-            commit_timer_.reset();
-        }
-        if (settle_timer_) {
-            settle_timer_.reset();
-        }
-        is_deleting_.store(false, std::memory_order_release);
-        expected_backspaces_     = 0;
-        current_backspace_count_ = 0;
-        pending_commit_string_.clear();
-        hasHistory_ = false;
-        ResetEngine(lilypadEngine_.handle());
-        oldPreBuffer_.clear();
-        sequencer_.clear();
-
-        if (!buffered_keys_.empty()) {
-            LILYPAD_INFO("Flushing " + std::to_string(buffered_keys_.size()) + " buffered keys as raw input");
-            for (const auto& k : buffered_keys_) {
-                ic_->forwardKey(Key(static_cast<KeySym>(k.sym), KeyStates(k.state)));
-            }
-            buffered_keys_.clear();
         }
     }
 

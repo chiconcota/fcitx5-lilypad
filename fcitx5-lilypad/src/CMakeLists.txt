@@ -2,6 +2,8 @@ set(fcitx_lilypad_sources
   lilypad.cpp
   lilypad-engine.cpp
   lilypad-state.cpp
+  lilypad-state-governor.cpp
+  lilypad-state-uinput.cpp
   lilypad-sequencer.cpp
   lilypad-candidates.cpp
   lilypad-utils.cpp

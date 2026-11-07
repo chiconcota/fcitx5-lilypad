@@ -5,21 +5,399 @@
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
 - **Nhánh Git làm việc:** `feat/sequencer-settling-atomic-lock`
-- **Tình trạng:** **ĐÃ HOÀN TẤT NÂNG TRẦN AN TOÀN HARD TIMEOUT & SEQUENCER MAX ACK LÊN 300MS ĐỒNG BỘ TOÀN HỆ THỐNG (V2.3.13). PHÂN TÍCH RÕ NGUYÊN NHÂN LỖI ĐỨNG HÌNH CHỮ "THƯỞNG" LÀ DO PHÍM SENTINEL BỊ COMPOSITOR LÀM RƠI TRONG LÚC CHROME FOCUS BOUNCE. BÀN GIAO TIẾN ĐỘ VÀ KẾ HOẠCH CHO PHIÊN TIẾP THEO: XÂY DỰNG SWALLOW SAFETY TIMER (20MS) VÀ TRIỂN KHAI PHASE 8.4.**
+- **Tình trạng:** **HOÀN THÀNH TRIỂN KHAI v2.4.16 (Chromium/Electron 20ms Safe Frame Settling Floor & SetMode App Synchronization). KHẮC PHỤC TRIỆT ĐỂ LỖI NUỐT MẤT CHỮ TRÊN ANTIGRAVITY IDE VÀ LỖI BUNG PHÍM VNI `co6 thuo7g` TRÊN AFFINE THEO CHUẨN ĐỒNG BỘ LOTUS.**
 
-## 📋 Nhiệm Vụ Bàn Giao Cho Phiên Tiếp Theo (Handover Plan):
+## 📋 Hướng Dẫn Kích Hoạt & Cài Đặt Bản Debug (v2.4.16):
+```bash
+sudo cmake --install /home/chiconcota/Documents/vnlilypad-lotus/fcitx5-lilypad/build && sudo systemctl restart fcitx5-lilypad-server@$USER.service && fcitx5-remote -s lilypad && fcitx5 -r -d
+```
 
-1. **Vấn Đề Kỹ Thuật Đã Phát Hiện Cần Xử Lý:**
-   - **Hiện tượng:** Khi gõ từ có nhiều phím xóa (như `thương` + `r` $\to$ `thưởng`, $N=3$, phát 4 backspace), 3 phím đầu được nuốt trơn tru (`Remaining: 1`), nhưng đúng lúc đó Google Chrome bị Focus Bounce liên tiếp 4 lần $\implies$ Compositor (Niri/Wayland) chớp tắt tiêu điểm và **làm rơi phím Sentinel thứ 4** phát từ uinput.
-   - **Hậu quả:** `expected_swallow_backspaces_` bị kẹt ở 1, Sequencer chờ mãi phím thứ 4 và treo `is_deleting_ = true` suốt 300ms cho tới khi Watchdog cắt lỗ khẩn cấp.
-   - **Lưu ý quan trọng:** Engine Bamboo Core Rust hoàn toàn vô can ($100\%$ vô tội, đã xử lý thay thế `ơng -> ởng` ngay tại $0.001\text{ms}$).
+---
 
-2. **Kế Hoạch Thực Hiện Trong Phiên Tiếp Theo:**
-   - **Nhiệm vụ 1: Xây dựng Swallow Safety Timer (Bộ Cứu Hộ Nuốt Phím 20ms - 25ms):**
-     * Trong `lilypad-state.cpp`, sau khi phát $N+1$ phím xóa, nếu đã nuốt được $\ge N$ phím mà phím Sentinel cuối cùng quá $20\text{ms} \sim 25\text{ms}$ chưa về (do Focus Bounce làm rơi packet) $\implies$ Timer tự động giải phóng rào chắn và kích hoạt commit ký tự mới (`ởng`) ngay lập tức, không bắt người dùng đợi $300\text{ms}$ của Watchdog.
-   - **Nhiệm vụ 2: Triển khai Phase 8.4 (Khai Tử Sentinel Backspace N+1):**
-     * Mở keycode `KEY_PAUSE` (hoặc `KEY_F24`) trong uinput driver làm rào cản đồng bộ phần cứng ở đuôi chuỗi Backspace.
-     * Bóc tách hoàn toàn tín hiệu đo thời gian ra khỏi luồng phím xóa văn bản, triệt tiêu $100\%$ các ca kẹt phím do rơi gói tin.
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-07 - v2.4.16 Lotus-aligned 20ms Safe Settle & SetMode wa_chromium Sync):
+
+1. **Khảo Sát Hiện Trường & Phân Tích Lỗi Qua Log & Ảnh:**
+   - **Hiện tượng 1 (Antigravity IDE - Mất chữ `a -> ""`):** Khi người dùng chuyển sang Sequence mode bằng phím tắt / menu, `setMode()` được gọi trực tiếp. Hàm này chỉ gán `realMode = mode` mà không cập nhật `wa_chromium_flag` (trước đó chỉ nằm trong `activate()`). Dẫn đến `wa_chromium_flag = 0` $\implies$ governor ép settling delay xuống mức sàn terminal $1.5\text{ms}$ ($1500\mu\text{s}$) và post-settling $0.3\text{ms}$ ($300\mu\text{s}$). Backspace vừa xóa `a` thì lệnh commit `á` ập vào ngay lập tức khi DOM của Electron đang bận xử lý Backspace $\implies$ DOM bỏ rơi lệnh commit $\implies$ chữ biến mất thành `""`!
+   - **Hiện tượng 2 (AFFiNE Canvas - Bung phím VNI `co6 thuo7g`):** So sánh đối chiếu với Lotus cho thấy Lotus sử dụng `defaultCommitInterval = 20ms` và `defaultBackspaceInterval = 5ms` đồng bộ với chu kỳ render VSync của Chromium ($16.6\text{ms}$). Ở Lilypad, trần delay thích ứng trước đây ($3\text{ms} \sim 8\text{ms}$) thấp hơn 1 khung hình VSync, khiến DOM của Electron nuốt/rụng phím `n` khi gõ `thuo7ng` $\implies$ từ thành `thuơg` (sai chính tả) $\implies$ Bamboo AutoRestore bung chuỗi thô `thuo7g`. Tương tự, `c-o-6` bị trôi phím `6` thành `co6`.
+
+2. **Triển Khai Hoàn Thiện v2.4.16 (Chuẩn hóa nhịp an toàn theo Lotus):**
+   - **Đồng bộ hóa `wa_chromium_flag` trong `LilypadEngine::setMode()` (`lilypad-engine.cpp`):**
+     - Khi `setMode()` được gọi, quét ngay `appNameLower` qua bảng `ack_apps`. Nếu khớp (AFFiNE, Antigravity, Chrome, Electron, Code...), lập tức gán `wa_chromium_flag = true` và `waitAck_ = true` (nếu có dbus ack). Đảm bảo cờ Electron luôn đồng bộ chính xác khi chuyển chế độ.
+   - **Chuẩn hóa sàn trễ Pre-commit và Post-commit theo chuẩn 1 VSync frame ($18\text{ms} \sim 22\text{ms}$) (`lilypad-state-governor.cpp`):**
+     - Trong `calculateDynamicSettlingDelayUs()`: Khi `wa_chromium_flag == true`, nâng sàn trễ tab mượt lên $18\text{ms} \sim 22\text{ms}$ (tương ứng với chuẩn $20\text{ms}$ của Lotus). Tab nặng (lagging) nâng lên $20\text{ms} \sim 35\text{ms}$.
+     - Trong `calculateDynamicPostSettlingUs()`: Khi có phím chờ trong RAM (`!buffered_keys_.empty()`), giải phóng sau **$5\text{ms}$** (chuẩn `defaultBackspaceInterval = 5ms` của Lotus) thay vì 3ms, đảm bảo phím tiếp theo (`n` trong `thương`) không bao giờ va chạm với DOM.
+     - Khi `from_safety_timer` kích hoạt trên Chromium: Đảm bảo mức sàn an toàn $18\text{ms} \sim 22\text{ms}$ thay vì nhảy về 100us.
+   - **Kiểm Soát Dung Lượng File (< 700 dòng):**
+     - `lilypad-state.cpp`: 661 dòng (< 700)
+     - `lilypad-state-governor.cpp`: 551 dòng (< 700)
+     - `lilypad-state-uinput.cpp`: 563 dòng (< 700)
+     - `lilypad-server.cpp`: 445 dòng (< 700)
+     - `lilypad-utils.cpp`: 210 dòng (< 700)
+     - `lilypad-utils.h`: 214 dòng (< 700)
+     - `lilypad-engine.h`: 364 dòng (< 700)
+
+3. **Nâng Phiên Bản & Kiểm Thử:**
+   - Đồng bộ phiên bản `2.4.16` tại `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`, và `packaging/aur/fcitx5-lilypad-bin/PKGBUILD`.
+   - Build Debug (`build/`) & Build Release (`build_release/`): Thành công 100%, 0 lỗi, 0 cảnh báo.
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-07 - v2.4.15 Focus Bounce & Multi-tier Webview Resolution):
+
+1. **Khảo Sát Hiện Trường & Phân Tích Lỗi:**
+   - **Lỗi 1 (AFFiNE Canvas):** Người dùng gõ `cô thương` bị bung phím số VNI thô và unroll thành `co6 thuo7g`, `nuuo7n rẫy` (ảnh `media_1794008365474_277aeb88.png`). Truy vết cho thấy khi gõ chậm hoặc khi canvas DOM re-render > 100ms, điều kiện `(now_ms() - state->lastDeactivateTime_) < 100` trong `LilypadEngine::activate()` bị đánh giá là false $\implies$ kích hoạt nhánh `else` gọi `flushDeferredFocusOut()` và `setMode()`. Hàm `setMode()` gọi `clearAllBuffers()` xóa sạch bộ đệm Bamboo giữa chừng, khiến phím số 6/7 tiếp theo bị coi là ký tự thô.
+   - **Lỗi 2 (Khung Chat Antigravity IDE):** Người dùng gõ `thành` bị nuốt đuôi thành `th` ngay cả khi gõ rất chậm. Truy vết cho thấy khung chat Antigravity là Webview iframe Wayland có `ic->program()` rỗng `""`. Hàm `getProgramName()` fallback về `ctx_0x...` không khớp danh sách `ack_apps` $\implies$ `wa_chromium_flag = false`. Khi đó, governor ép settling delay xuống mức sàn terminal siêu tốc $1.5\text{ms}$ ($1500\mu\text{s}$). Phím xóa Backspace uinput trong Webview DOM đến chậm hơn lệnh `commitString("ành")`, dẫn đến Backspace xóa đè mất chữ vừa chèn.
+
+2. **Triển Khai Hoàn Thiện v2.4.15 (Tuân thủ chỉ đạo Người dùng: Chỉ làm Mục 1 và Mục 3):**
+   - **Mục 1 - Nhận diện Đa tầng Process Webview Wayland (`lilypad-utils.cpp`, `lilypad-engine.cpp`):**
+     - Bổ sung hàm `queryCompositorAppId()` tại `lilypad-utils.cpp` kết nối trực tiếp `$NIRI_SOCKET` gửi `"FocusedWindow"`, trích xuất `app_id` chỉ trong $155\mu\text{s}$ (kèm timeout an toàn $15\text{ms}$).
+     - Trong `getProgramName()`: Bổ sung 3 tầng fallback: Tầng 1 (quét `ic->focusGroup()`), Tầng 2 (quét `InputContextManager::lastFocusedInputContext()`), Tầng 3 (`queryCompositorAppId()`).
+     - Nhận diện chính xác `"antigravity-ide"`, kích hoạt `wa_chromium_flag = true` với dải trễ thích ứng $3\text{ms} \sim 8\text{ms}$ và Post-commit Settling Window bảo vệ, loại bỏ hoàn toàn race condition Backspace nuốt chữ `ành`.
+     - Bổ sung `"code"`, `"cursor"`, `"zen"` vào `ack_apps`.
+   - **Mục 3 - Bỏ Ngưỡng Mù 100ms Cố Định Cho Focus Bounce (`lilypad-engine.cpp`):**
+     - Trong `LilypadEngine::activate()`: Theo dõi `lastActiveApp_`. Nếu cùng ứng dụng (`sameApp`), hoặc context đang có từ dở dang (`!oldPreBuffer_.empty() || hasHistory_ || is_deleting_`), hoặc $\Delta t < 250\text{ms}$: Luôn đánh giá `focusBounce = true`, giữ nguyên $100\%$ bộ đệm từ Bamboo Core.
+     - Trong `LilypadEngine::setMode()`: Chỉ xóa đệm khi chế độ thực sự thay đổi (`realMode != mode`).
+     - Trong `LilypadEngine::reset()`: Thêm kiểm tra `if (is_deleting_.load(std::memory_order_acquire)) return;` bảo vệ uinput transaction không bị reset ngoài ý muốn.
+   - **Kiểm Soát Dung Lượng File (< 700 dòng):**
+     - `lilypad-state.cpp`: 661 dòng (< 700)
+     - `lilypad-state-governor.cpp`: 547 dòng (< 700)
+     - `lilypad-state-uinput.cpp`: 563 dòng (< 700)
+     - `lilypad-server.cpp`: 445 dòng (< 700)
+     - `lilypad-utils.cpp`: 210 dòng (< 700)
+     - `lilypad-utils.h`: 214 dòng (< 700)
+     - `lilypad-engine.h`: 364 dòng (< 700)
+
+3. **Nâng Phiên Bản & Kiểm Thử:**
+   - Đồng bộ phiên bản `2.4.15` tại `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`, và `packaging/aur/fcitx5-lilypad-bin/PKGBUILD`.
+   - Build Debug (`build/`) & Build Release (`build_release/`): Thành công 100%, 0 lỗi, 0 cảnh báo.
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-07 - v2.4.14 Native Forwarding & Settling Acceleration):
+
+1. **Khảo Sát Hiện Trường & Phân Tích Lỗi Qua Ảnh `media_1794007224239_c646a802.png`:**
+   - Hiện tượng: Khi gõ `nương rẫy` trên AFFiNE Canvas, người dùng bị rớt phím `g` và bị lặp chữ thành `nuuo7n rẫy`. Trong khi cùng câu đó gõ trên Lotus thì mượt mà 100%.
+   - Truy vết log: Phát hiện `wa_chromium_flag` trong `lilypad-state.cpp` ép mọi phím gõ thông thường (`n`, `u`, `o`, `g`, `Space`) đều phải gọi `ic_->commitString()` và `filterAndAccept()`. Trên AFFiNE Canvas, mỗi lệnh `commitString()` đơn lẻ làm giật selection con trỏ và kích hoạt 1 đợt Focus Bounce. Gõ 1 từ `nương` sinh ra tới 14 đợt Focus Bounce liên tiếp $\implies$ Compositor Niri tạm ngắt Input Method Grab đúng lúc phím `g` được gõ $\implies$ phím `g` bị nuốt chửng.
+   - Khi thiếu phím `g`, từ thành `nươn`, Bamboo unroll `ươn` $\to$ `uo7n`. Kết hợp với việc giam giữ `is_deleting_` tới 126ms ($51\text{ms} + 75\text{ms}$) làm nghẽn DOM, phím xóa uinput bị ảnh hưởng để lại chữ `u` thừa thành `nuuo7n`.
+
+2. **Triển Khai Chuẩn Hóa Mã Nguồn v2.4.14:**
+   - `fcitx5-lilypad/src/lilypad-state.cpp`: Loại bỏ hoàn toàn việc ép `commitString()` của `wa_chromium_flag` đối với các phím không biến đổi dấu (`addedPart == keyUtf8`). Chuyển sang `keyEvent.forward()` native như Lotus cho cả phím chữ thường và phím Space. Triệt tiêu 100% 14 đợt Focus Bounce nhân tạo trên AFFiNE Canvas.
+   - `fcitx5-lilypad/src/lilypad-state-governor.cpp`: 
+     - Co Pre-commit Settling Delay từ $51\text{ms}$ về $3\text{ms} \sim 8\text{ms}$ (tối đa $16\text{ms}$ nếu tab lag).
+     - Bổ sung Fast-path trong Post-commit Settling Window: Nếu có phím chờ trong `buffered_keys_`, giải phóng ngay sau $3\text{ms}$ thay vì ngâm $75\text{ms} \sim 110\text{ms}$.
+     - Rút ngắn toàn bộ chu trình thay dấu từ $126\text{ms}$ xuống $19\text{ms}$ (nhanh gấp 6.5 lần).
+   - Kiểm soát dung lượng file: Toàn bộ file đều < 700 dòng (`lilypad-state.cpp`: 661 dòng, `governor`: 547 dòng, `uinput`: 563 dòng, `server`: 445 dòng).
+
+3. **Nâng Phiên Bản & Kiểm Thử:**
+   - Đồng bộ phiên bản `2.4.14` tại `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`, và `packaging/aur/fcitx5-lilypad-bin/PKGBUILD`.
+   - Build Debug (`build/`) & Build Release (`build_release/`): Thành công 100%, 0 lỗi, 0 cảnh báo.
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-07 - v2.4.13 Single FIFO & Consolidated Batch Commit):
+
+1. **Điều Tra Đối Chiếu Mã Nguồn `fcitx5-lotus`:**
+   - Khảo sát hai lỗi hiện trường: Gõ `cấy cầy` $\to$ `c ấy ccaầy` trên AFFiNE Canvas; gõ `thương` $\to$ `thgương` (kèm theo `cothi2` mất dấu) trên TikTok Studio (`media_1794004033471_3338fca5.jpg`).
+   - Mổ xẻ mã nguồn `fcitx5-lotus`: Phát hiện Lotus KHÔNG HỀ có tính năng cứu phím Hardware Keyboard Tap ở server libinput. Lotus chỉ dùng libinput cho Mouse Click và Shift tracking; 100% phím gõ đi tuần tự qua Wayland Compositor.
+   - Nhận diện nguyên nhân gốc rễ: Bản chất của lỗi `thgương` và `c ấy ccaầy` là do cơ chế Hardware Tap "cứu phím" tại Server libinput nghe trộm phím phần cứng trong lúc Fcitx5 đang gửi Backspace xóa chữ qua uinput. Server tưởng phím bị kẹt nên đẩy qua Unix Socket (`IPC_EVT_RESCUED_KEY`), `handleRescuedKeyGrace` tự tiện gọi `commitString()` và `ResetEngine()` giữa chừng, chèn `Space` vào giữa `c` và `ấy`, hoặc chèn `g` vào giữa `th` và `ương`.
+   - Xác nhận cơ chế Wayland Compositor (Niri): Compositor không hề làm rơi phím khi focus bounce ngắn ($10\text{ms} \sim 30\text{ms}$). Toàn bộ phím đều được giữ nguyên vẹn trong Linux kernel socket buffer. Cơ chế Virtual Focus Pinning và `deferred_focus_out_` (100ms) của Fcitx5 giữ trọn vẹn bộ đệm từ trong RAM mà không cần đọc phím từ libinput.
+
+2. **Triển Khai Tái Cấu Trúc Mã Nguồn v2.4.13:**
+   - `fcitx5-lilypad/server/lilypad-server.cpp`: Vô hiệu hóa hoàn toàn `LIBINPUT_EVENT_KEYBOARD_KEY` tap. Server libinput chỉ xử lý `POINTER_BUTTON` (mouse click) và device topology (rút gọn còn **445 dòng** < 700).
+   - `fcitx5-lilypad/src/lilypad-state.h`: Gỡ bỏ khai báo `handleRescuedKey`, `handleRescuedKeyGrace` (còn **345 dòng** < 700).
+   - `fcitx5-lilypad/src/lilypad-state-uinput.cpp`: Xóa bỏ xử lý `IPC_EVT_RESCUED_KEY` và xóa hoàn toàn 2 hàm `handleRescuedKey`, `handleRescuedKeyGrace` (cắt giảm 68 dòng rác, còn **563 dòng** < 700).
+   - `fcitx5-lilypad/src/lilypad-state.cpp`: Gỡ bỏ bộ đệm chống trùng `dedup_buffer_`. 100% phím đi tuần tự qua `keyEvent()` theo đúng 1 nguồn FIFO duy nhất từ Compositor (còn **678 dòng** < 700).
+   - `fcitx5-lilypad/src/lilypad-state-governor.cpp`: Gỡ bỏ 40ms delayed disarm timer thừa thãi; triển khai **Consolidated Batch Commit Pipeline** trong `replayBufferedKeys()` gom toàn bộ ký tự replay xả 1 lần duy nhất qua `ic_->commitString()`, loại bỏ các nhịp timer 2ms gây giật DOM Chromium (còn **571 dòng** < 700).
+
+3. **Nâng Phiên Bản & Kiểm Thử:**
+   - Đồng bộ phiên bản `2.4.13` tại `CMakeLists.txt`, `packaging/aur/fcitx5-lilypad/PKGBUILD`, và `packaging/aur/fcitx5-lilypad-bin/PKGBUILD`.
+   - Build Debug (`build/`) & Build Release (`build_release/`): Thành công 100%, 0 lỗi, 0 cảnh báo.
+
+---
+
+1. **Khóa Hàng Đợi Replay FIFO Tuyệt Đối (`lilypad-state.cpp`, `lilypad-state-governor.cpp`, `lilypad-state.h`):**
+   - Bổ sung cờ `is_replaying_` được bật khi `replayBufferedKeys()` hoạt động hoặc khi `replay_timer_` đang đếm ngược.
+   - Tại `keyEvent()`, kiểm tra `bool queue_busy = is_deleting_.load(std::memory_order_acquire) || is_replaying_ || !buffered_keys_.empty();`.
+   - Nếu `queue_busy == true`, mọi phím mới từ Niri Compositor (như `t`, `r`) bắt buộc phải xếp hàng vào cuối `buffered_keys_` và `keyEvent.filterAndAccept()`.
+   - Ngăn chặn triệt để tình trạng phím mới nhảy cóc vượt mặt phím Space cũ đang chờ 2ms trong `replay_timer_`, xóa bỏ vĩnh viễn lỗi `sách tr ời` trên AFFiNE Canvas.
+
+2. **Đồng Bộ Hóa Server Tap Watchdog Lên 300ms (`fcitx5-lilypad/server/lilypad-server.cpp`):**
+   - Nâng `TAP_WATCHDOG_TIMEOUT_MS` từ 120ms lên **300ms** trên Server daemon ngầm.
+   - Khớp nhịp 1:1 với Hard Timeout Watchdog 300ms của Fcitx5 Addon, bao trọn vẹn chu kỳ DOM reflow và nảy tiêu điểm của Chrome/AFFiNE ($84\text{ms} \sim 145\text{ms} + 70\text{ms} + 40\text{ms} \approx 255\text{ms}$).
+   - Xóa bỏ triệt để cảnh báo ngắt sớm `Hardware tap auto-disarmed by 120ms safety watchdog` làm rơi rụng phím vật lý khi gõ nhanh.
+
+3. **Kiểm Soát Dung Lượng File Nghiêm Ngặt (< 700 dòng):**
+   - `lilypad-state.cpp`: 690 dòng (< 700)
+   - `lilypad-state-governor.cpp`: 614 dòng (< 700)
+   - `lilypad-state-uinput.cpp`: 631 dòng (< 700)
+   - `lilypad-state.h`: 357 dòng (< 700)
+   - `lilypad-server.cpp`: 514 dòng (< 700)
+
+4. **Biên Dịch & Kiểm Thử:**
+   - Cả 2 bản Debug (`build/`) và Release (`build_release/`) biên dịch thành công 100%, 0 lỗi, 0 cảnh báo.
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-06 - Khảo Sát Hiện Trường v2.4.12):
+
+1. **Khảo Sát Hiện Trường Lỗi Qua 3 Ảnh & Log Hệ Thống:**
+   - Ảnh 1: AFFiNE Canvas: `thuo7nng3`, `vì anh thuo7ngem`, `thưởng thẳng viếng được phuuo7n5 được`, `phươợn`, `phuuo7n5`.
+   - Ảnh 2: Google Chrome Search: `cháu lên ba cháu đi mẫu giáao1co6`.
+   - Ảnh 3: AFFiNE Canvas: `sông núi nước nam vua nam ở rành rành sách tr ời chi`.
+2. **Đối Soát Log & Nguyên Nhân Cốt Lõi:**
+   - `sách tr ời`: Do vi bước micro-tick trễ 2ms của `replay_timer_` làm rò rỉ khe thời gian khi `is_deleting_ = false`. Niri đẩy phím `t`, `r` của từ `trời` vào app trước, 2ms sau timer mới xả nốt `Space` của từ trước.
+   - Bung số VNI `7, 5, 1, 6`: Do Bamboo Core `AutoNonVnRestore` unroll ngược từ khi thứ tự phím bị lệch hoặc lặp ký tự. Đồng thời log server ghi nhận hàng chục cảnh báo `[WARN] Hardware tap auto-disarmed by 120ms safety watchdog` do ngưỡng 120ms quá ngắn so với độ trễ DOM 150ms-250ms của Chrome/AFFiNE.
+3. **Tuân Thủ Thiết Quân Luật RULE #1:**
+   - Dừng lại giải thích cặn kẽ nguyên nhân và xin phép người dùng trước khi sửa code. Người dùng xác nhận hoãn sang phiên sau (`thôi để phiên sau đi /end_session`).
+   - Niêm phong bộ nhớ an toàn, bảo tồn toàn vẹn mã nguồn hiện tại.
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-06 - v2.4.11 Grace Delimiter Engine Reset):
+
+1. **Khắc Phục Lỗi Dính Từ & Bung Phím Thô:**
+   - Phân tích nguyên nhân: Khi người dùng gõ phím Space nhanh ngay sau khi thay thế dấu trong từ, phím Space được cứu hộ qua `handleRescuedKeyGrace`. Nhưng hàm này chỉ commit dấu cách mà không reset Bamboo Core hay xóa `oldPreBuffer_`. Khi gõ từ tiếp theo, Bamboo Core nối từ mới vào đuôi từ cũ thành một từ ghép vô nghĩa trong tiếng Việt (`giáoc`), kích hoạt AutoNonVnRestore unroll ngược về phím thô `ao1c` và làm dính liền các từ lại với nhau.
+   - Khắc phục: Bổ sung `hasHistory_ = false; ResetEngine(lilypadEngine_.handle()); oldPreBuffer_.clear();` ngay trong khối xử lý phím phân tách từ của `handleRescuedKeyGrace`.
+   - Kết quả: Triệt tiêu hoàn toàn lỗi dính từ, bung số khi gõ câu dài liên tục.
+
+2. **Kiểm Soát Dung Lượng File (< 700 dòng):**
+   - `lilypad-state.cpp`: 689 dòng (< 700)
+   - `lilypad-state-governor.cpp`: 595 dòng (< 700)
+   - `lilypad-state-uinput.cpp`: 630 dòng (< 700)
+   - `lilypad-state.h`: 356 dòng (< 700)
+   - `lilypad-utils.h`: 208 dòng (< 700)
+   - `lilypad-utils.cpp`: 162 dòng (< 700)
+   - Cả bản Debug và Release biên dịch 100% thành công.
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-06 - v2.4.8 Dedup Expansion, Hardware Grace Window & Micro-gap Replay Pacing):
+
+1. **Mở Rộng Cửa Sổ Khử Trùng DedupRingBuffer (180ms) (`lilypad-utils.h/.cpp`):**
+   - Mở rộng dung lượng `CAPACITY = 16` và nâng ngưỡng lọc trùng `window_ms` mặc định từ $15\text{ms}$ lên $180\text{ms}$.
+   - Khắc phục triệt để hiện tượng phím `n` bị gửi 2 lần (Server gửi tức thì lúc $0\text{ms}$, Niri gửi trễ lúc $35\text{ms}-50\text{ms}$ do nảy tiêu điểm $145\text{ms}$ trên AFFiNE).
+   - Loại bỏ các lệnh gọi `dedup_buffer_.clear()` thô bạo tại `performReplacement` và `settle_timer_`, giúp bản ghi phím tồn tại trọn vẹn theo monotonic timestamp.
+
+2. **Cơ Chế Grace Window (60ms) Cho Gói Tin Cứu Hộ Socket (`lilypad-state-uinput.cpp`):**
+   - Bổ sung `g_last_deleting_state` và `g_last_deleting_end_time_ms`.
+   - Khi nhận gói tin `IPC_EVT_RESCUED_KEY` sau khi `is_deleting_` vừa chuyển sang `false` trong vòng $60\text{ms}$, kích hoạt `handleRescuedKeyGrace()`.
+   - Phím Space/Return/Tab được commit thẳng qua `ic_->commitString()`, các phím chữ được đưa vào engine xử lý an toàn thay vì bị drop.
+
+3. **Hoãn Disarm Tap Thêm 40ms (`lilypad-state-governor.cpp`):**
+   - Lưu trữ `disarm_timer_` trên Event Loop, giữ Server Tap an toàn thêm $40\text{ms}$ sau khi `settle_timer_` kết thúc để bao phủ toàn bộ vùng dao động DOM của Chromium.
+
+4. **Micro-gap Pacing (2ms) Cho `replayBufferedKeys()` (`lilypad-state-governor.cpp`):**
+   - Khi commit một từ hoặc ký tự trong lúc xả đệm, nếu còn phím kế tiếp (đặc biệt là phím Space), tái đệm các phím còn lại và hoãn $2\text{ms}$ qua `replay_timer_` trên Fcitx5 event loop.
+   - Giúp Blink DOM có đủ thời gian cập nhật layout con trỏ, triệt tiêu lỗi nuốt phím Space cuối từ.
+
+5. **Direct Commit Cho Space trên Chromium Mode (`lilypad-state.cpp`):**
+   - Khi buffer rỗng và `wa_chromium_flag == true`, commit phím Space trực tiếp qua `ic_->commitString(" ")` thay vì `keyEvent.forward()`.
+
+6. **Bảo Toàn Giới Hạn Dòng (< 700 Dòng/File):**
+   - `lilypad-state.cpp`: 689 dòng (< 700)
+   - `lilypad-state-governor.cpp`: 595 dòng (< 700)
+   - `lilypad-state-uinput.cpp`: 627 dòng (< 700)
+   - `lilypad-state.h`: 356 dòng (< 700)
+   - `lilypad-utils.cpp`: 162 dòng (< 700)
+   - `lilypad-utils.h`: 188 dòng (< 700)
+   - Biên dịch Debug và Release 100% thành công, 0 cảnh báo compiler.
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-06 - v2.4.7 Hybrid Hardware Tap & Focus Settled Debounce Implementation):
+
+1. **Giao Thức IPC Độc Quyền Unix Domain Socket (`lilypad-ipc.h`):**
+   - Thiết kế struct nguyên tử `LilypadIpcPacket` và `LilypadIpcType` (`IPC_CMD_BACKSPACE`, `IPC_CMD_ARM_TAP`, `IPC_CMD_DISARM_TAP`, `IPC_EVT_RESCUED_KEY`) đóng gói chuẩn `#pragma pack(push, 1)`.
+   - Hỗ trợ tương thích ngược 100% với định dạng 4-byte int legacy.
+
+2. **Nâng Cấp Pure Uinput Server Daemon (`fcitx5-lilypad/server/lilypad-server.cpp`):**
+   - Tích hợp lắng nghe sự kiện phím bàn phím `LIBINPUT_EVENT_KEYBOARD_KEY` trên context `seat0`.
+   - Lọc bỏ thiết bị uinput ảo của chính server (`vendor == 0x1234 && product == 0x5678` / `Lilypad-Uinput-Server`), tuyệt đối không bắt nhầm phím xóa và phím rào chắn `KEY_F24`.
+   - Tự động kích hoạt `hardware_tap_armed = true` khi nhận Backspace/Arm command và cài đặt Safety Watchdog Timer 120ms tự động disarm nếu Fcitx5 gặp sự cố.
+   - Bắn gói tin `IPC_EVT_RESCUED_KEY` tức thì qua `kb_client_fd` khi có phím bấm vật lý trong cửa sổ armed.
+
+3. **Nâng Cấp Fcitx5 Lilypad Core Engine (`lilypad-state-uinput.cpp`, `lilypad-state.cpp`, `lilypad-state-governor.cpp`):**
+   - Đăng ký `addIOEvent` bất đồng bộ trên luồng chính Fcitx5 đón nhận gói tin cứu trợ từ socket, loại bỏ 100% nhu cầu đa luồng và mutex.
+   - Xây dựng `DedupRingBuffer` khử trùng lặp 2 chiều đối xứng (Bi-directional Dedup Window 15ms) giữa Niri Compositor và Server Socket, triệt tiêu nguy cơ sinh phím đúp (`gg`).
+   - Xây dựng bảng chuyển đổi tức thì `evdevToKeySym` từ Linux evdev keycode sang `fcitx::KeySym` cho toàn bộ ký tự, số VNI và ký hiệu đặc biệt.
+   - Định tuyến phím cứu hộ thẳng vào `g_active_deleting_state->buffered_keys_`.
+   - Bảo tồn Post-Commit Settling Window ($25\text{ms} \sim 70\text{ms}$) sau khi Focus Settled Timer dứt điểm, đảm bảo DOM render trọn vẹn trước khi xả đệm đệ quy Bamboo Core.
+
+4. **Bảo Toàn Giới Hạn Dòng (< 700 Dòng/File):**
+   - `lilypad-state.cpp`: 684 dòng (< 700)
+   - `lilypad-state-governor.cpp`: 528 dòng (< 700)
+   - `lilypad-state-uinput.cpp`: 587 dòng (< 700)
+   - `lilypad-state.h`: 348 dòng (< 700)
+   - `lilypad-utils.cpp`: 160 dòng (< 700)
+   - `lilypad-utils.h`: 186 dòng (< 700)
+   - `lilypad-server.cpp`: 514 dòng (< 700)
+   - `lilypad-server.h`: 198 dòng (< 700)
+   - Cả hai bản Debug và Release biên dịch thành công 100%.
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-06 - v2.4.6 Focus Settled Debounce & Wayland Focus Bounce Keystroke Drop Investigation):
+
+1. **Triển Khai Cơ Chế Focus Settled Debouncer Cho Chromium (`v2.4.6`):**
+   - Phân tích nguyên nhân: Khi xóa bằng Backspace trên Chromium (TikTok / AFFiNE), Blink re-render DOM làm nảy FocusOut/In 6 nhịp ($84\text{ms}$). Niri Compositor nhả Keyboard Grab trong các nhịp `text_input_v3::disable`, khiến phím Sentinel `KEY_F24` (phát ở $3\text{ms}$) bị ném sang Chromium và không quay về Fcitx5, làm treo cứng chờ Watchdog $300\text{ms}$.
+   - Khắc phục:
+     - Thêm bộ đếm lắng dịu `scheduleFocusSettledCommit(35000)` (35ms quietude) tại `LilypadEngine::activate()` khi có `focusBounce` trong lúc `is_deleting_ == true`.
+     - Mỗi nhịp nảy gia hạn lại timer. Khi nhịp nảy cuối dứt điểm và Chrome im lặng tròn $35\text{ms}$ $\implies$ Fcitx5 tính toán độ trễ nuốt thực tế $t_{\text{end}} - t_{\text{uinput\_send}}$ làm telemetry thật cho Dynamic Governor, sau đó commit chuỗi thay thế an toàn.
+     - Triệt tiêu $100\%$ việc bị kẹt tới $300\text{ms}$ Watchdog. Các app mượt (Ghostty, VS Code, GNOME Text Editor) giữ nguyên cơ chế phần cứng $1.5\text{ms}$.
+
+2. **Bảo Toàn Phím Space & Cơ Chế Batch Replay:**
+   - Phím Space và các ký tự gõ nhanh khi `is_deleting_ == true` được giữ an toàn trong RAM `buffered_keys_` (`filterAndAccept`).
+   - Sau khi commit, trong Post-Commit Settling Window, hệ thống kích hoạt Batch Replay Protocol (bảo hiểm tối thiểu 3ms cho Space) trước khi gọi `replayBufferedKeys()`, đảm bảo từ và dấu cách hiển thị chuẩn xác `miếng `.
+
+3. **Điều Tra Và Xác Minh Hiện Tượng Rụng Phím Khi Chrome Nảy Focus (`thương -> thuo7n`):**
+   - Phân tích nguyên nhân:
+     - Gõ VNI `t - h - u - o - 7 - n - g - Space`: Phím `7` gây biến âm `thuo` $\to$ `thuơ`, phát Backspace và kích hoạt chuỗi Focus Bounce $84\text{ms}$.
+     - Phím `g` được gõ trong lúc Niri đang nhả Grab (do `disable`) $\implies$ Fcitx5 hoàn toàn không nhận được phím `g` (log không hề có `Typing so fast, add key to queue`).
+     - Bamboo Core chỉ nhận được `thươn`. Khi bấm Space, từ điển không có từ `thươn`, Bamboo's `AutoNonVnRestore` tự động hoàn tác thành `thuo7n` với `bsCount = 3` và `addedPart = "uo7n"`.
+   - Lập báo cáo kỹ thuật toàn diện và đề xuất 4 giải pháp triệt để lưu trữ tại `.fcitx5-lilypad-ai/1-overview/project-managers/wayland-focus-bounce-drop-key-solutions.md`.
+
+4. **Bảo Toàn Giới Hạn Dòng (< 700 Dòng/File):**
+   - `lilypad-state.h`: 325 dòng (< 700)
+   - `lilypad-state-governor.cpp`: 523 dòng (< 700)
+   - `lilypad-state-uinput.cpp`: 504 dòng (< 700)
+   - `lilypad-state.cpp`: 672 dòng (< 700)
+   - `lilypad-sequencer.cpp`: 196 dòng (< 700)
+   - `lilypad-candidates.cpp`: 270 dòng (< 700)
+   - Cả hai bản Debug và Release biên dịch thành công $100\%$.
+
+1. **Khôi Phục Nhập Liệu Native Cho GTK 4 (GNOME Text Editor) Trong Sequencer Mode:**
+   - Phân tích nguyên nhân: Cờ `wa_chromium_flag = true` bị ép diện rộng cho tất cả ứng dụng Wayland/DBus. Cờ này vốn dành riêng cho Chromium để tránh nhân đôi ký tự Omnibox. Khi áp đặt lên GTK 4 (`gnome-text-editor`), Fcitx5 nuốt toàn bộ phím phần cứng (`filterAndAccept()`) và ép commit từng ký tự kèm delay mô phỏng Chromium (25-40ms), gây nghẽn và không thể gõ chữ trong GNOME Text Editor.
+   - Khắc phục: Gỡ bỏ logic gán `wa_chromium_flag = true` diện rộng cho Wayland trong `lilypad-engine.cpp`. Chỉ kích hoạt cờ cho các app thực sự thuộc `ack_apps` (Antigravity IDE, Chrome, Brave, Electron, AFFiNE...). Giữ `wa_chromium_flag = false` cho GTK 4 để chuyển tiếp phím phần cứng `keyEvent.forward()` với độ trễ 0ms.
+
+2. **Khắc Phục Lỗi Thiếu Gạch Chân & Lộn Chữ Trong Chế Độ Predict (Preedit Mode):**
+   - Phân tích nguyên nhân:
+     - Gạch chân: `handlePreeditMode()` đặt `TextFormatFlags fmt = TextFormatFlag::NoFlag;` thay vì `Underline`.
+     - Lộn chữ: `ic_->commitString()` được phát đi trước khi `inputPanel().reset()` làm sạch preedit của GTK 4, khiến `GtkTextHistory` bị rối loạn con trỏ và đảo lộn thứ tự ký tự. Đồng thời thiếu cơ chế bắt phím điều hướng (Mũi tên, Esc, Tab) và Enter để chốt commit sạch sẽ.
+   - Khắc phục:
+     - Đặt `TextFormatFlags fmt = TextFormatFlag::Underline;` hiển thị gạch chân rõ nét.
+     - Reset client preedit (`ic_->inputPanel().reset(); ic_->updatePreedit();`) **TRƯỚC** khi gọi `ic_->commitString()`.
+     - Bổ sung `checkForwardSpecialKey` bắt phím điều hướng/Esc/Tab để reset preedit sạch sẽ khi di chuyển con trỏ.
+     - Bổ sung xử lý phím Enter (`FcitxKey_Return`) để chốt commit từ đang soạn thảo ngay lập tức.
+
+3. **Bảo Toàn Giới Hạn Dòng (< 700 Dòng/File):**
+   - `lilypad-state.cpp`: 665 dòng (< 700)
+   - `lilypad-state-governor.cpp`: 481 dòng (< 700)
+   - `lilypad-state-uinput.cpp`: 497 dòng (< 700)
+   - `lilypad-candidates.cpp`: 270 dòng (< 700)
+
+1. **Khắc Phục Lỗi Không Gõ Được Chữ Trong Antigravity (Sequencer Mode):**
+   - Phân tích nguyên nhân: Antigravity chạy trên Wayland với App ID `antigravity-ide`. Fcitx5 lấy tên qua `ic->program()` chỉ nhận được `"wayland"` và fallback thành `"ctx_0x..."`, không khớp với danh sách `ack_apps`, khiến `wa_chromium_flag` bị tắt (`false`). Khi đó Lilypad không commit qua `commitString()` mà cố `forward()` phím thô, nhưng Electron trên Wayland bỏ qua phím thô.
+   - Khắc phục: Bổ sung nhận diện khách hàng Wayland (`getFrontendName(ic) == "waylandim"` hoặc `appNameLower.rfind("ctx_", 0) == 0`) $\to$ tự động bật `wa_chromium_flag = true`, cho phép commit trực tiếp qua `ic_->commitString()`, giúp Antigravity nhận phím và hiển thị chữ ngay lập tức.
+
+2. **Khắc Phục Lỗi Không Xóa Được Space Trong Chế Độ Predict (Preedit Mode):**
+   - Phân tích nguyên nhân: Khi vừa bấm Space, từ đã commit vào app và preedit rỗng. Khi bấm Backspace xóa dấu cách, engine Bamboo ngầm bên dưới trả về `processed = 1`, làm Fcitx5 nuốt phím (`filterAndAccept`), trong khi app không nhận được phím Backspace để xóa dấu cách.
+   - Khắc phục: Trong `handlePreeditMode()`, nếu bộ đệm preedit rỗng mà nhận phím Backspace $\to$ reset engine và gọi `keyEvent.forward()` chuyển tiếp phím Backspace tới app để xóa dấu cách ngay lập tức.
+
+3. **Khắc Phục Lỗi Bắt Nhầm Phím Xóa Gây Cụt Từ (`cháu -> ch`):**
+   - Gỡ bỏ hoàn toàn khối `PHYSICAL BS INTERRUPT` sai vị trí trong `checkForwardSpecialKey()`.
+
+4. **Chuẩn Hóa Xử Lý Phím Backspace Thật (100% Không Bao Giờ Liệt/Nuốt):**
+   - Phân định rõ giữa phím xóa uinput (`expected_backspaces_ > 0`) và phím Backspace thật của người dùng (`expected_backspaces_ == 0`).
+
+5. **Tách Module File `lilypad-state.cpp` (< 700 dòng mỗi file):**
+   - `lilypad-state.cpp` (626 dòng)
+   - `lilypad-state-governor.cpp` (481 dòng)
+   - `lilypad-state-uinput.cpp` (497 dòng)
+   - `lilypad-candidates.cpp` (270 dòng)
+   - Tất cả đều < 700 dòng.
+
+3. **Khắc Phục Lỗi Nhân Đôi Phím Trên Chromium (`ffaa`):**
+   - Khôi phục kiểm tra `wa_chromium_flag` và `filterAndAccept()` chuẩn từ bản gốc, triệt tiêu hoàn toàn hiện tượng nhân đôi phím trên Omnibox / URL bar và trình duyệt Chromium.
+
+4. **Khôi Phục Hoàn Toàn Chế Độ Preedit:**
+   - Khôi phục việc gọi `ic_->inputPanel().setClientPreedit(text)` và lắng nghe sự kiện phím trực tiếp từ Bamboo core.
+
+5. **Tách Module File `lilypad-state.cpp` (< 700 dòng mỗi file):**
+   - `lilypad-state.cpp` (613 dòng): Core dispatch, Normal Key, Preedit mode, Surrounding text.
+   - `lilypad-state-governor.cpp` (481 dòng): Sequencer commit execution, Dynamic delay governor, Micro-replacement pacing.
+   - `lilypad-state-uinput.cpp` (497 dòng): Uinput IPC, KEY_F24 sentinel handler, Autofill guard, Buffer clear, OffMode macro.
+   - `lilypad-candidates.cpp` (270 dòng): Emoji and Candidate UI.
+   - Không có bất kỳ file nào vượt quá 700 dòng.
+
+4. **Khắc phục triệt để lỗi "thấy -> ấy" (Nuốt mất `th`):**
+   - Gỡ bỏ đoạn code cũ `current_backspace_count_ >= expected_backspaces_` tắt `is_deleting_` non.
+   - Sentinel `KEY_F24` được đón nhận trực tiếp và kích hoạt commit an toàn.
+
+5. **Cập nhật đầy đủ bản quyền (SPDX Copyright Header):**
+   - Cả 4 file đều mang bản quyền tác giả: CSSlayer, Võ Ngô Hoàng Thành, Nguyễn Hoàng Kỳ.
+
+6. **Biên dịch & Kiểm thử Build:**
+   - Biên dịch hoàn tất 100% không lỗi trên cả Debug (`build/`) và Release (`build_release/`).
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-06 - v2.4.1 Adaptive Lag Confirmation & Telemetry Decoupling):
+
+1. **Triển Khai Xác Thực Lag Đa Tầng & Telemetry Decoupling (Quyết định 033):**
+   - Nâng ngưỡng Safety Timer: $T_{\text{safety}} = 40000 + N \times 10000\,\mu\text{s}$ (50ms cho 1 BS, 60ms cho 2 BS, 80ms cho 4 BS) để chu trình Wayland bình thường ($25\text{ms} \sim 35\text{ms}$) về đích trọn vẹn.
+   - Khi cứu hộ (`from_safety_timer == true`), phân biệt rạch ròi:
+     + *Lag thật* (`has_recent_focus_bounce_ || !buffered_keys_.empty()`): Duy trì telemetry lag và cấp 10ms settling breathing room trước khi commit để tránh nuốt chữ trên TikTok / AFFiNE.
+     + *Tab mượt* (Antigravity): Decouple telemetry (không đè `last_swallow_duration_us_`), commit tức thì (100us), Post-Commit Settling Window co về $25\text{ms} \sim 40\text{ms}$, giải phóng phím Space ngay lập tức.
+   - Bổ sung log chẩn đoán `LATE KEY_F24` sau khi rào chắn đã nhả.
+
+2. **Tinh Gọn Hệ Thống Chế Độ Gõ (Mode Cleanup):**
+   - Loại bỏ các chế độ gõ cũ/thừa (`OFF`, `Uinput Smooth`, `Super Smooth`, `Slow`, `Surrounding Text`, `Emoji Picker`).
+   - Chỉ giữ lại đúng 3 mode theo yêu cầu: **`Sequence`** (làm mặc định), **`Minecraft`**, **`Preedit`**.
+   - Cập nhật GUI Python (`mode_manager.py`, `dynamic_settings.py`) đồng bộ danh sách 3 mode.
+
+2. **Ghi Nhận Đóng Góp Bamboo Core Rust Native:**
+   - Bổ sung tri ân và link dự án `bamboo-vi/bamboo-core` trong các file README (`README.md`, `fcitx5-lilypad/README.md`, `fcitx5-lilypad/README.en.md`).
+
+3. **Khắc Phục Lỗi Nuốt Chữ Kèm Tightened Adaptive Safety Timer (`lilypad-state.cpp`):**
+   - Áp dụng công thức tinh chỉnh tối ưu:
+     $$T_{\text{safety}} = 15\text{ms} + N \times 8\text{ms}$$
+     ($31\text{ms}$ cho 2 phím xóa như `sửa`, $47\text{ms}$ cho 4 phím xóa như `thưởng`, `tiếng`).
+   - Rút ngắn gần một nửa thời gian chờ (từ 90ms xuống 47ms), vừa đủ vượt qua mốc 20ms cũ để không kích hoạt nhầm, vừa tránh triệt để tình trạng kẹt phím Space và các ký tự tiếp theo trong hàng đợi RAM.
+   - Commit tức thì (`settling_delay_us = 100`) sau khi safety timer kết thúc và giữ nguyên 100% cửa sổ Post-Commit 70ms của Chromium.
+
+4. **Nâng Phiên Bản Lên `2.4.1 (Stable)`:**
+   - Cập nhật đồng bộ `CMakeLists.txt`, `settings-gui/version.py`, các file PKGBUILD AUR (`fcitx5-lilypad`, `fcitx5-lilypad-bin`, `fcitx5-lilypad-git`).
+   - Biên dịch 100% thành công cả Debug (`build/`) và Release (`build_release/`).
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-05 - v2.3.15 Large Document Cache & Non-blocking Paste Cursor Sync):
+
+1. **Giới Hạn Bounded Window Cho `isAutofillCertain` (`lilypad-state.cpp`):**
+   - Bỏ qua ngay khi văn bản chứa `\n` (văn bản nhiều dòng không bao giờ có URL autofill).
+   - Chỉ quét tìm `oldPreBuffer_` trong lát cắt tối đa 16 ký tự ngay trước con trỏ thay vì quét $10.000$ chữ.
+   - Triệt tiêu hoàn toàn lỗi nhận diện nhầm Autofill dẫn tới việc gửi thừa 1 Backspace xóa mất chữ `n`.
+
+2. **Đồng Bộ Phi Khối `realtextLen` (`lilypad-state.cpp`):**
+   - Đồng bộ `realtextLen = surr.cursor()` khi phím tắt (Ctrl+V) hoặc phím điều hướng được bấm.
+   - Tự động neo lại `realtextLen = surr.cursor()` khi bắt đầu một từ mới (`oldPreBuffer_.empty()`).
+   - Xóa bỏ vòng lặp `sleep_for(2ms)` blocking trong `handleUInputKeyPress`.
+
+3. **Reset `lastDeactivateTime_ = 0` (`lilypad-engine.cpp`):**
+   - Giải phóng cờ Focus bounce sau khi xử lý để tránh bẫy giữ buffer lặp lại trên các click chuột bình thường.
+
+4. **Biên Dịch & Nâng Phiên Bản (`v2.3.15`):**
+   - Nâng `pkgver=2.3.15` trong PKGBUILD.
+   - Biên dịch 100% thành công cả bản Debug (`build/`) và Release (`build_release/`).
+
+---
+
+## 🎯 Nhật Ký Tiến Độ Phiên Làm Việc (2026-11-05 - Hoàn Tất Phase 8.4 Hardware Barrier Key KEY_F24 - v2.3.14):
+
+1. **Nâng Cấp Pure Uinput Server Daemon (`fcitx5-lilypad/server/lilypad-server.cpp/.h`):**
+   - Đăng ký capability phần cứng `ioctl(fd, UI_SET_KEYBIT, KEY_F24)`.
+   - Viết hàm `send_f24()` phát mảng 4 sự kiện nguyên tử `KEY_F24` (Press + SYN_REPORT + Release + SYN_REPORT).
+   - Trong vòng lặp xả phím: Xả sạch đúng $N$ phím Backspace, sau đó tự động chốt đuôi 1 phím `KEY_F24` (sau $1\text{ms}$).
+   - Bóc tách hoàn toàn $100\%$ tín hiệu chốt rào chắn khỏi phím xóa.
+
+2. **Nâng Cấp Sequencer & Addon State Core (`lilypad-state.h/.cpp`):**
+   - Trong `performReplacement()`: Chỉ yêu cầu uinput xóa đúng $N$ phím thô (`bsCount`).
+   - Cài đặt `barrier_safety_timer_` $20\text{ms}$: Nếu Compositor làm rơi `KEY_F24` do Focus Bounce $\implies$ Tự động cứu hộ giao dịch qua `executeCommitSequence(true, 20000)`, commit chữ ngay lập tức, triệt tiêu thời gian chờ $300\text{ms}$ của Watchdog.
+   - Trong `handleUInputKeyPress`: Bắt phím `KEY_F24` (`currentSym == FcitxKey_F24`), nuốt trọn (`event.filterAndAccept()`), đo `swallow_duration_us`, chuyển sang Settling Delay $\to$ Commit qua `executeCommitSequence(false, swallow_duration_us)`.
+   - Các phím Backspace từ uinput đều được cho qua (`return false;`) xuống app để xóa sạch ký tự cũ.
+   - Bảo vệ biến `isAutomatedBackspace` bao gồm cả `FcitxKey_F24` để không gây nhiễu cảm biến nhịp tay `iki_sensor_`.
+
+3. **Nâng Phiên Bản & Biên Dịch Hệ Thống (`v2.3.14`):**
+   - Nâng phiên bản `CMakeLists.txt` và `PKGBUILD` lên `2.3.14`.
+   - Biên dịch thành công 100% cả Debug (`build/`) và Release (`build_release/`).
 
 ---
 

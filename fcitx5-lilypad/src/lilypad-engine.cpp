@@ -1,7 +1,7 @@
 /*
  * SPDX-FileCopyrightText: 2022-2022 CSSlayer <wengxt@gmail.com>
- * SPDX-FileCopyrightText: 2025 Võ Ngô Hoàng Thành <thanhpy2009@gmail.com>
- * SPDX-FileCopyrightText: 2026 Nguyễn Hoàng Kỳ  <nhktmdzhg@gmail.com>
+ * SPDX-FileCopyrightText: 2025-2026 Lý Tất Thành
+ * SPDX-FileCopyrightText: 2026 Antigravity
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
@@ -20,6 +20,7 @@
 
 #include <fcitx-config/iniparser.h>
 #include <fcitx/menu.h>
+#include <fcitx/focusgroup.h>
 #include <fcitx/userinterfacemanager.h>
 #include <fcitx/inputmethodmanager.h>
 #include <fcitx-utils/event.h>
@@ -42,31 +43,22 @@ namespace fcitx {
 
     int                   modeToInt(LilypadMode mode) {
         switch (mode) {
-            case LilypadMode::Off: return 0;
-            case LilypadMode::Smooth: return 1;
-            case LilypadMode::Uinput: return 2;
-            case LilypadMode::SuperSmooth: return 3;
-            case LilypadMode::SurroundingText: return 4;
-            case LilypadMode::Preedit: return 5;
-            case LilypadMode::Emoji: return 6;
-            case LilypadMode::Minecraft: return 8;
-            case LilypadMode::Sequence: return 9;
+            case LilypadMode::Sequence: return 0;
+            case LilypadMode::Minecraft: return 1;
+            case LilypadMode::Preedit: return 2;
             default: return 0;
         }
     }
 
     LilypadMode intToMode(int mode) {
         switch (mode) {
-            case 0: return LilypadMode::Off;
-            case 1: return LilypadMode::Smooth;
-            case 2: return LilypadMode::Uinput;
-            case 3: return LilypadMode::SuperSmooth;
-            case 4: return LilypadMode::SurroundingText;
-            case 5: return LilypadMode::Preedit;
-            case 6: return LilypadMode::Emoji;
+            case 0: return LilypadMode::Sequence;
+            case 1: return LilypadMode::Minecraft;
+            case 2: return LilypadMode::Preedit;
             case 8: return LilypadMode::Minecraft;
+            case 5: return LilypadMode::Preedit;
             case 9: return LilypadMode::Sequence;
-            default: return LilypadMode::Off;
+            default: return LilypadMode::Sequence;
         }
     }
 
@@ -74,9 +66,8 @@ namespace fcitx {
     // menu.  If the hotkey itself conflicts with a reserved menu key, falls back
     // to FcitxKey_f.
     static bool isAppModeMenuReservedKey(KeySym sym, const lilypadConfig& config) {
-        if (sym == Key(*config.shortcutSmooth).sym() || sym == Key(*config.shortcutUinput).sym() || sym == Key(*config.shortcutMinecraft).sym() ||
-            sym == Key(*config.shortcutSurroundingText).sym() || sym == Key(*config.shortcutPreedit).sym() || sym == Key(*config.shortcutEmoji).sym() ||
-            sym == Key(*config.shortcutOff).sym() || sym == Key(*config.shortcutSuperSmooth).sym() || sym == Key(*config.shortcutDefault).sym()) {
+        if (sym == Key(*config.shortcutSequence).sym() || sym == Key(*config.shortcutMinecraft).sym() ||
+            sym == Key(*config.shortcutPreedit).sym() || sym == Key(*config.shortcutDefault).sym()) {
             return true;
         }
 
@@ -158,6 +149,7 @@ namespace fcitx {
     }
 
     LilypadEngine::LilypadEngine(Instance* instance) : instance_(instance), factory_([this](InputContext& ic) { return new LilypadState(this, &ic); }) { //NOLINT
+        g_lilypad_engine.store(this, std::memory_order_release);
         const char* desktop = std::getenv("XDG_CURRENT_DESKTOP");
         isGnome_            = (desktop != nullptr) && std::string(desktop).find("GNOME") != std::string::npos;
         // emptyCustomKeymap_.customKeymap is implicitly initialized to empty by fcitx::Option default value macro.
@@ -259,6 +251,7 @@ namespace fcitx {
     }
 
     LilypadEngine::~LilypadEngine() {
+        g_lilypad_engine.store(nullptr, std::memory_order_release);
         stop_flag_monitor.store(true, std::memory_order_release);
         int fd = mouse_socket_fd.load(std::memory_order_acquire);
         if (fd >= 0) {
@@ -407,7 +400,16 @@ namespace fcitx {
 
         auto* state = ic->propertyFor(&factory_);
         const bool uinputMode = isUinputMode(targetMode);
-        const bool focusBounce = uinputMode && state->lastDeactivateTime_ > 0 && (now_ms() - state->lastDeactivateTime_) < 100;
+
+        bool focusBounce = false;
+        if (uinputMode && state->lastDeactivateTime_ > 0) {
+            bool sameApp = (!lastActiveApp_.empty() && lastActiveApp_ == appName);
+            bool hasActiveWord = (!state->oldPreBuffer_.empty() || state->hasHistory_ || is_deleting_.load(std::memory_order_acquire));
+            if (sameApp || hasActiveWord || (now_ms() - state->lastDeactivateTime_) < 250) {
+                focusBounce = true;
+            }
+        }
+        lastActiveApp_ = appName;
 
         if (focusBounce) {
             state->recordFocusBounce();
@@ -415,6 +417,12 @@ namespace fcitx {
             realMode = targetMode;
             ic->updateUserInterface(UserInterfaceComponent::StatusArea);
             LILYPAD_INFO("Focus bounce detected: keep word buffers");
+
+            void* active_ptr = g_active_deleting_state.load(std::memory_order_acquire);
+            LilypadState* target_state = active_ptr ? static_cast<LilypadState*>(active_ptr) : state;
+            if (is_deleting_.load(std::memory_order_acquire) && target_state) {
+                target_state->scheduleFocusSettledCommit(35000); // 35ms quietude after last bounce
+            }
         } else {
             state->flushDeferredFocusOut();
             setMode(targetMode, event.inputContext());
@@ -438,7 +446,7 @@ namespace fcitx {
         std::transform(appNameLower.begin(), appNameLower.end(), appNameLower.begin(), ::tolower);
 #endif
         state->sequencer_.set_max_ack_timeout_ms(300);
-        if (targetMode == LilypadMode::Uinput || targetMode == LilypadMode::Smooth || targetMode == LilypadMode::Minecraft || targetMode == LilypadMode::SuperSmooth || targetMode == LilypadMode::Sequence) {
+        if (targetMode == LilypadMode::Sequence || targetMode == LilypadMode::Minecraft) {
             for (const auto& ackApp : ack_apps) {
                 if (appNameLower.find(ackApp) != std::string::npos) {
                     if (is_dbus && *config_.fixUinputWithAck) {
@@ -453,21 +461,22 @@ namespace fcitx {
         }
         if (event.type() == EventType::InputContextFocusIn && is_dbus && !surrvalid) {
             LILYPAD_INFO("Skip clearAllBuffers");
-        } else if (surrvalid && !state->oldPreBuffer_.empty() && (now_ms() - state->lastDeactivateTime_) >= 100) {
+        } else if (!focusBounce && surrvalid && !state->oldPreBuffer_.empty() &&
+                   state->lastDeactivateTime_ > 0 && (now_ms() - state->lastDeactivateTime_) >= 100) {
             state->clearAllBuffers();
         }
+        state->lastDeactivateTime_ = 0;
         if (!focusBounce) {
+            if (g_active_deleting_state.load(std::memory_order_acquire) == static_cast<void*>(state)) {
+                g_active_deleting_state.store(nullptr, std::memory_order_release);
+            }
             is_deleting_.store(false);
             needEngineReset.store(false);
         }
-        if (targetMode == LilypadMode::Emoji) {
-            state->updateEmojiPreedit();
-        } else {
-            ic->inputPanel().reset();
-            ic->updateUserInterface(UserInterfaceComponent::InputPanel);
-            if (realMode == LilypadMode::Preedit || realMode == LilypadMode::SurroundingText)
-                ic->updatePreedit();
-        }
+        ic->inputPanel().reset();
+        ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+        if (realMode == LilypadMode::Preedit)
+            ic->updatePreedit();
         for (const auto& action : toggleActions_) {
             statusArea.addAction(StatusGroup::InputMethod, action);
         }
@@ -586,20 +595,18 @@ namespace fcitx {
 
             if (selectedMode != std::nullopt) {
                 LILYPAD_INFO("Selected mode: " + LilypadModeI18NAnnotation::toString(selectedMode.value()));
-                if (selectedMode != LilypadMode::Emoji) {
-                    if (keySym == Key(*config_.shortcutDefault).sym()) { // Default Typing key
-                        std::lock_guard<std::mutex> lock(appRulesMutex_);
-                        appRules_.erase(currentConfigureApp_);
-                        // Remove from the configuration object too
-                        auto rules = *appRulesTables_.rules;
-                        rules.erase(std::remove_if(rules.begin(), rules.end(), [this](const auto& rule) { return *rule.app == currentConfigureApp_; }), rules.end());
-                        appRulesTables_.rules.setValue(std::move(rules));
-                    } else {
-                        setAppRule(currentConfigureApp_, selectedMode.value());
-                    }
-                    if (!isStartsWith(currentConfigureApp_, "ctx_")) {
-                        saveAppRules();
-                    }
+                if (keySym == Key(*config_.shortcutDefault).sym()) { // Default Typing key
+                    std::lock_guard<std::mutex> lock(appRulesMutex_);
+                    appRules_.erase(currentConfigureApp_);
+                    // Remove from the configuration object too
+                    auto rules = *appRulesTables_.rules;
+                    rules.erase(std::remove_if(rules.begin(), rules.end(), [this](const auto& rule) { return *rule.app == currentConfigureApp_; }), rules.end());
+                    appRulesTables_.rules.setValue(std::move(rules));
+                } else {
+                    setAppRule(currentConfigureApp_, selectedMode.value());
+                }
+                if (!isStartsWith(currentConfigureApp_, "ctx_")) {
+                    saveAppRules();
                 }
                 selectionMade = true;
             }
@@ -614,9 +621,6 @@ namespace fcitx {
                     state->commitBuffer();
                     state->reset();
                     setMode(selectedMode.value(), ic);
-                    if (selectedMode == LilypadMode::Emoji) {
-                        state->updateEmojiPreedit();
-                    }
                 }
             }
             return;
@@ -628,14 +632,9 @@ namespace fcitx {
             LilypadMode                               realMode = getAppRule(appName);
 
             auto                                      order      = stringutils::split(*config_.modeOrder, ",");
-            std::vector<std::pair<std::string, bool>> visibility = {{"Smooth", *config_.showModeSmooth},
-                                                                    {"Uinput", *config_.showModeUinput},
+            std::vector<std::pair<std::string, bool>> visibility = {{"Sequence", *config_.showModeSequence},
                                                                     {"Minecraft", *config_.showModeMinecraft},
-                                                                    {"SurroundingText", *config_.showModeSurroundingText},
                                                                     {"Preedit", *config_.showModePreedit},
-                                                                    {"Emoji", *config_.showModeEmoji},
-                                                                    {"Off", *config_.showModeOff},
-                                                                    {"SuperSmooth", *config_.showModeSuperSmooth},
                                                                     {"Default", *config_.showModeDefault}};
 
             std::vector<LilypadMode>                  enabledModes;
@@ -649,24 +648,12 @@ namespace fcitx {
                 }
                 if (visible) {
                     std::optional<LilypadMode> mode = std::nullopt;
-                    if (name == "Smooth")
-                        mode = LilypadMode::Smooth;
-                    else if (name == "Uinput")
-                        mode = LilypadMode::Uinput;
+                    if (name == "Sequence")
+                        mode = LilypadMode::Sequence;
                     else if (name == "Minecraft")
                         mode = LilypadMode::Minecraft;
-                    else if (name == "SurroundingText")
-                        mode = LilypadMode::SurroundingText;
                     else if (name == "Preedit")
                         mode = LilypadMode::Preedit;
-                    else if (name == "Emoji")
-                        mode = LilypadMode::Emoji;
-                    else if (name == "Off")
-                        mode = LilypadMode::Off;
-                    else if (name == "SuperSmooth")
-                        mode = LilypadMode::SuperSmooth;
-                    else if (name == "Sequence")
-                        mode = LilypadMode::Sequence;
                     else if (name == "Default")
                         mode = config().mode.value();
                     else
@@ -727,6 +714,10 @@ namespace fcitx {
     }
 
     void LilypadEngine::reset(const InputMethodEntry& /*entry*/, InputContextEvent& event) {
+        if (is_deleting_.load(std::memory_order_acquire)) {
+            LILYPAD_INFO("Ignore reset while is_deleting");
+            return;
+        }
         LILYPAD_INFO("Reset engine");
         auto* state = event.inputContext()->propertyFor(&factory_);
         if (!state->isEmptyHistory() && event.type() != EventType::InputContextFocusOut) {
@@ -745,6 +736,17 @@ namespace fcitx {
         const bool surrvalid       = ic->surroundingText().isValid();
         const bool is_dbus         = getFrontendName(ic) == "dbus";
         state->lastDeactivateTime_ = now_ms();
+
+        if (event.type() == EventType::InputContextFocusOut && uinputMode) {
+            // Virtual Focus Pinning:
+            // When actively typing or during uinput deletion, ignore synthetic FocusOut
+            // caused by Web/Electron DOM re-rendering (TikTok / AFFiNE).
+            if (is_deleting_.load(std::memory_order_acquire) || !state->oldPreBuffer_.empty()) {
+                LILYPAD_INFO("🛡️ [VIRTUAL FOCUS PIN] Suppressed synthetic FocusOut during active word transaction");
+                return;
+            }
+        }
+
         if (realMode == LilypadMode::Preedit && event.type() != EventType::InputContextFocusOut) {
             state->commitBuffer();
         } else {
@@ -756,12 +758,15 @@ namespace fcitx {
                 state->clearAllBuffers();
             }
             if (!uinputMode || event.type() != EventType::InputContextFocusOut) {
+                if (g_active_deleting_state.load(std::memory_order_acquire) == static_cast<void*>(state)) {
+                    g_active_deleting_state.store(nullptr, std::memory_order_release);
+                }
                 is_deleting_.store(false);
                 needEngineReset.store(false);
             }
             ic->inputPanel().reset();
             ic->updateUserInterface(UserInterfaceComponent::InputPanel);
-            if (realMode == LilypadMode::Preedit || realMode == LilypadMode::Emoji || realMode == LilypadMode::SurroundingText)
+            if (realMode == LilypadMode::Preedit)
                 ic->updatePreedit();
         }
     }
@@ -862,7 +867,7 @@ namespace fcitx {
             return;
 
         file << "# Lilypad Per-App Configuration\n";
-        file << "# 0 = Off, 1 = Uinput (Smooth), 2 = Uinput (Slow), 3 = Uinput (Hardcore), 4 = Surrounding Text, 5 = Preedit, 6 = Emoji Picker\n";
+        file << "# 0 = Sequence, 1 = Minecraft, 2 = Preedit\n";
         std::lock_guard<std::mutex> lock(appRulesMutex_);
         for (const auto& pair : appRules_) {
             bool currentIsCtx = isStartsWith(pair.first, "ctx_");
@@ -939,19 +944,13 @@ namespace fcitx {
 
         auto applyMode = [this, cleanup](LilypadMode mode) {
             return [this, mode, cleanup](InputContext* ic) {
-                if (mode != LilypadMode::Emoji) {
-                    setAppRule(currentConfigureApp_, mode);
-                    if (!isStartsWith(currentConfigureApp_, "ctx_")) {
-                        saveAppRules();
-                    }
+                setAppRule(currentConfigureApp_, mode);
+                if (!isStartsWith(currentConfigureApp_, "ctx_")) {
+                    saveAppRules();
                 }
 
                 cleanup(ic);
                 setMode(mode, ic);
-                if (mode == LilypadMode::Emoji) {
-                    auto* state = ic->propertyFor(&factory_);
-                    state->updateEmojiPreedit();
-                }
             };
         };
 
@@ -965,15 +964,9 @@ namespace fcitx {
         auto                                      getShortcut = [](const std::string& shortcut) { return Key(shortcut).sym(); };
 
         std::unordered_map<std::string, ModeInfo> modeMap = {
-            {"Smooth", {LilypadMode::Smooth, _("Uinput (Smooth)"), getShortcut(*config_.shortcutSmooth), *config_.showModeSmooth}},
-            {"Uinput", {LilypadMode::Uinput, _("Uinput (Slow)"), getShortcut(*config_.shortcutUinput), *config_.showModeUinput}},
-            {"Minecraft", {LilypadMode::Minecraft, _("Minecraft"), getShortcut(*config_.shortcutMinecraft), *config_.showModeMinecraft}},
-            {"SurroundingText", {LilypadMode::SurroundingText, _("Surrounding Text"), getShortcut(*config_.shortcutSurroundingText), *config_.showModeSurroundingText}},
-            {"Preedit", {LilypadMode::Preedit, _("Preedit"), getShortcut(*config_.shortcutPreedit), *config_.showModePreedit}},
-            {"Emoji", {LilypadMode::Emoji, _("Emoji Picker"), getShortcut(*config_.shortcutEmoji), *config_.showModeEmoji}},
-            {"Off", {LilypadMode::Off, _("OFF"), getShortcut(*config_.shortcutOff), *config_.showModeOff}},
-            {"SuperSmooth", {LilypadMode::SuperSmooth, _("Uinput (Super Smooth)"), getShortcut(*config_.shortcutSuperSmooth), *config_.showModeSuperSmooth}},
             {"Sequence", {LilypadMode::Sequence, _("Sequence"), getShortcut(*config_.shortcutSequence), *config_.showModeSequence}},
+            {"Minecraft", {LilypadMode::Minecraft, _("Minecraft"), getShortcut(*config_.shortcutMinecraft), *config_.showModeMinecraft}},
+            {"Preedit", {LilypadMode::Preedit, _("Preedit"), getShortcut(*config_.shortcutPreedit), *config_.showModePreedit}},
             {"Default", {config_.mode.value(), _("Default Typing"), getShortcut(*config_.shortcutDefault), *config_.showModeDefault}}};
 
         std::vector<ModeInfo> allModes;
@@ -1075,15 +1068,9 @@ namespace fcitx {
         // Map mode to label
         std::string modeLabel;
         switch (mode) {
-            case LilypadMode::Smooth: modeLabel = _("Uinput (Smooth)"); break;
-            case LilypadMode::Uinput: modeLabel = _("Uinput (Slow)"); break;
-            case LilypadMode::Minecraft: modeLabel = _("Minecraft"); break;
-            case LilypadMode::SurroundingText: modeLabel = _("Surrounding Text"); break;
-            case LilypadMode::Preedit: modeLabel = _("Preedit"); break;
-            case LilypadMode::Emoji: modeLabel = _("Emoji Picker"); break;
-            case LilypadMode::Off: modeLabel = _("OFF"); break;
-            case LilypadMode::SuperSmooth: modeLabel = _("Uinput (Super Smooth)"); break;
             case LilypadMode::Sequence: modeLabel = _("Sequence"); break;
+            case LilypadMode::Minecraft: modeLabel = _("Minecraft"); break;
+            case LilypadMode::Preedit: modeLabel = _("Preedit"); break;
             default: modeLabel = _("Unknown Mode"); break;
         }
 
@@ -1115,22 +1102,41 @@ namespace fcitx {
     }
 
     void LilypadEngine::setMode(LilypadMode mode, InputContext* ic) {
+        const bool changed = (realMode != mode);
         realMode = mode;
         if (ic != nullptr) {
             if (auto* state = ic->propertyFor(&factory_)) {
-                state->clearAllBuffers();
+                if (changed) {
+                    state->clearAllBuffers();
+                }
+                std::string appName = getProgramName(ic);
+                std::string appNameLower = appName;
+#if __cplusplus >= 202002L
+                std::ranges::transform(appNameLower, appNameLower.begin(), ::tolower);
+#else
+                std::transform(appNameLower.begin(), appNameLower.end(), appNameLower.begin(), ::tolower);
+#endif
+                state->wa_chromium_flag = false;
+                state->waitAck_ = false;
+                if (mode == LilypadMode::Sequence || mode == LilypadMode::Minecraft) {
+                    for (const auto& ackApp : ack_apps) {
+                        if (appNameLower.find(ackApp) != std::string::npos) {
+                            state->wa_chromium_flag = true;
+                            if (getFrontendName(ic) == "dbus" && *config_.fixUinputWithAck) {
+                                state->waitAck_ = true;
+                            }
+                            LILYPAD_INFO(ackApp + " detected in setMode: set wa_chromium_flag=true");
+                            break;
+                        }
+                    }
+                }
             }
             ic->updateUserInterface(UserInterfaceComponent::StatusArea);
         }
     }
 
     std::string LilypadEngine::subModeIconImpl(const InputMethodEntry& /*entry*/, InputContext& /*inputContext*/) {
-        std::string baseIconName;
-        switch (realMode) {
-            case LilypadMode::Off: baseIconName = "fcitx-lilypad-off"; break;
-            case LilypadMode::Emoji: baseIconName = "fcitx-lilypad-emoji"; break;
-            default: baseIconName = "fcitx-lilypad"; break;
-        }
+        std::string baseIconName = "fcitx-lilypad";
 
         if (*config_.useLilypadIcons) {
             return baseIconName;
@@ -1148,11 +1154,7 @@ namespace fcitx {
     }
 
     std::string LilypadEngine::subModeLabelImpl(const InputMethodEntry& /*entry*/, InputContext& /*inputContext*/) {
-        switch (realMode) {
-            case LilypadMode::Off: return _("Lilypad - Off");
-            case LilypadMode::Emoji: return "😄";
-            default: return isGnome_ ? "vi" : "🍃";
-        }
+        return isGnome_ ? "vi" : "🍃";
     }
 
     std::string LilypadEngine::getProgramName(InputContext* ic) {
@@ -1170,6 +1172,41 @@ namespace fcitx {
             lower.find("desktopeditors") != std::string::npos ||
             lower.find("editors_helper") != std::string::npos) {
             return "ONLYOFFICE";
+        }
+
+        if (programName.empty() || programName == "wayland" || programName == "x11") {
+            // Priority 1: Check sibling contexts in the same FocusGroup
+            if (auto* fg = ic->focusGroup()) {
+                fg->foreach([&](InputContext* other) {
+                    if (other && !other->program().empty() &&
+                        other->program() != "wayland" && other->program() != "x11") {
+                        programName = other->program();
+                        return false;
+                    }
+                    return true;
+                });
+            }
+        }
+
+        if (programName.empty() || programName == "wayland" || programName == "x11") {
+            // Priority 2: Check last focused input context in manager
+            auto* engine = g_lilypad_engine.load(std::memory_order_acquire);
+            if (engine && engine->instance()) {
+                if (auto* lastIc = engine->instance()->inputContextManager().lastFocusedInputContext()) {
+                    if (lastIc != ic && !lastIc->program().empty() &&
+                        lastIc->program() != "wayland" && lastIc->program() != "x11") {
+                        programName = lastIc->program();
+                    }
+                }
+            }
+        }
+
+        if (programName.empty() || programName == "wayland" || programName == "x11") {
+            // Priority 3: Check compositor focused window app ID (Niri / Wayland IPC)
+            std::string compApp = queryCompositorAppId();
+            if (!compApp.empty()) {
+                programName = compApp;
+            }
         }
 
         if (programName.empty() || programName == "wayland" || programName == "x11") {

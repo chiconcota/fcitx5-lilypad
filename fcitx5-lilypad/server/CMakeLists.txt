@@ -10,4 +10,8 @@ target_link_libraries(fcitx5-lilypad-server
     PkgConfig::LIBUDEV
 )
 
+target_include_directories(fcitx5-lilypad-server PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+
 install(TARGETS fcitx5-lilypad-server DESTINATION ${CMAKE_INSTALL_BINDIR})

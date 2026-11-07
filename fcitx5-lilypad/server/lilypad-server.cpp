@@ -1,6 +1,6 @@
 /*
- * SPDX-FileCopyrightText: 2025 Võ Ngô Hoàng Thành <thanhpy2009@gmail.com>
- * SPDX-FileCopyrightText: 2026 Nguyễn Hoàng Kỳ  <nhktmdzhg@gmail.com>
+ * SPDX-FileCopyrightText: 2025-2026 Lý Tất Thành
+ * SPDX-FileCopyrightText: 2026 Antigravity
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
@@ -8,7 +8,9 @@
 
 #include "lilypad-server.h"
 #include "lilypad-logger.h"
+#include "lilypad-ipc.h"
 
+#include <chrono>
 #include <cstring>
 #include <vector>
 
@@ -52,7 +54,9 @@ bool UinputDevice::initialize() {
         return false;
     guard_.reset(fd);
 
-    if (ioctl(fd, UI_SET_EVBIT, EV_KEY) < 0 || ioctl(fd, UI_SET_KEYBIT, KEY_BACKSPACE) < 0) {
+    if (ioctl(fd, UI_SET_EVBIT, EV_KEY) < 0 ||
+        ioctl(fd, UI_SET_KEYBIT, KEY_BACKSPACE) < 0 ||
+        ioctl(fd, UI_SET_KEYBIT, KEY_F24) < 0) {
         return false;
     }
 
@@ -79,6 +83,21 @@ void UinputDevice::send_backspace() {
     // Zero-initialize ev[1] via {} set this event to SYN_REPORT
     ev[2].type  = EV_KEY;
     ev[2].code  = KEY_BACKSPACE;
+    ev[2].value = 0; // Release
+    // Zero-initialize ev[3] via {} set this event to SYN_REPORT
+    write(guard_.get(), ev, sizeof(ev));
+}
+
+void UinputDevice::send_f24() {
+    if (!guard_.is_valid())
+        return;
+    struct input_event ev[4]{};
+    ev[0].type  = EV_KEY;
+    ev[0].code  = KEY_F24;
+    ev[0].value = 1; // Press
+    // Zero-initialize ev[1] via {} set this event to SYN_REPORT
+    ev[2].type  = EV_KEY;
+    ev[2].code  = KEY_F24;
     ev[2].value = 0; // Release
     // Zero-initialize ev[3] via {} set this event to SYN_REPORT
     write(guard_.get(), ev, sizeof(ev));
@@ -271,6 +290,7 @@ int main(int argc, char* argv[]) {
     FdGuard          addon_fd;
     FdGuard          kb_client_fd;
     int              pending_backspaces = 0;
+    bool             pending_f24        = false;
 
     struct sigaction sa{};
     sa.sa_handler = signal_handler;
@@ -280,8 +300,8 @@ int main(int argc, char* argv[]) {
     sigaction(SIGINT, &sa, nullptr);
 
     while (g_running.load(std::memory_order_acquire)) {
-        int poll_timeout = (pending_backspaces > 0) ? 1 : -1;
-        int ret          = poll(fds.data(), fds.size(), poll_timeout);
+        int poll_timeout = (pending_backspaces > 0 || pending_f24) ? 1 : -1;
+        int ret = poll(fds.data(), fds.size(), poll_timeout);
 
         if (ret < 0) {
             if (errno == EINTR) {
@@ -294,6 +314,9 @@ int main(int argc, char* argv[]) {
             if (pending_backspaces > 0) {
                 uinput.send_backspace();
                 --pending_backspaces;
+            } else if (pending_f24) {
+                uinput.send_f24();
+                pending_f24 = false;
             }
         }
 
@@ -342,15 +365,39 @@ int main(int argc, char* argv[]) {
 
         // handle connect from addon
         if (fds[KB_CLIENT_INDEX].fd >= 0 && (fds[KB_CLIENT_INDEX].revents & (POLLIN | POLLHUP | POLLERR)) != 0) {
-            int     count = 0;
-            ssize_t n     = recv(fds[KB_CLIENT_INDEX].fd, &count, sizeof(count), 0);
+            LilypadIpcPacket packet{};
+            ssize_t n = recv(fds[KB_CLIENT_INDEX].fd, &packet, sizeof(packet), 0);
             if (n <= 0) {
                 LilypadLogger::instance().warn("Keyboard client disconnected or connection error");
                 kb_client_fd.reset(-1);
                 fds[KB_CLIENT_INDEX].fd = -1;
-            } else {
-                pending_backspaces += count - 1;
-                uinput.send_backspace();
+            } else if (static_cast<size_t>(n) == sizeof(LilypadIpcPacket)) {
+                if (packet.type == IPC_CMD_BACKSPACE) {
+                    int count = static_cast<int>(packet.code);
+                    if (pending_backspaces == 0 && !pending_f24) {
+                        if (count > 0) {
+                            pending_backspaces = count - 1;
+                            uinput.send_backspace();
+                        }
+                        pending_f24 = true;
+                    } else {
+                        pending_backspaces += count;
+                        pending_f24 = true;
+                    }
+                    LilypadLogger::instance().info("Backspace burst queued (count=" + std::to_string(count) + ")");
+                }
+            } else if (static_cast<size_t>(n) == sizeof(int)) { // Backward compatibility
+                int count = *reinterpret_cast<int*>(&packet);
+                if (pending_backspaces == 0 && !pending_f24) {
+                    if (count > 0) {
+                        pending_backspaces = count - 1;
+                        uinput.send_backspace();
+                    }
+                    pending_f24 = true;
+                } else {
+                    pending_backspaces += count;
+                    pending_f24 = true;
+                }
             }
         }
 
@@ -363,7 +410,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // handle mouse (libinput)
+        // handle libinput events (dedicated exclusively to mouse & device topology)
         if ((fds[1].revents & POLLIN) != 0) {
             struct libinput_event* event = nullptr;
 

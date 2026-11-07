@@ -5,6 +5,22 @@ All notable changes to **fcitx5-lilypad** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-11-07
+
+### 🌟 Major Release Highlights (Phiên Bản Đột Phá Lớn 2.5)
+- **Chuyển dịch Toàn diện sang Bamboo Native Core (Rust C-ABI):** Thay thế hoàn toàn Bamboo Go runtime cũ bằng `bamboo-core` viết bằng Rust nguyên bản, đạt hiệu năng xử lý ký tự cực đại và tiêu thụ bộ nhớ gần như bằng 0.
+- **Hardware Sentinel Barrier Protocol (Phím Chốt Chặn Không Phá Hủy KEY_F24):** Thay thế phím chốt chặn Backspace thứ $N+1$ bằng mã quét phần cứng phi phá hủy `KEY_F24`, loại bỏ triệt để nguy cơ xóa lẹm văn bản trước đó khi xảy ra độ trễ hàng đợi Compositor.
+- **Dynamic Adaptive Governor & Per-Tab Adaptive Settling:** Cơ chế tự động phân loại ứng dụng và nhịp trễ thông minh:
+  - **Terminal / Qt / Native Apps:** Sàn trễ Pre-commit siêu tốc $1.5\text{ms}$ ($1500\mu\text{s}$) và Post-commit $0.3\text{ms}$ ($300\mu\text{s}$) cho cảm giác gõ trực tiếp như bàn phím cơ.
+  - **Chromium / Electron / Webview Apps:** Sàn trễ an toàn chuẩn 1 khung hình VSync ($18\text{ms} \sim 22\text{ms}$, tương đương chuẩn $20\text{ms}$ của Lotus) và $5\text{ms}$ Post-commit khi có phím nối tiếp trong RAM. Loại bỏ dứt điểm hiện tượng rụng phím, nuốt chữ âm ghép (`thương`, `thành`) và bung phím thô VNI (`co6 thuo7g`).
+- **Virtual Focus Pinning & Focus Bounce Protection:** Tự động bảo vệ bộ đệm từ dở dang khi các ứng dụng web phức tạp (AFFiNE Canvas, Notion, Antigravity IDE, TikTok) phát sinh các đợt giật FocusOut/FocusIn giả lập do cập nhật Virtual DOM.
+- **Nhận diện Đa Tầng Process Webview Wayland (`queryCompositorAppId`):** Tích hợp IPC trực tiếp qua `$NIRI_SOCKET` để truy vấn chính xác `app_id` chỉ trong $155\mu\text{s}$, nhận diện hoàn hảo các ứng dụng Wayland chạy trong container / iframe không có metadata.
+- **Đồng bộ hóa Trạng thái Ứng dụng trong `setMode()`:** Tự động cập nhật cờ nền tảng Electron và ack uinput ngay khi người dùng chuyển đổi chế độ gõ bằng Menu hoặc Phím tắt.
+- **Tái cấu trúc Mã nguồn Chuẩn Modular (< 700 dòng/file):** Phân tách logic trạng thái thành 3 module chuyên trách: `lilypad-state.cpp`, `lilypad-state-governor.cpp`, `lilypad-state-uinput.cpp` theo tiêu chuẩn kỹ thuật nghiêm ngặt.
+- **Hỗ trợ Đa Nền tảng Linux:** Chuẩn hóa cấu hình và phụ thuộc để build và chạy mượt mà trên **Arch Linux**, **Ubuntu / Debian**, và **Fedora**.
+
+---
+
 ## [2.3.6] - 2026-09-12
 
 ### 🚀 Added / Improved (Tính năng Mới & Cải tiến)

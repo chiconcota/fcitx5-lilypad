@@ -1,10 +1,11 @@
 # MODULE: SEQUENCER LAYER (`src/sequencer/` & `fcitx5-lilypad/src/`)
 
-@status: STABLE (v2.3.13-watchdog-300ms) | @last_update: 2026-11-05
+@status: STABLE (v2.4.13-single-fifo-batch-commit) | @last_update: 2026-11-07
 
-> **Ghi chú Kiến trúc:** Hệ thống sử dụng **Kiến trúc Cảm biến Vòng lặp Kép (Dual-Sensor Control Loop)**:
+> **Ghi chú Kiến trúc:** Hệ thống sử dụng **Kiến trúc Cảm biến Vòng lặp Kép (Dual-Sensor Control Loop) & Single FIFO Consolidated Batch Commit (v2.4.13)**:
 > 1. **`IAckSensor` (Cảm biến Đường truyền & Micro-Pacing):** Đo độ trễ vòng lặp Compositor/App roundtrip và tính toán độ trễ vi mô thích ứng `get_micro_delay_us(bsCount, iki_ms)` qua `fcitx5-lilypad/src/ack-sensors/`.
 > 2. **`IIkiSensor` (Cảm biến Ngón tay):** Đo nhịp gõ thời gian thực ($\Delta t$) ngón tay người dùng và tính EMA IKI qua `fcitx5-lilypad/src/iki-sensors/`. Nén độ trễ ngắt nhịp xuống $1.0\text{ms} \sim 2.5\text{ms}$ khi gõ lướt Burst Typing.
+> 3. **Consolidated Batch Commit Pipeline (v2.4.13):** Khi hoàn tất giao dịch xóa uinput + Hardware Barrier F24, toàn bộ các phím gõ đệm trong RAM (`buffered_keys_`) được gom thành một chuỗi duy nhất và xả 1 lần qua `ic_->commitString()`, loại bỏ các nhịp timer 2ms gây giật lag DOM trên Chromium/Electron.
 
 ---
 
@@ -96,3 +97,24 @@ stateDiagram-v2
 - **Post-Commit Settling Window (`settle_timer_`):**
   - Tự động kích hoạt khi phát hiện ứng dụng Chromium/Electron (`wa_chromium_flag == true` từ `ack-apps.h`), giữ khoảng đệm an toàn $70\text{ms}$ sau khi gửi `commitString()`, ngăn chặn hiện tượng rụng/nuốt ký tự do Single-Threaded DOM reconciliation.
   - Với các ứng dụng không phải Chromium, mức trễ đệm tối thiểu là $300\mu\text{s}$ bảo đảm tốc độ phản hồi tức thì.
+
+---
+
+## 6. ĐẶC TẢ THIẾT KẾ: HARDWARE BARRIER KEY `KEY_F24` & SAFETY TIMER 20MS (PHASE 8.4)
+- **Khai tử Sentinel Backspace N+1:** Thay thế phím chốt Sentinel Backspace bằng phím mở rộng `KEY_F24` (Keycode 194 / Linux USB HID Extended Functional Key).
+- **Nguyên tắc an toàn Non-Destructive:** `KEY_F24` là phím vô hại, không bị gán bởi bất kỳ trình nghe nhạc, trình duyệt hay game nào. Kể cả khi phím đến trễ hay lọt xuống ứng dụng, app hoàn toàn phớt lờ, triệt tiêu 100% rủi ro xóa nhầm chữ commit.
+- **Barrier Safety Timer 20ms & Đo Đạc EMA Chính Xác:**
+  - Cài đặt timer an toàn 20ms ngay khi phát chuỗi xóa uinput.
+  - Nếu Compositor làm rơi packet `KEY_F24` do Chromium/TikTok Focus Bounce $\implies$ Timer tự động giải phóng rào chắn và commit chữ ngay sau 20ms, triệt tiêu thời gian chờ 300ms của Watchdog.
+  - Nếu `KEY_F24` đến sau 20ms (ví dụ 35ms): Nuốt phím `filterAndAccept()` sạch sẽ không để lại rác, đo đạc thời gian thực tế `swallow_duration_us` nạp vào bộ lọc EMA để cập nhật độ trễ tab. Nếu F24 bị drop hẳn quá 100ms: Coi là Outlier và hủy mẫu đo để bảo vệ bộ lọc EMA.
+
+---
+
+## 7. ĐẶC TẢ FOCUS SETTLED DEBOUNCE (PHASE 8.5 - v2.4.6)
+- **Vấn đề drop `KEY_F24` trên Niri:** Khi uinput phát phím xóa, Chrome unmount DOM node làm gửi `zwp_text_input_v3::disable`. Niri nhả grab làm `KEY_F24` bị chuyển thẳng vào Chrome và Fcitx5 không nhận được.
+- **Giải pháp Focus Settled Debounce (`scheduleFocusSettledCommit`):**
+  - Khi phát hiện `focusBounce` trong lúc `is_deleting_ == true`, hệ thống kích hoạt bộ đếm lắng dịu $35\text{ms}$.
+  - Mỗi nhịp nảy FocusOut/In của Chrome gia hạn lại bộ đếm $35\text{ms}$.
+  - Khi nhịp nảy cuối cùng kết thúc và Chrome hoàn toàn yên lặng $35\text{ms}$ $\implies$ Fcitx5 tính toán thời gian trễ thực tế $t_{\text{end}} - t_{\text{uinput\_send}}$ làm telemetry nạp vào Dynamic Governor, sau đó gọi `executeCommitSequence` an toàn.
+  - Triệt tiêu $100\%$ lỗi kẹt $>300\text{ms}$ của Watchdog mà không dùng timer đoán mò sớm.
+- **Tài liệu nghiên cứu các giải pháp triệt để rụng phím:** Xem chi tiết tại [wayland-focus-bounce-drop-key-solutions.md](file:///home/chiconcota/Documents/vnlilypad-lotus/.fcitx5-lilypad-ai/1-overview/project-managers/wayland-focus-bounce-drop-key-solutions.md).

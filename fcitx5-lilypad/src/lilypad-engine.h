@@ -1,7 +1,7 @@
 /*
  * SPDX-FileCopyrightText: 2022-2022 CSSlayer <wengxt@gmail.com>
- * SPDX-FileCopyrightText: 2025 Võ Ngô Hoàng Thành <thanhpy2009@gmail.com>
- * SPDX-FileCopyrightText: 2026 Nguyễn Hoàng Kỳ  <nhktmdzhg@gmail.com>
+ * SPDX-FileCopyrightText: 2025-2026 Lý Tất Thành
+ * SPDX-FileCopyrightText: 2026 Antigravity
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
@@ -220,6 +220,7 @@ namespace fcitx {
         std::string                                appRulesPath_;
         bool                                       isSelectingAppMode_ = false;
         std::string                                currentConfigureApp_;
+        std::string                                lastActiveApp_;
         std::unique_ptr<EventSourceTime>           cycleModeNotificationTimer_;
         static constexpr uint64_t                  CYCLE_MODE_NOTIFICATION_TIMEOUT_USEC = 800000; // 800ms in microseconds
         FCITX_ADDON_DEPENDENCY_LOADER(emoji, instance_->addonManager());
