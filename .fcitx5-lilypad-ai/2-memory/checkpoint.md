@@ -4,26 +4,22 @@
 
 - **Tên dự án:** `vnlilypad-lotus` ("Nâng cấp Fcitx5 Lotus")
 - **Đường dẫn thư mục:** `/home/chiconcota/Documents/vnlilypad-lotus/`
-- **Nhánh Git làm việc:** `main` (Phiên bản `v2.5.1`).
-- **Tình trạng:** **HOÀN THÀNH 100% BẢN VÁ v2.5.1 - UNIVERSAL HARDWARE SENTINEL (KEY_PAUSE) & CLEAN FIFO ARCHITECTURE. SỬA DỨT ĐIỂM LỖI NUỐT CHỮ TRÊN UBUNTU GNOME WAYLAND (MUTTER). BIÊN DỊCH VÀ KIỂM THỬ BUILD THÀNH CÔNG.**
+- **Nhánh Git làm việc:** `main` (commit `8a2690a`, tag `v2.5.1`, đã push đồng bộ lên `origin/main` và xuất bản 3 gói AUR).
+- **Tình trạng:** **HOÀN THÀNH 100% PHÁT HÀNH BẢN VÁ v2.5.1 - UNIVERSAL HARDWARE SENTINEL (KEY_PAUSE), FIX GNOME MUTTER / UBUNTU / FEDORA. ĐÃ XUẤT BẢN THÀNH CÔNG LÊN 3 KHO AUR (fcitx5-lilypad, fcitx5-lilypad-bin, fcitx5-lilypad-git).**
 
-## 📋 Hướng Dẫn Cập Nhật & Kiểm Thử Trên Ubuntu VM:
+## 📋 Hướng Dẫn Cài Đặt & Sử Dụng Bản Mới v2.5.1 Trên Arch Linux:
 
+### 1. Cài đặt trực tiếp từ AUR:
 ```bash
-cd ~/fcitx5-lilypad/fcitx5-lilypad
-git pull origin main
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
-cmake --build build -j$(nproc)
-sudo cmake --install build
-sudo systemctl restart fcitx5-lilypad-server@$USER.service
-fcitx5 -r -d
+yay -S fcitx5-lilypad        # Build từ nguồn GitHub Release v2.5.1
+# hoặc
+yay -S fcitx5-lilypad-git    # Build từ nhánh main Git mới nhất
 ```
 
-### 1. Cài đặt trực tiếp từ AUR (Arch Linux / CachyOS / Manjaro):
+### 2. Kích hoạt và kiểm tra:
 ```bash
-yay -S fcitx5-lilypad        # Build từ nguồn GitHub Release v2.5.0
-# hoặc
-yay -S fcitx5-lilypad-bin    # Cài đặt nhị phân pre-built siêu tốc
+sudo systemctl restart fcitx5-lilypad-server@$USER.service
+fcitx5 -r -d
 ```
 
 ### 2. Biên dịch thủ công từ mã nguồn (Release Mode):
